@@ -1,0 +1,47 @@
+{
+  "name": "im-a-korean-ai-in-seoul",
+  "version": "0.1.0",
+  "description": "Claude Code가 자연스러운 한국어를 쓰도록 생성 지침과 문체 검사 hook을 설치합니다.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nerdkim/im-a-korean-ai-in-seoul.git"
+  },
+  "homepage": "https://github.com/nerdkim/im-a-korean-ai-in-seoul#readme",
+  "bugs": {
+    "url": "https://github.com/nerdkim/im-a-korean-ai-in-seoul/issues"
+  },
+  "bin": {
+    "im-a-korean-ai-in-seoul": "scripts/install.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "gate": "node scripts/gate.mjs",
+    "self-check": "node scripts/gate.mjs --self-check-only",
+    "check": "node scripts/check-korean.mjs --all",
+    "rules": "node scripts/check-korean.mjs --rules",
+    "doctor": "node scripts/doctor.mjs",
+    "test": "node --test test/*.test.mjs",
+    "install-to": "node scripts/install.mjs",
+    "eval": "node scripts/eval-korean.mjs"
+  },
+  "files": [
+    "docs/rules.md",
+    "docs/limits.md",
+    "scripts/",
+    "skill/",
+    "output-styles/"
+  ],
+  "keywords": [
+    "korean",
+    "style",
+    "translationese",
+    "honorific",
+    "claude-code",
+    "hooks"
+  ]
+}

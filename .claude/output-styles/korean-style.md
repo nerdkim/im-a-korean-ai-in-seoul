@@ -1,0 +1,1 @@
+../../output-styles/korean-style.md

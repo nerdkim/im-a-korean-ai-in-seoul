@@ -1,0 +1,1 @@
+../../../skill/korean-rewrite/SKILL.md

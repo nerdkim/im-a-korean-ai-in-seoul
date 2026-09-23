@@ -1,0 +1,28 @@
+{
+  "outputStyle": "korean-style",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMode|SendUserFile|Task|Agent|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/pretooluse.mjs\"",
+            "statusMessage": "한국어 문체 규칙 확인"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/stop.mjs\"",
+            "statusMessage": "이 turn의 답변 문체 확인"
+          }
+        ]
+      }
+    ]
+  }
+}

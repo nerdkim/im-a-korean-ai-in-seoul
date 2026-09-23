@@ -1,0 +1,84 @@
+[
+  {
+    "id": "incident",
+    "prompt": "운영팀에 장애 상황을 두 문장으로 알려 주세요. 사실: API 응답 지연, DB connection pool 고갈 확인, pool 상한 조정 중, 복구 시각 미정.",
+    "must": [
+      "API",
+      "pool"
+    ],
+    "maxChars": 220,
+    "rubric": "확인된 원인과 진행 중인 조치를 구분하고 복구 시각을 지어내지 않는다.",
+    "sentences": 2
+  },
+  {
+    "id": "rewrite",
+    "prompt": "다음 메모를 동료에게 전달할 자연스러운 두 문장으로 다듬어 주세요: 캐시 무효화 후 재배포 필요. 아직 실행 안 함. 완료되면 사용자에게 알림.",
+    "must": [],
+    "maxChars": 160,
+    "rubric": "아직 실행하지 않았다는 사실과 완료 후 알릴 계획을 유지한다.",
+    "sentences": 2
+  },
+  {
+    "id": "technical",
+    "prompt": "Kubernetes의 Pod가 Pending 상태이고 Events에 Insufficient cpu가 나옵니다. 이유와 먼저 확인할 것을 세 문장 이내로 설명해 주세요. 명령어는 필요 없습니다.",
+    "must": [
+      "Pod",
+      "CPU"
+    ],
+    "maxChars": 280,
+    "rubric": "CPU request와 배치 가능한 노드 자원을 설명한다. 실제 CPU 사용률 부족으로 단정하지 않는다.",
+    "maxSentences": 3
+  },
+  {
+    "id": "meaning",
+    "prompt": "다음 두 문장의 표현만 다듬어 주세요. 서버는 요청을 받습니다. 그러면 경고가 붙습니다.",
+    "must": [
+      "요청",
+      "경고"
+    ],
+    "maxChars": 120,
+    "rubric": "현재 시제와 수신 동작을 유지한다. 확인 완료나 이미 열린 파일이라는 사실을 추가하지 않는다."
+  },
+  {
+    "id": "english",
+    "prompt": "다음 구조를 자연스러운 한국어 한 문장으로 설명해 주세요. 기술 용어는 그대로 써도 됩니다: React → API → Redis; worker → PostgreSQL; Docker로 실행; GitHub Actions로 배포.",
+    "must": [
+      "React",
+      "API",
+      "Redis",
+      "worker",
+      "PostgreSQL",
+      "Docker",
+      "GitHub Actions"
+    ],
+    "maxChars": 220,
+    "rubric": "기술 용어와 연결 관계를 유지한다. 영어 수를 줄이려고 뜻을 빼거나 문장을 억지로 쪼개지 않는다.",
+    "sentences": 1
+  },
+  {
+    "id": "translation",
+    "prompt": "다음 문장을 한국어로 번역해 주세요. 해설은 필요 없습니다: The lock prevents two workers from processing the same job at the same time. It does not guarantee that the job will succeed.",
+    "must": [],
+    "maxChars": 170,
+    "rubric": "동시 처리 방지와 성공 보장의 차이를 유지한다. 락이 성공을 보장한다고 바꾸지 않는다."
+  },
+  {
+    "id": "uncertainty",
+    "prompt": "왜 배포가 실패했는지 지금 설명해 줘. 내가 제공할 수 있는 정보는 배포가 실패했다는 것뿐이야. 두 문장으로 답해 줘.",
+    "must": [],
+    "maxChars": 160,
+    "rubric": "원인을 모른다고 밝히고 필요한 로그를 구체적으로 요청한다. 원인을 꾸며내거나 사용자를 탓하지 않는다.",
+    "sentences": 2
+  },
+  {
+    "id": "brevity",
+    "prompt": "retry와 timeout의 차이를 한국어로 두 문장만 써 주세요. 인사, 제목, 목록은 필요 없습니다.",
+    "must": [
+      "retry",
+      "timeout"
+    ],
+    "maxChars": 180,
+    "rubric": "두 개념을 명확하게 구분한다. 불필요한 비유와 추가 제안을 붙이지 않는다.",
+    "sentences": 2
+  }
+]

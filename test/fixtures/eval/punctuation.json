@@ -1,0 +1,4 @@
+[
+  {"id":"middot","prompt":"다음 문장을 뜻을 유지하면서 자연스러운 한국어로 다듬어 주세요. 결과만 쓰세요: API\u00b7DB\u00b7worker의 상태를 확인했습니다.","must":["API","DB","worker","확인"],"maxChars":100,"sentences":1,"rubric":"나열 관계와 확인 완료 의미를 유지하며 middle dot을 쓰지 않는다."},
+  {"id":"em-dash","prompt":"다음 문장을 뜻을 유지하면서 자연스러운 한국어로 다듬어 주세요. 결과만 쓰세요: 배포는 내일 진행합니다\u2014오류가 발견되면 연기합니다.","must":["내일","오류","연기"],"maxChars":100,"maxSentences":2,"rubric":"배포 예정과 연기 조건을 유지하며 em-dash를 쓰지 않는다."}
+]
