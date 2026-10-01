@@ -22,6 +22,7 @@ export function assessAnswer(answer, task) {
   return { ...answer, chars: [...answer.text].length, sentences,
     missing: [...task.must.filter(term => !answer.text.toLowerCase().includes(term.toLowerCase())),
       ...(task.mustAny ?? []).filter(group => !group.some(term => answer.text.includes(term))).map(group => group.join(' / '))],
+    forbidden: (task.mustNot ?? []).filter(term => answer.text.includes(term)),
     overLength: [...answer.text].length > task.maxChars,
     metaComment: /\(\s*\d+문장\s*\)|원문이 이미 자연|원문이 자연|고칠 부분이 없|그대로 두었습니다/.test(answer.text),
     wrongSentenceCount: (task.sentences !== undefined && sentences !== task.sentences) ||
@@ -42,20 +43,22 @@ function main() {
     return;
   }
   if (!args.includes('--run')) {
-    console.log('Usage: npm run eval -- --run [--models claude-sonnet-5,claude-opus-5] [--profiles baseline,installed] [--reference DIR] [--out DIR] [--repeat 1] [--individual] [--cases FILE] [--effort low] [--with-hooks]');
+    console.log('Usage: npm run eval -- --run [--models claude-sonnet-5-5,claude-opus-5-5] [--profiles baseline,installed] [--reference DIR] [--out DIR] [--repeat 1] [--individual] [--cases FILE] [--effort low] [--with-hooks]');
     return;
   }
   const cases = JSON.parse(readFileSync(resolve(value('--cases', join(ROOT, 'test/fixtures/eval/cases.json'))), 'utf8'));
   if (!Array.isArray(cases) || !cases.length || cases.some(c => !/^[a-z][a-z0-9-]*$/.test(c.id) ||
       typeof c.prompt !== 'string' || !Array.isArray(c.must) || c.must.some(t => typeof t !== 'string') ||
       (c.mustAny !== undefined && (!Array.isArray(c.mustAny) || c.mustAny.some(g => !Array.isArray(g) ||
-        !g.length || g.some(t => typeof t !== 'string')))) || !Number.isFinite(c.maxChars)) ||
+        !g.length || g.some(t => typeof t !== 'string')))) ||
+      (c.mustNot !== undefined && (!Array.isArray(c.mustNot) || c.mustNot.some(t => typeof t !== 'string' || !t))) ||
+      !Number.isFinite(c.maxChars)) ||
       new Set(cases.map(c => c.id)).size !== cases.length) throw new Error('Invalid cases');
   const individual = args.includes('--individual');
   const withHooks = args.includes('--with-hooks');
   const effort = value('--effort', 'low');
   if (!['low', 'medium', 'high'].includes(effort)) throw new Error('Invalid effort');
-  const models = value('--models', 'claude-sonnet-5,claude-opus-5').split(',');
+  const models = value('--models', 'claude-sonnet-5-5,claude-opus-5-5').split(',');
   const profiles = value('--profiles', 'baseline,installed').split(',');
   const reference = value('--reference', null);
   if (reference && !profiles.includes('legacy')) profiles.splice(1, 0, 'legacy');
@@ -119,7 +122,7 @@ function main() {
         results.push(row);
         writeFileSync(join(out, 'results.json'), JSON.stringify({ cli: cli.stdout.trim(), date: new Date().toISOString(),
           casesHash: createHash('sha256').update(JSON.stringify(cases)).digest('hex'), hashes, effort, batch: !individual, hooks: withHooks, results }, null, 2) + '\n');
-        console.log(`${file}: ${row.seconds.toFixed(1)}s, in=${row.inputTokens}, out=${row.outputTokens}, constraints=${answers.filter(a => !a.missing.length && !a.overLength && !a.wrongSentenceCount && !a.metaComment).length}/${group.length}`);
+        console.log(`${file}: ${row.seconds.toFixed(1)}s, in=${row.inputTokens}, out=${row.outputTokens}, constraints=${answers.filter(a => !a.missing.length && !a.forbidden.length && !a.overLength && !a.wrongSentenceCount && !a.metaComment).length}/${group.length}`);
       }
     }
   } finally { rmSync(scratch, { recursive: true, force: true }); }

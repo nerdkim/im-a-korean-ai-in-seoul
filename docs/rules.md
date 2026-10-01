@@ -1,15 +1,17 @@
 # 검사 규칙
 
 이 문서의 `korean-style-rules` 블록이 검사기의 설정 원본입니다.
-생성 지침은 `output-styles/korean-style.md`에 있습니다. 모델은 응답할 때마다 두 파일을 다시 읽지 않습니다.
+작성 지침은 이 저장소의 `output-styles/korean-style.md`에 있고, 설치한 프로젝트에서는 `.claude/output-styles/korean-style.md`에 있습니다.
+지침은 세션을 시작할 때 system prompt에 들어가고, hook은 실행될 때마다 이 문서를 새로 읽습니다. 그래서 모델이 두 파일을 직접 읽을 필요는 없습니다.
 
 ## 판정
 
 - 오류는 hook에서 차단합니다. 오류로 분류한 규칙은 어투와 표기처럼 프로젝트가 정한 정책입니다.
 - 기본값에서는 산문에 쓴 middle dot(U+00B7), em-dash(U+2014) 등 `banned-char`에 든 문자를 오류로 막습니다. 나열은 쉼표나 조사로 잇고 부연은 괄호나 별도 문장으로 씁니다.
-- `advisory-rules`에 든 규칙에 걸리면 경고로만 보고합니다. CLI에서 보여 주되 hook에서 재작성을 요구하지 않습니다.
+- `advisory-rules`에 든 규칙에 걸리면 경고로만 보고합니다. CLI는 경고를 보여 주고, hook은 경고 때문에 쓰기를 막거나 재작성을 요구하지 않습니다.
+- `review-rules`에 든 규칙의 경고는 PreToolUse hook이 쓰기를 막지 않고 Claude에게 검토 후보로 알립니다. 이번에 바꾼 문단에서 새로 생긴 경고만 알리며, 알림에는 어색하면 고치고 문맥에 맞으면 그대로 두라는 안내가 붙습니다.
 - CLI는 오류가 있으면 1, 사용법이 틀리면 2를 반환합니다. 경고만 있으면 0이며 `--strict`에서는 1입니다.
-- CLI는 규칙을 읽지 못하면 실패합니다. hook은 규칙을 읽지 못해도 멈추지 않고 기본 최소 규칙으로 검사합니다. 고장은 `doctor`와 `gate`로 확인합니다.
+- CLI는 규칙을 읽지 못하면 실패합니다. hook은 규칙을 읽지 못해도 멈추지 않고 기본 최소 규칙으로 검사합니다. 규칙을 읽지 못하는 문제는 `doctor`와 `gate`로 확인합니다.
 
 ## 일부 규칙을 경고로 바꾸고 영어 제한을 푼 근거
 
@@ -17,11 +19,11 @@
 
 `문을 통해 들어갑니다`, `책을 가지고 있습니다`, `예전에는 서울에 살았었습니다`는 문맥에 맞는 표현입니다.
 `translationese`는 이 문장들도 잡습니다. `디스크에서 자리를 차지하는 파일입니다`도 `literal-verb`에 잡힙니다.
-수단, 소유, 시제, 비유를 나타내는 정상 표현도 같은 구절을 쓰므로 두 규칙을 경고로 바꿨습니다.
+수단, 소유, 시제, 비유를 나타내는 정상적인 문장에도 같은 구절이 들어가므로 두 규칙을 경고로 바꿨습니다.
 
-쉼표 수와 문장 길이, 강조, 명사와 조사의 빈도는 문법이 아니라 문체의 경향을 보여 주는 값입니다. 임계값은 기존 측정값을
-유지하되 경고로만 사용합니다. 영어 용어 수는 기본값에서 제한하지 않습니다.
-이 분류는 `test/quality.test.mjs`에서 정상 문장과 실제 오류로 함께 검증합니다.
+쉼표 수, 문장 길이, 굵은 글씨 수, 명사형 종결이나 `~의` 같은 표현의 빈도는 문법이 아니라 문체의 경향을 보여 주는 값입니다.
+임계값은 전에 측정해 정한 값을 그대로 두고 경고에만 씁니다. 영어 용어 수는 기본값에서 제한하지 않습니다.
+이 도구 저장소의 `test/quality.test.mjs`가 이 분류를 정상 문장과 실제 오류로 함께 검증합니다.
 
 ## 설정
 
@@ -31,6 +33,7 @@
 
 ```korean-style-rules
 advisory-rules: translationese, literal-verb, comma-per-sentence, comma-segment-length, comma-after-conjunctive-adverb, comma-after-connective, sentence-too-long, nominalization, demonstrative-density, suffix-jeok-density, particle-ui-density, redundant-plural, bound-english, repeated-gloss, bold-density, contrast-density, inclusive-term, hybrid-negation, korean-required
+review-rules: translationese, literal-verb, redundant-plural, comma-after-conjunctive-adverb, hybrid-negation, inclusive-term, sentence-too-long
 register: 다나까체
 banned-address: 당신
 imperative-endings: 하십시오, 하시오, 해라, 하라, 해줘, 해봐, 하세요, 하십쇼
@@ -87,6 +90,7 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | 키  | 뜻 |
 | ---  | --- |
 | `advisory-rules` | 차단하지 않고 경고로만 보고할 규칙 이름입니다. |
+| `review-rules` | 경고 규칙 가운데 hook이 Claude에게 검토 후보로 알릴 규칙입니다. 이번에 바꾼 문단에서 새로 생긴 위반만 알립니다. |
 | `register`  | 이 프로젝트가 쓰는 어투입니다. |
 | `banned-address`  | 읽는 사람을 부를 때 쓰면 안 되는 말입니다. |
 | `imperative-endings`  | 사람에게 명령이 되는 어미입니다. |
@@ -136,7 +140,7 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | `skip-globs`  | 검사하지 않을 경로입니다. |
 | `sweep-skip-dirs`  | 전체 검사에서 들어가지 않을 디렉터리 이름입니다. |
 
-## 보고 이름
+## 보고에 나오는 규칙 이름
 
 | 규칙 | 의미 |
 | --- | --- |
@@ -174,5 +178,6 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 
 ## 변경과 검증
 
-규칙 값과 설명을 함께 고치고, 잡아야 할 문장과 잡으면 안 되는 문장을 테스트에 넣습니다.
-`npm run gate`로 확인합니다. 생성 지침을 바꾸면 동일한 입력으로 실모델 응답도 비교합니다.
+규칙 값과 설명을 함께 고치고, 잡아야 할 문장과 잡으면 안 되는 문장을 함께 확인합니다.
+이 도구 저장소에서는 두 종류의 문장을 테스트에 넣고 `npm run gate`로 확인합니다. 설치한 프로젝트에서는 `check-korean.mjs --text`로 확인합니다.
+작성 지침을 바꾸면 같은 입력으로 실모델 응답도 비교합니다.

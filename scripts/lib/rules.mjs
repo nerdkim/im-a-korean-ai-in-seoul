@@ -7,6 +7,8 @@ export const RULE_FENCE = 'korean-style-rules';
 /* 값이 여러 개인 키입니다. */
 const LIST_KEYS = {
   'advisory-rules': 'advisoryRules',
+  /* 이 경고 규칙에 걸린 표현이 파일에서 바꾼 문단에 새로 생기면 hook이 Claude에게 알립니다. */
+  'review-rules': 'reviewRules',
   'banned-char': 'bannedChar',
   'banned-address': 'bannedAddress',
   'imperative-endings': 'imperativeEndings',
@@ -106,6 +108,7 @@ export function withRegister(rules, register) {
 
 const FALLBACK = {
   advisoryRules: [],
+  reviewRules: [],
   register: '다나까체',
   bannedChar: ['middot', 'em-dash', 'emoji', 'hanja', 'kana'],
   bannedAddress: ['당신'],
@@ -168,6 +171,7 @@ function freshRules() {
   return {
     ...FALLBACK,
     advisoryRules: [],
+    reviewRules: [],
     bannedChar: [],
     bannedAddress: [],
     imperativeEndings: [],

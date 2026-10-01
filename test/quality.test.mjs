@@ -47,6 +47,16 @@ test('산문의 middle dot과 em-dash는 차단하고 대체 표현과 문자 �
   }
 });
 
+test('hook이 검토 후보로 알릴 규칙은 모두 경고 규칙이고 규칙 이름 표에 있다', () => {
+  /* 오류 규칙을 넣으면 쓰기가 막혀 알릴 기회가 없고, 이름을 틀리면 조용히 꺼집니다. */
+  const reported = new Set([...readFileSync(rulesPath, 'utf8').matchAll(/^\| `([a-z-]+)` \|/gm)].map(m => m[1]));
+  assert.ok(rules.reviewRules.length > 0);
+  for (const name of rules.reviewRules) {
+    assert.ok(rules.advisoryRules.includes(name), `${name} 규칙은 경고 규칙이 아닙니다`);
+    assert.ok(reported.has(name), `${name} 규칙은 규칙 이름 표에 없습니다`);
+  }
+});
+
 test('경고로 둘 규칙은 규칙 문서에서 고르며 파싱 결과끼리 섞이지 않는다', () => {
   const warn = parseRuleBlock('advisory-rules: translationese\ntranslationese-patterns: 를 통해=~해');
   const strict = parseRuleBlock('translationese-patterns: 를 통해=~해');
@@ -66,9 +76,13 @@ test('실모델 평가에서 누락된 응답과 형식 위반을 통과로 보�
   const modal = { must: [], mustAny: [['수 있', '가능성']], maxChars: 100 };
   assert.equal(assessAnswer({ text: '오류가 줄어듭니다.' }, modal).missing.length, 1);
   assert.equal(assessAnswer({ text: '오류가 줄어들 수 있습니다.' }, modal).missing.length, 0);
+  const calque = { must: [], mustNot: ['것을 허용'], maxChars: 100 };
+  assert.deepEqual(assessAnswer({ text: '사용자가 데이터를 내보내는 것을 허용합니다.' }, calque).forbidden, ['것을 허용']);
+  assert.deepEqual(assessAnswer({ text: '사용자가 데이터를 내보낼 수 있습니다.' }, calque).forbidden, []);
+  assert.deepEqual(assessAnswer({ text: '끝났습니다.' }, { must: [], maxChars: 100 }).forbidden, []);
 });
 
-test('항상 읽는 생성 지침의 분량을 제한한다', () => {
+test('항상 읽는 작성 지침의 분량을 제한한다', () => {
   const style = readFileSync(new URL('../output-styles/korean-style.md', import.meta.url), 'utf8');
   assert.ok(Buffer.byteLength(style) <= 2600, '긴 설명은 README나 근거 문서에 둡니다');
   assert.match(style, /keep-coding-instructions: true/);

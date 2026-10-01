@@ -659,6 +659,22 @@ test('설치된 hook이 규칙을 지킨 쓰기는 통과시킨다', () => {
   assert.equal(out, null);
 });
 
+test('설치된 hook이 새로 쓴 번역투 후보를 막지 않고 Claude에게 알린다', () => {
+  /* 설치된 규칙 문서에 review-rules가 들어가지 않으면 이 알림은 조용히 꺼집니다. */
+  const target = scratch();
+  install(target);
+
+  const out = runInstalledHook(target, {
+    tool_name: 'Write',
+    tool_input: { file_path: join(target, 'docs', 'note.md'), content: '# 제목\n\n로그를 통해 원인을 찾았습니다.\n' },
+    cwd: target,
+  });
+
+  assert.notEqual(out, null, 'hook이 아무것도 내지 않았습니다');
+  assert.equal(out.hookSpecificOutput.permissionDecision, undefined);
+  assert.match(out.hookSpecificOutput.additionalContext, /\[translationese\] 3줄/);
+});
+
 const jsonAt = path => JSON.parse(readFileSync(path, 'utf8'));
 const saveJson = (path, value) => { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, JSON.stringify(value)); };
 const doctor = target => spawnSync('node', [join(target, INSTALLED_DIR, 'scripts/doctor.mjs')], { encoding: 'utf8', env: envFor(ROOT) });
@@ -880,6 +896,20 @@ test('사용자 규칙을 바꿔도 엔진 자체 검사는 통과하고 실제 
   assert.equal(runInstalled(target, ['--text', 'API\u00b7DB를 확인합니다.']).status, 0);
   assert.equal(install(target).status, 0);
   assert.equal(doctor(target).status, 0);
+});
+
+test('doctor는 review-rules가 빠진 규칙이면 주의로 알리고 기본 규칙이면 알리지 않는다', () => {
+  /* 직접 고친 규칙은 재설치해도 새 키가 들어가지 않으므로 검토 후보 알림이 꺼진 채 남습니다. */
+  const target = scratch();
+  install(target);
+  assert.doesNotMatch(doctor(target).stdout, /review-rules/);
+  const path = join(target, INSTALLED_DIR, 'rules.md');
+  writeFileSync(path, readFileSync(path, 'utf8').replace(/^review-rules:.*\n/m, ''));
+  const r = doctor(target);
+  assert.equal(r.status, 0, '알림이 꺼진 것은 설치 실패가 아닙니다');
+  assert.match(r.stdout, /주의 {2}review-rules가 없거나 비어 있어/);
+  writeFileSync(path, `${readFileSync(path, 'utf8').replace('```korean-style-rules\n', '```korean-style-rules\nreview-rules: translationese, translationeze\n')}`);
+  assert.match(doctor(target).stdout, /review-rules의 다음 이름은 advisory-rules에 없어 알림에 쓰이지 않습니다: translationeze$/m);
 });
 
 test('doctor는 해석하지 못하는 어투와 문자 정책을 성공으로 보고하지 않는다', () => {

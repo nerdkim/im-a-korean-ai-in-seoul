@@ -7,12 +7,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { commitMessagesIn, resultOfEdit } from '../scripts/hooks/pretooluse.mjs';
+import { commitMessagesIn, formatReviewNotes, resultOfEdit, reviewNotes } from '../scripts/hooks/pretooluse.mjs';
 import { lastAssistantText } from '../scripts/hooks/stop.mjs';
 import { messageBody } from '../scripts/hooks/commit-msg.mjs';
 import { mergeHookSettings } from '../scripts/install.mjs';
+import { loadRules } from '../scripts/lib/rules.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const RULES = loadRules(join(ROOT, 'docs', 'rules.md'));
 const scratch = () => mkdtempSync(join(tmpdir(), 'korean-style-hook-'));
 
 /* hook을 실제로 띄우고 stdout을 JSON으로 읽습니다. */
@@ -110,6 +112,137 @@ test('규칙을 지킨 문서 쓰기는 통과시킨다', () => {
     tool_input: { file_path: join(ROOT, 'docs', '시험.md'), content: '워크플로를 확인했습니다.' },
   });
   assert.equal(out, null, '통과는 아무것도 내지 않습니다');
+});
+
+/* 오류가 없는 파일 쓰기는 막지 않고, 새로 쓴 부분의 경고는 Claude에게만 알립니다. */
+
+test('새로 쓴 문서의 번역투 후보는 쓰기를 막지 않고 Claude에게 알린다', () => {
+  const out = runHook('pretooluse.mjs', {
+    tool_name: 'Write',
+    tool_input: { file_path: join(ROOT, 'docs', '시험.md'), content: '로그를 통해 원인을 찾았습니다.' },
+  });
+  assert.ok(out !== null, '검토 후보를 알려야 합니다');
+  assert.equal(out.hookSpecificOutput.permissionDecision, undefined, '`allow`를 돌려주면 사용자 승인 절차를 건너뜁니다');
+  assert.match(out.hookSpecificOutput.additionalContext, /\[translationese\] 1줄: .*를 통해/);
+});
+
+test('바뀌기 전 파일에 있던 경고는 Edit로 그 줄을 고쳐도 다시 알리지 않는다', () => {
+  /* 실제 파일이 있어야 바뀌기 전 내용과 비교할 수 있으므로 임시 프로젝트에서 hook을 띄웁니다. */
+  const project = scratch();
+  const file = join(project, 'a.md');
+  writeFileSync(file, '# 제목\n\n로그를 통해 원인을 찾았습니다.\n', 'utf-8');
+  const r = spawnSync('node', [join(ROOT, 'scripts', 'hooks', 'pretooluse.mjs')], {
+    input: JSON.stringify({
+      tool_name: 'Edit',
+      tool_input: { file_path: file, old_string: '원인을 찾았습니다.', new_string: '원인을 다시 찾았습니다.' },
+    }),
+    encoding: 'utf-8',
+    env: { ...process.env, CLAUDE_PROJECT_DIR: project, KOREAN_STYLE_RULES: join(ROOT, 'docs', 'rules.md') },
+  });
+  assert.equal(r.status, 0);
+  assert.equal(r.stdout.trim(), '', '이번 편집이 만든 표현이 아닙니다');
+});
+
+test('review-rules에 없는 경고는 알리지 않는다', () => {
+  /* 쉼표 수 규칙은 경고 규칙이지만 검토 후보로는 알리지 않습니다. */
+  const out = runHook('pretooluse.mjs', {
+    tool_name: 'Write',
+    tool_input: {
+      file_path: join(ROOT, 'docs', '시험.md'),
+      content: '오늘 배포를 마쳤고, 남은 것은 보고 하나이며, 확인이 필요하고, 일정은 내일입니다.',
+    },
+  });
+  assert.equal(out, null);
+});
+
+test('오류가 있으면 검토 후보를 알리지 않고 쓰기를 거부한다', () => {
+  const out = runHook('pretooluse.mjs', {
+    tool_name: 'Write',
+    tool_input: { file_path: join(ROOT, 'docs', '시험.md'), content: '로그를 통해 원인을 찾았어요.' },
+  });
+  assert.equal(out.hookSpecificOutput.permissionDecision, 'deny');
+  assert.equal(out.hookSpecificOutput.additionalContext, undefined);
+});
+
+test('커밋 메시지와 질문의 경고는 검토 후보로 알리지 않는다', () => {
+  /* 알림은 도구가 실행된 뒤에 도착하므로 이미 끝난 커밋이나 보낸 질문은 고칠 수 없습니다. */
+  assert.equal(runHook('pretooluse.mjs', { tool_name: 'Bash', tool_input: { command: 'git commit -m "로그를 통해 원인을 찾았습니다"' } }), null);
+  assert.equal(runHook('pretooluse.mjs', {
+    tool_name: 'AskUserQuestion',
+    tool_input: { questions: [{ question: '로그를 통해 확인할까요?', header: '확인' }] },
+  }), null);
+});
+
+/* 편집 전 파일을 만들고 편집을 적용해 전후 내용을 돌려줍니다. */
+function edited(name, before, toolName, toolInput) {
+  const path = join(scratch(), name);
+  writeFileSync(path, before, 'utf-8');
+  return { before, after: resultOfEdit(toolName, toolInput, path) };
+}
+
+const rulesOf = (before, after, target = 'doc', path = 'docs/a.md') =>
+  reviewNotes(before, after, RULES, target, path).map(v => v.rule);
+
+test('MultiEdit로 문단을 옮겨도 원래 있던 후보는 다시 알리지 않는다', () => {
+  const moved = edited('a.md', '로그를 통해 봤습니다.\n\n둘째 문단입니다.\n', 'MultiEdit', { edits: [
+    { old_string: '로그를 통해 봤습니다.\n\n', new_string: '' },
+    { old_string: '둘째 문단입니다.\n', new_string: '둘째 문단입니다.\n\n로그를 통해 봤습니다.\n' },
+  ] });
+  assert.deepEqual(rulesOf(moved.before, moved.after), []);
+  const added = edited('a.md', '로그를 통해 봤습니다.\n', 'MultiEdit', { edits: [
+    { old_string: '로그를 통해 봤습니다.\n', new_string: '로그를 통해 봤습니다.\n\n여러 파일들을 확인했습니다.\n' },
+  ] });
+  assert.deepEqual(rulesOf(added.before, added.after), ['redundant-plural']);
+});
+
+test('Write로 기존 파일을 덮어쓰면 원래 있던 경고는 다시 알리지 않는다', () => {
+  const before = '로그를 통해 원인을 찾았습니다.\n';
+  const notes = reviewNotes(before, `${before}\n여러 파일들을 봤습니다.\n`, RULES, 'doc', 'a.md');
+  assert.deepEqual(notes.map(v => [v.rule, v.line]), [['redundant-plural', 3]], '줄 번호는 파일 기준입니다');
+});
+
+test('같은 문단에서 바꾸지 않은 줄의 후보는 다시 알리지 않는다', () => {
+  assert.deepEqual(rulesOf('로그를 통해 원인을 찾았습니다.\n결과를 적었습니다.\n', '로그를 통해 원인을 찾았습니다.\n결과를 다시 적었습니다.\n'), []);
+});
+
+test('편집 조각에 주석 표시가 없어도 주석 안의 후보를 알린다', () => {
+  /* Edit는 바꿀 부분만 담는 경우가 많아 조각에 `//`가 없습니다. */
+  const { before, after } = edited('a.js', '// 사용자를 조회합니다.\nconst a = 1;\n', 'Edit', {
+    old_string: '사용자를 조회합니다.', new_string: '로그를 통해 사용자를 조회합니다.',
+  });
+  assert.deepEqual(rulesOf(before, after, 'comment', 'src/a.js'), ['translationese']);
+});
+
+test('문자열 리터럴만 바꾼 소스 편집은 검토 후보를 알리지 않는다', () => {
+  assert.deepEqual(rulesOf("// 주석입니다.\nconst a = '확인';\n", "// 주석입니다.\nconst a = '로그를 통해 확인';\n", 'comment', 'src/a.js'), []);
+});
+
+test('기존 code block 안에 쓴 글은 검토 후보로 알리지 않는다', () => {
+  const { before, after } = edited('a.md', '# 제목\n\n```\n예시입니다.\n```\n', 'Edit', {
+    old_string: '예시입니다.', new_string: '로그를 통해 예시입니다.',
+  });
+  assert.deepEqual(rulesOf(before, after), []);
+});
+
+test('규칙 설정 블록에 치환 후보를 더해도 검토 후보로 알리지 않는다', () => {
+  /* 규칙 문서를 고치는 것은 설치한 프로젝트가 규칙을 바꾸는 정상 절차입니다. */
+  const before = '# 규칙\n\n```korean-style-rules\ntranslationese-patterns: 를 통해=~해\n```\n';
+  assert.deepEqual(rulesOf(before, before.replace('=~해', '=~해, 문서를 통하여서=로'), 'doc', '.korean-style/rules.md'), []);
+});
+
+test('review-rules가 비어 있으면 검토 후보를 알리지 않는다', () => {
+  /* 이 키가 없는 구버전 규칙으로 설치한 프로젝트입니다. */
+  assert.deepEqual(reviewNotes('', '로그를 통해 원인을 찾았습니다.', { ...RULES, reviewRules: [] }, 'doc', 'a.md'), []);
+});
+
+test('검토 후보가 많으면 앞의 다섯 건만 보여 주고 나머지 건수를 알린다', () => {
+  const notes = Array.from({ length: 7 }, (_, i) => ({ rule: 'translationese', line: i + 1, detail: `후보 ${i + 1}` }));
+  const text = formatReviewNotes(notes, 'a.md', '.korean-style/scripts/check-korean.mjs');
+  assert.match(text, /검토 후보 7건/);
+  assert.match(text, /후보 5$/m);
+  assert.doesNotMatch(text, /후보 6/);
+  assert.match(text, /나머지 2건은 `node \.korean-style\/scripts\/check-korean\.mjs --file a\.md` 명령으로/);
+  assert.match(formatReviewNotes(notes, 'docs/my notes.md'), /--file 'docs\/my notes\.md'/, '공백이 든 경로는 따옴표로 감싸야 명령이 그대로 실행됩니다');
 });
 
 test('프로젝트 밖의 파일은 판정하지 않는다', () => {
