@@ -116,7 +116,7 @@ test('규칙을 지킨 문서 쓰기는 통과시킨다', () => {
 
 /* 오류가 없는 파일 쓰기는 막지 않고, 새로 쓴 부분의 경고는 Claude에게만 알립니다. */
 
-test('새로 쓴 문서의 번역투 후보는 쓰기를 막지 않고 Claude에게 알린다', () => {
+test('새로 쓴 문서의 영어식 표현 후보는 쓰기를 막지 않고 Claude에게 알린다', () => {
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Write',
     tool_input: { file_path: join(ROOT, 'docs', '시험.md'), content: '로그를 통해 원인을 찾았습니다.' },

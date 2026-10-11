@@ -121,7 +121,7 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | `plural-quantifiers`  | 뒤따르는 명사에 `~들`을 붙이면 안 되는 수량 표현입니다. |
 | `density-rule-floor`  | 밀도 규칙이 판정을 시작하는 최소 횟수입니다. |
 | `density-margin`  | 밀도 규칙이 한도에 더하는 여유입니다. |
-| `translationese-patterns`  | 번역투 구절과 대신 쓸 표현입니다. |
+| `translationese-patterns`  | 영어식 구절과 대신 쓸 표현입니다. |
 | `literal-verbs`  | 영어 동사를 직역한 동사입니다. |
 | `literal-verb-exempt`  | 직역 동사 규칙이 건드리지 않을 영어 목적어입니다. |
 | `loanword-spelling`  | 틀린 외래어 표기와 규범 표기입니다. |
@@ -155,7 +155,7 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | `double-passive` | 목록에 있는 이중피동 후보입니다. |
 | `loanword-spelling` | 프로젝트가 정한 외래어 표기와 다른 표기입니다. |
 | `known-typo` | 목록에 있는 오타입니다. |
-| `translationese` | 번역투 후보입니다. 문맥에 맞는 표현이면 그대로 둡니다. |
+| `translationese` | 영어식 표현 후보입니다. 문맥에 맞는 표현이면 그대로 둡니다. |
 | `literal-verb` | 직역 동사 후보입니다. 실제 동작을 나타낸 문장이면 그대로 둡니다. |
 | `comma-per-sentence` | 한 문장의 쉼표 수입니다. 나열은 제외합니다. |
 | `comma-segment-length` | 쉼표로 나눈 구간의 어절 수입니다. |

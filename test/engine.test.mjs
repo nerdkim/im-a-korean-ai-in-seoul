@@ -284,7 +284,7 @@ test('회귀: 자모가 분리된(NFD) 한글을 한국어가 없는 글로 판�
   assert.equal(names(checkText(decomposed, r, 'chat')).includes('korean-required'), false);
 });
 
-test('subagent 프롬프트의 번역투를 잡는다', () => {
+test('subagent 프롬프트의 영어식 표현을 잡는다', () => {
   /* output-style은 subagent에 적용되지 않으므로 프롬프트만이라도 여기서 검사합니다. */
   const r = rulesOf([
     'agent-tool-fields: Task.prompt',
@@ -294,7 +294,7 @@ test('subagent 프롬프트의 번역투를 잡는다', () => {
   ]);
   const input = { prompt: '이 파일은 검사기에 의하여 읽혀집니다. 결과를 보고하십시오.', subagent_type: 'explorer' };
   const problems = checkToolCall('Task', input, r, 'doc');
-  assert.ok(problems.length >= 1, '번역투와 이중피동을 잡아야 합니다');
+  assert.ok(problems.length >= 1, '영어식 표현과 이중피동을 잡아야 합니다');
   assert.ok(problems.every((p) => typeof p.where === 'string' && p.where.length > 0));
 });
 

@@ -659,7 +659,7 @@ test('설치된 hook이 규칙을 지킨 쓰기는 통과시킨다', () => {
   assert.equal(out, null);
 });
 
-test('설치된 hook이 새로 쓴 번역투 후보를 막지 않고 Claude에게 알린다', () => {
+test('설치된 hook은 새로 쓴 영어식 표현 후보를 막지 않고 Claude에게 알린다', () => {
   /* 설치된 규칙 문서에 review-rules가 들어가지 않으면 이 알림은 조용히 꺼집니다. */
   const target = scratch();
   install(target);

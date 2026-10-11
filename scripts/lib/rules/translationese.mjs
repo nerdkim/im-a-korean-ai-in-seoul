@@ -1,4 +1,4 @@
-/* 번역투입니다. */
+/* 영어식 표현입니다. */
 import { lineOf } from '../text.mjs';
 
 /* `@latin:` 규칙에서 목적어로 인정하는 영어 낱말입니다. */
@@ -32,13 +32,13 @@ function advise(right) {
 export function translationeseViolations(text, rules) {
   const out = [];
 
-  /* 1) 번역투 구절입니다. */
+  /* 1) 영어식 구절입니다. */
   for (const [wrong, right] of rules.translationesePatterns) {
     const idx = text.indexOf(wrong);
     if (idx === -1) continue;
     out.push({
       rule: 'translationese',
-      detail: `번역투 후보 표현입니다: ${JSON.stringify(wrong)}.${advise(right)}`,
+      detail: `영어식 표현 후보입니다: ${JSON.stringify(wrong)}.${advise(right)}`,
       line: lineOf(text, idx),
     });
   }

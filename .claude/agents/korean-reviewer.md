@@ -27,6 +27,7 @@ Check every sentence against each item.
 8. **Register mixing:** 합니다체, 해요체 and 해라체 fragments such as `~인가.` mixed in one document.
 9. **Meaning drift:** changed modality, negation, tense or condition, or text that contradicts the code or other docs.
 10. **Forbidden characters:** middle dots (U+00B7) or em dashes (U+2014) in prose.
+11. **Project vocabulary:** phrasing that copies English structure is 영어식 표현, not 번역투. Example: `번역투 후보입니다` → `영어식 표현 후보입니다`.
 
 ## Rules
 

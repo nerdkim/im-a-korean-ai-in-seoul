@@ -184,7 +184,7 @@ export const SELF_CHECK_CASES = [
   /* 있다에 어서가 붙은 평범한 한국어입니다. */
   ['있다에 어서가 붙은 것은 통과', '그 파일은 목록에 있어서 검사받지 않습니다.', false, 'doc'],
   /* 목록에서 뺀 항목입니다. */
-  ['에 대해는 번역투 목록에 없다', 'iam:CreateRole에 대해 implicitDeny를 돌려줍니다.', false, 'doc'],
+  ['에 대해는 영어식 표현 목록에 없다', 'iam:CreateRole에 대해 implicitDeny를 돌려줍니다.', false, 'doc'],
   ['진행 표현 중이었습니다는 정상 한국어', '35분째 조사 중이었습니다.', false, 'doc'],
   /* 'have + 명사'를 그대로 옮긴 직역입니다. */
   ['을 가지고 있다', '봇은 stage 환경에 쓰기 권한을 가지고 있습니다.', true, 'doc'],
@@ -357,7 +357,7 @@ function main() {
     process.stdout.write(`금지 어미: ${r.bannedRegisterEndings.join(', ') || '없음'}\n`);
     process.stdout.write(`금지 문자: ${r.bannedChar.join(', ')}\n`);
     process.stdout.write(
-      `목록 크기: 외래어 ${r.loanwordSpelling.size}, 음차 ${r.bannedTransliteration.size}, 번역투 ${r.translationesePatterns.size}, 직역 동사 ${r.literalVerbs.size}, 이중피동 ${r.doublePassive.size}\n`,
+      `목록 크기: 외래어 ${r.loanwordSpelling.size}, 음차 ${r.bannedTransliteration.size}, 영어식 표현 ${r.translationesePatterns.size}, 직역 동사 ${r.literalVerbs.size}, 이중피동 ${r.doublePassive.size}\n`,
     );
     process.exit(0);
   }

@@ -34,7 +34,7 @@ for (const name of rules.bannedChar) {
   if (!Object.hasOwn(CHAR_CLASSES, name)) bad(`알 수 없는 금지 문자 종류입니다: ${name}`);
 }
 if (rules.source && rules.reviewRules.length === 0) {
-  warn('review-rules가 없거나 비어 있어 hook이 번역투 같은 검토 후보를 Claude에게 알리지 않습니다. 기본 규칙의 review-rules 줄을 옮겨 오면 알림이 켜집니다');
+  warn('review-rules가 없거나 비어 있어 hook이 영어식 표현 같은 검토 후보를 Claude에게 알리지 않습니다. 기본 규칙의 review-rules 줄을 옮겨 오면 알림이 켜집니다');
 }
 /* 경고 규칙이 아닌 이름은 오타이거나 쓰기를 막는 규칙이므로 알림이 나가지 않습니다. */
 const strayReview = rules.reviewRules.filter((name) => !rules.advisoryRules.includes(name));
