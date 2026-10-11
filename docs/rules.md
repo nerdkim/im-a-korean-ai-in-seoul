@@ -81,7 +81,7 @@ chat-tool-fields: AskUserQuestion.question, AskUserQuestion.header, AskUserQuest
 agent-tool-fields: Task.prompt, Task.description, Agent.prompt, Agent.description
 doc-globs:
 source-globs:
-skip-globs: node_modules/**, dist/**, build/**, coverage/**, vendor/**, .venv/**, **/*.min.js, **/*.generated.*, skill/korean-style/register/*.md
+skip-globs: node_modules/**, dist/**, build/**, coverage/**, vendor/**, .venv/**, **/*.min.js, **/*.generated.*, skill/korean-style/register/*.md, **/_workspace/**
 sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pycache__, target
 ```
 

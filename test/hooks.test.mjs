@@ -263,6 +263,14 @@ test('검사 대상이 아닌 확장자는 보지 않는다', () => {
   assert.equal(out, null);
 });
 
+test('`_workspace/` 아래의 작업 산출물 쓰기는 판정하지 않는다', () => {
+  const out = runHook('pretooluse.mjs', {
+    tool_name: 'Write',
+    tool_input: { file_path: join(ROOT, '_workspace', 'run', 'note.md'), content: 'API·DB를 확인했어요 ✅' },
+  });
+  assert.equal(out, null);
+});
+
 test('사람이 읽는 도구 입력이 규칙을 어기면 거부한다', () => {
   const out = runHook('pretooluse.mjs', {
     tool_name: 'AskUserQuestion',

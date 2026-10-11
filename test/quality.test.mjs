@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadRules, parseRuleBlock } from '../scripts/lib/rules.mjs';
 import { checkText, blockingViolations } from '../scripts/lib/check.mjs';
+import { targetForPath } from '../scripts/lib/targets.mjs';
 import { answersOf, assessAnswer } from '../scripts/eval-korean.mjs';
 
 const rulesPath = fileURLToPath(new URL('../docs/rules.md', import.meta.url));
@@ -54,6 +55,15 @@ test('hook이 검토 후보로 알릴 규칙은 모두 경고 규칙이고 규�
   for (const name of rules.reviewRules) {
     assert.ok(rules.advisoryRules.includes(name), `${name} 규칙은 경고 규칙이 아닙니다`);
     assert.ok(reported.has(name), `${name} 규칙은 규칙 이름 표에 없습니다`);
+  }
+});
+
+test('기본 규칙은 `_workspace/` 아래의 작업 산출물을 검사하지 않는다', () => {
+  for (const path of ['_workspace/run/note.md', 'docs/_workspace/draft.md']) {
+    assert.equal(targetForPath(path, rules), null, path);
+  }
+  for (const path of ['docs/workspace.md', 'docs/_workspace.md', 'README.md']) {
+    assert.equal(targetForPath(path, rules), 'doc', path);
   }
 });
 
