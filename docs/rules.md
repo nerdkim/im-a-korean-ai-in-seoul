@@ -168,7 +168,7 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | `bound-english` | 한 문장에서 조사가 붙은 영어 낱말 수입니다. 기본값에서는 제한하지 않습니다. |
 | `repeated-gloss` | 같은 영어 용어의 반복 설명입니다. |
 | `bold-density` | 문단이나 항목 안의 강조 수입니다. |
-| `contrast-density` | 대조 구문의 빈도입니다. |
+| `contrast-density` | `A가 아니라 B`, `~라기보다`, `rather than` 같은 대조 구문의 빈도입니다. `뿐만 아니라`처럼 내용을 덧붙이는 표현과 `다름이 아니라`는 세지 않습니다. `아니라는`, `아니라면` 같은 활용형도 세지 않습니다. |
 | `inclusive-term` | 팀에서 검토할 용어입니다. |
 | `hybrid-negation` | 한국어 부정 접두사와 영어를 붙인 표현입니다. |
 | `unexplained-term` | 설명이 필요한 것으로 등록한 용어입니다. |

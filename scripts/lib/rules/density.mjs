@@ -24,8 +24,12 @@ const IDENTIFIER = /_|[a-z][A-Z]|^[a-z][a-z0-9]*\.[a-z]/;
 /* 굵게 표시한 강조 구간입니다. */
 const BOLD = /\*\*[^*\n]+\*\*/g;
 
-/* 대조 구문입니다. */
-const CONTRAST = { en: /\brather than\b/g, ko: /아니라/g };
+/* 대조 구문입니다. `뿐만 아니라`, `만이 아니라`처럼 내용을 덧붙이는 표현과 `다름이 아니라`는 세지 않습니다. */
+/* `아니라는`, `아니라면` 같은 활용형도 세지 않습니다. */
+const CONTRAST = {
+  en: /\brather than\b/g,
+  ko: /(?:(?<!뿐|만|다름)이|[가게])\s*아니라(?![가-힣])|라기보다/g,
+};
 
 export function densityViolations(text, rules) {
   const out = [];

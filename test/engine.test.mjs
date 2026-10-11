@@ -363,3 +363,61 @@ test('빈 텍스트는 통과한다', () => {
   assert.equal(checkText('', r, 'chat').length, 0);
   assert.equal(checkText('   \n  ', r, 'chat').length, 0);
 });
+
+/* ---------------------------------------------------------------------------  대조 구문  --------------------------------------------------------------------------- */
+
+/* 기본값과 같은 한도입니다. 네 번부터 판정합니다. */
+const contrastRules = () => rulesOf(['max-contrast-per-1k: ko=0.8, en=0.5', 'density-rule-floor: 4', 'density-margin: 2']);
+
+/* 최소 횟수를 1로, 여유를 0으로 두어 한 번만 나와도 판정합니다. 표현 하나를 세는지만 봅니다. */
+const contrastOnce = () => rulesOf(['max-contrast-per-1k: ko=0.8, en=0.5', 'density-rule-floor: 1', 'density-margin: 0']);
+
+test('기본 한도에서는 짧은 글에 `A가 아니라 B`가 네 번 나오면 걸린다', () => {
+  const text = [
+    '원인은 코드가 아니라 설정입니다.',
+    '고칠 곳은 서버가 아니라 클라이언트입니다.',
+    '필요한 것은 재시작이 아니라 롤백입니다.',
+    '바꿀 것은 값이 아니라 순서입니다.',
+  ].join(' ');
+  assert.deepEqual(names(checkText(text, contrastRules(), 'doc')), ['contrast-density']);
+});
+
+test('`A가 아니라 B`, `~라기보다`, `rather than`을 대조 구문으로 센다', () => {
+  for (const text of [
+    '원인은 코드가 아니라 설정입니다.',
+    '필요한 것은 재시작이 아니라 롤백입니다.',
+    '고칠 것은 서버를 늘리는 게 아니라 쿼리를 줄이는 것입니다.',
+    '바꿀 것은 값이 아니라, 순서입니다.',
+    '원인은 코드가\n아니라 설정입니다.',
+    '이것은 버그라기보다 설계 문제입니다.',
+    'Use the queue rather than polling.',
+  ]) {
+    assert.deepEqual(names(checkText(text, contrastOnce(), 'doc')), ['contrast-density'], text);
+  }
+});
+
+test('회귀: `뿐만 아니라`처럼 내용을 덧붙이는 표현은 대조 구문으로 세지 않는다', () => {
+  /* 실제로 있었던 결함을 재현합니다. */
+  for (const text of [
+    '로그뿐만 아니라 지표도 확인했습니다.',
+    '서버뿐 아니라 클라이언트도 고쳤습니다.',
+    '설정뿐만이 아니라 코드도 바꿨습니다.',
+    '문서뿐이 아니라 테스트도 추가했습니다.',
+    '속도만이 아니라 정확도도 봅니다.',
+    '다름이 아니라 일정 때문에 연락드렸습니다.',
+  ]) {
+    assert.equal(checkText(text, contrastOnce(), 'doc').length, 0, text);
+  }
+});
+
+test('`아니라는`, `아니라면`, `아니라고`, `아니라서`, `아니라도` 같은 활용형은 대조 구문이 아니다', () => {
+  for (const text of [
+    '버그가 아니라는 뜻입니다.',
+    '설정이 아니라면 코드를 봅니다.',
+    '서버가 아니라고 답했습니다.',
+    '원인이 아니라서 넘어갔습니다.',
+    '정답이 아니라도 기록합니다.',
+  ]) {
+    assert.equal(checkText(text, contrastOnce(), 'doc').length, 0, text);
+  }
+});
