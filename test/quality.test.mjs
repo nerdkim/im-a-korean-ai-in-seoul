@@ -75,9 +75,9 @@ test('경고로 둘 규칙은 규칙 문서에서 고르며 파싱 결과끼리 
   assert.deepEqual(strict.advisoryRules, []);
 });
 
-test('실모델 평가에서 누락된 응답과 형식 위반을 통과로 보고하지 않는다', () => {
-  assert.throws(() => answersOf('<answer id="a">응답</answer>', [{ id: 'a' }, { id: 'b' }]), /Missing answer/);
-  assert.throws(() => answersOf('<answer id="a">첫째</answer><answer id="a">둘째</answer>', [{ id: 'a' }]), /duplicate/);
+test('실모델 평가에서 빠지거나 중복된 응답과 제약을 어긴 응답을 통과로 보고하지 않는다', () => {
+  assert.throws(() => answersOf('<answer id="a">응답</answer>', [{ id: 'a' }, { id: 'b' }]), /응답이 없거나 중복되었습니다: b/);
+  assert.throws(() => answersOf('<answer id="a">첫째</answer><answer id="a">둘째</answer>', [{ id: 'a' }]), /응답이 없거나 중복되었습니다: a/);
   const score = assessAnswer({ id: 'a', text: '끝났습니다.' }, { must: ['API'], maxChars: 3, sentences: 2 });
   assert.deepEqual(score.missing, ['API']);
   assert.equal(score.overLength, true);
