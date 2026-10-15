@@ -25,7 +25,7 @@ test('회귀: 규칙 문서를 못 읽으면 문자 규칙이 남는다', () => 
   assert.ok(missing.bannedChar.length > 0, '문자 규칙은 남아야 합니다');
   const found = checkText('이것은 — 저것입니다. 항목 A·B 이며 완료했습니다 ✅', missing, 'chat');
   assert.ok(found.length >= 3, `문자 위반 셋이 걸려야 하는데 ${found.length}건입니다`);
-  assert.ok(formatViolations(found, missing).includes('경고'), '보고에 경고가 있어야 합니다');
+  assert.ok(formatViolations(found, missing).includes('규칙 설정을 찾지 못했습니다'), '보고에 규칙 문서를 못 읽었다는 경고가 있어야 합니다');
 });
 
 test('회귀: 규칙 블록이 없는 문서를 읽어도 문자 규칙이 남는다', () => {
@@ -41,11 +41,11 @@ test('회귀: 이중피동은 활용형까지 걸린다', () => {
   /* 실제로 있었던 결함을 재현합니다. */
   const r = rulesOf(['double-passive: 보여=보이, 되어=되']);
   for (const bad of ['보여지다', '보여진 값', '보여져서', '보여졌다', '보여집니다', '보여짐', '보여질']) {
-    assert.ok(checkText(`결과가 화면에 ${bad}.`, r, 'doc').length > 0, `${bad}는 걸려야 합니다`);
+    assert.ok(checkText(`결과가 화면에 ${bad}.`, r, 'doc').length > 0, `이중피동으로 걸려야 합니다: ${bad}`);
   }
   /* 어간 뒤에 `지다`의 활용형이 오지 않으면 정상 한국어입니다. */
   for (const good of ['보여 주십시오', '보여 줍니다', '되어 있습니다', '되어야 합니다']) {
-    assert.equal(checkText(`결과를 ${good}.`, r, 'doc').length, 0, `${good}는 통과해야 합니다`);
+    assert.equal(checkText(`결과를 ${good}.`, r, 'doc').length, 0, `통과해야 합니다: ${good}`);
   }
 });
 
@@ -83,6 +83,8 @@ test('회귀: 같은 어미를 어투 위반과 명령형으로 두 번 보고�
   assert.equal(got.length, 1, `한 건이어야 하는데 ${JSON.stringify(got)}입니다`);
   assert.equal(got[0], 'wrong-register');
 });
+
+/* ---------------------------------------------------------------------------  어투와 주석  --------------------------------------------------------------------------- */
 
 test('어투를 고르면 금지 어미가 따라 바뀐다', () => {
   const formal = rulesOf(['register: 다나까체']);
@@ -145,7 +147,7 @@ test('파이썬 삼중 따옴표 문자열은 주석으로 본다', () => {
 });
 
 test('닫히지 않은 따옴표가 있어도 그 뒤의 주석을 뽑는다', () => {
-  /* 따옴표가 파일 끝까지 이어진다고 보면 그 아래 주석을 모두 검사하지 못합니다. */
+  /* 따옴표가 파일 끝까지 이어진다고 보면 그 아래 주석은 하나도 검사하지 못합니다. */
   const src = 'const bad = "닫히지 않음\n// 이 주석은 보여야 합니다.\n';
   assert.ok(koreanCommentsOf(src, 'a.mjs').includes('이 주석은 보여야 합니다'));
 });
@@ -171,7 +173,7 @@ test('onlyComments는 길이를 바꾸지 않는다', () => {
 
 /* ---------------------------------------------------------------------------  fence  --------------------------------------------------------------------------- */
 
-test('fence 안에는 낱말 규칙만 적용하고 문장 규칙은 적용하지 않는다', () => {
+test('fence 안에는 낱말 규칙을 적용하고 문장 규칙은 적용하지 않는다', () => {
   const r = rulesOf([
     'loanword-spelling: 워크플로우=워크플로',
     'max-comma-per-sentence: 2',
@@ -190,7 +192,7 @@ test('규칙 블록은 fence 재검사에서 빠진다', () => {
   assert.equal(checkText(doc, r, 'doc').length, 0);
 });
 
-test('onlyFenced는 fence 안쪽만 남기고 fence 표시와 바깥은 공백으로 덮는다', () => {
+test('onlyFenced는 fence 안쪽만 남기고 fence 표시와 바깥은 공백으로 바꾼다', () => {
   const doc = '밖입니다.\n```\n안입니다.\n```\n';
   const inner = onlyFenced(doc, []);
   assert.ok(inner.includes('안입니다'));
@@ -205,7 +207,7 @@ test('stripCode는 길이를 바꾸지 않는다', () => {
 });
 
 test('줄바꿈으로 나뉜 문장을 한 문장으로 잇는다', () => {
-  /* 줄마다 따로 판정하면 영어 낱말 여섯 개가 든 한 문장이 여러 줄로 나뉘어 줄마다 통과합니다. */
+  /* 줄마다 따로 판정하면 한 문장을 여러 줄로 나눠 쓰기만 해도 문장 단위 규칙에 걸리지 않습니다. */
   const wrapped = '이 문장은 첫 줄에서 시작해서\n다음 줄로 이어집니다.';
   const got = sentencesOf(wrapped);
   assert.equal(got.length, 1, `한 문장이어야 하는데 ${got.length}개입니다`);
@@ -232,7 +234,7 @@ test('어절은 공백으로 센다', () => {
 });
 
 test('도구 입력의 산문을 필드 이름으로 찾는다', () => {
-  /* 규칙을 전체 경로로 쓰면 harness가 입력을 한 단계 더 감싸는 순간 아무것도 잡지 못하면서도 강제되는 것처럼 보입니다. */
+  /* 필드의 전체 경로를 규칙에 적으면 harness가 입력을 한 단계 더 감싸는 순간 그 규칙은 아무것도 잡지 못합니다. 그런데도 겉으로는 강제되는 것처럼 보입니다. */
   const r = rulesOf(['chat-tool-fields: AskUserQuestion.question, AskUserQuestion.label', 'register: 다나까체']);
   const input = { questions: [{ question: '확인했어요?', options: [{ label: '당신 선택' }, { label: '괜찮습니다' }] }] };
   const found = toolFieldTexts('AskUserQuestion', input, r);
@@ -274,8 +276,8 @@ test('회귀: 자모가 분리된(NFD) 한글도 완성형과 똑같이 검사�
   const composed = checkText(sentence.normalize('NFC'), r, 'doc');
   const decomposed = checkText(sentence.normalize('NFD'), r, 'doc');
 
-  assert.ok(composed.length >= 3, `완성형이 셋 이상이어야 합니다: ${names(composed)}`);
-  assert.deepEqual(names(decomposed), names(composed), '풀어쓴 글이 다르게 판정되었습니다');
+  assert.ok(composed.length >= 3, `완성형에서 위반이 셋 이상 나와야 합니다: ${names(composed)}`);
+  assert.deepEqual(names(decomposed), names(composed), '자모가 분리된(NFD) 글이 완성형과 다르게 판정되었습니다');
 });
 
 test('회귀: 자모가 분리된(NFD) 한글을 한국어가 없는 글로 판정하지 않는다', () => {
@@ -284,7 +286,7 @@ test('회귀: 자모가 분리된(NFD) 한글을 한국어가 없는 글로 판�
   assert.equal(names(checkText(decomposed, r, 'chat')).includes('korean-required'), false);
 });
 
-test('subagent 프롬프트의 영어식 표현을 잡는다', () => {
+test('subagent 프롬프트의 영어식 표현과 이중피동을 잡는다', () => {
   /* output-style은 subagent에 적용되지 않으므로 프롬프트만이라도 여기서 검사합니다. */
   const r = rulesOf([
     'agent-tool-fields: Task.prompt',
@@ -294,7 +296,7 @@ test('subagent 프롬프트의 영어식 표현을 잡는다', () => {
   ]);
   const input = { prompt: '이 파일은 검사기에 의하여 읽혀집니다. 결과를 보고하십시오.', subagent_type: 'explorer' };
   const problems = checkToolCall('Task', input, r, 'doc');
-  assert.ok(problems.length >= 1, '영어식 표현과 이중피동을 잡아야 합니다');
+  assert.deepEqual(names(problems), ['double-passive', 'translationese'], '영어식 표현과 이중피동을 잡아야 합니다');
   assert.ok(problems.every((p) => typeof p.where === 'string' && p.where.length > 0));
 });
 
@@ -345,7 +347,7 @@ test('오른쪽이 빈 매핑은 교정안을 만들어 내지 않는다', () =>
   assert.equal(r.translationesePatterns.get('를 통해'), '');
   const v = checkText('로그를 통해 확인했습니다.', r, 'doc');
   assert.equal(v.length, 1);
-  assert.ok(v[0].detail.includes('문맥에 맞으면 유지'), '대안을 지어내지 않아야 합니다');
+  assert.ok(!v[0].detail.includes('검토할 수 있습니다'), '대안을 지어내지 않아야 합니다');
 });
 
 test('숫자 0은 규칙을 끈다', () => {
@@ -366,13 +368,13 @@ test('빈 텍스트는 통과한다', () => {
 
 /* ---------------------------------------------------------------------------  대조 구문  --------------------------------------------------------------------------- */
 
-/* 기본값과 같은 한도입니다. 네 번부터 판정합니다. */
+/* `docs/rules.md`와 같은 한도입니다. 네 번부터 판정합니다. */
 const contrastRules = () => rulesOf(['max-contrast-per-1k: ko=0.8, en=0.5', 'density-rule-floor: 4', 'density-margin: 2']);
 
 /* 최소 횟수를 1로, 여유를 0으로 두어 한 번만 나와도 판정합니다. 표현 하나를 세는지만 봅니다. */
 const contrastOnce = () => rulesOf(['max-contrast-per-1k: ko=0.8, en=0.5', 'density-rule-floor: 1', 'density-margin: 0']);
 
-test('기본 한도에서는 짧은 글에 `A가 아니라 B`가 네 번 나오면 걸린다', () => {
+test('`docs/rules.md` 한도에서는 짧은 글에 `A가 아니라 B`가 네 번 나오면 걸린다', () => {
   const text = [
     '원인은 코드가 아니라 설정입니다.',
     '고칠 곳은 서버가 아니라 클라이언트입니다.',
@@ -396,7 +398,7 @@ test('`A가 아니라 B`, `~라기보다`, `rather than`을 대조 구문으로 
   }
 });
 
-test('회귀: `뿐만 아니라`처럼 내용을 덧붙이는 표현은 대조 구문으로 세지 않는다', () => {
+test('회귀: `뿐만 아니라`처럼 내용을 덧붙이는 표현과 `다름이 아니라`는 대조 구문으로 세지 않는다', () => {
   /* 실제로 있었던 결함을 재현합니다. */
   for (const text of [
     '로그뿐만 아니라 지표도 확인했습니다.',

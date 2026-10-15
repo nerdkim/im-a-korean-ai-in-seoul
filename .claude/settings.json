@@ -8,7 +8,7 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/pretooluse.mjs\"",
-            "statusMessage": "한국어 문체 규칙 확인"
+            "statusMessage": "한국어 문체 검사 중"
           }
         ]
       }
@@ -19,7 +19,7 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/stop.mjs\"",
-            "statusMessage": "이 turn의 답변 문체 확인"
+            "statusMessage": "최종 답변 문체 검사 중"
           }
         ]
       }

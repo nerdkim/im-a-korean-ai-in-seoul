@@ -1,11 +1,11 @@
 /* 쓰지 않는 글자입니다. */
-import { lineOf, stripCode } from '../text.mjs';
+import { lineOf } from '../text.mjs';
 
 /* 글자 종류입니다. */
 export const CHAR_CLASSES = {
   middot: { label: '가운뎃점 (U+00B7)', re: /·/u },
   'em-dash': { label: '줄표 (U+2014)', re: /—/u },
-  'en-dash': { label: '반각 줄표 (U+2013)', re: /–/u },
+  'en-dash': { label: 'en dash (U+2013)', re: /–/u },
   emoji: {
     label: 'emoji',
     re: new RegExp(
@@ -47,9 +47,4 @@ export function charViolations(text, rules) {
     }
   }
   return out;
-}
-
-/* 명령줄에서 글자 규칙만 확인할 때 씁니다. */
-export function charViolationsOf(rawText, rules) {
-  return charViolations(stripCode(rawText), rules);
 }

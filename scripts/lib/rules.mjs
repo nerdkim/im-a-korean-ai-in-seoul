@@ -33,7 +33,7 @@ const LIST_KEYS = {
   'literal-verb-exempt': 'literalVerbExempt',
 };
 
-/* 금지형과 권장형을 짝지은 매핑 키입니다. */
+/* 찾을 표현과 대신 쓸 후보를 짝지은 매핑 키입니다. */
 const MAP_KEYS = {
   /* 이중피동은 매핑으로 씁니다. */
   'double-passive': 'doublePassive',
@@ -142,7 +142,7 @@ const FALLBACK = {
   chatToolFields: new Map(),
   agentToolFields: new Map(),
   maxContrastPer1k: {},
-  /* 0은 규칙을 끕니다. */
+  /* 0으로 두면 규칙이 꺼집니다. */
   koreanRequiredMinChars: 40,
   maxCommaPerSentence: 0,
   maxCommaSegmentWords: 0,

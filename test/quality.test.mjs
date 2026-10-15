@@ -92,8 +92,8 @@ test('실모델 평가에서 빠지거나 중복된 응답과 제약을 어긴 �
   assert.deepEqual(assessAnswer({ text: '끝났습니다.' }, { must: [], maxChars: 100 }).forbidden, []);
 });
 
-test('항상 읽는 작성 지침의 분량을 제한한다', () => {
+test('세션마다 system prompt에 들어가는 작성 지침의 분량을 제한한다', () => {
   const style = readFileSync(new URL('../output-styles/korean-style.md', import.meta.url), 'utf8');
-  assert.ok(Buffer.byteLength(style) <= 2600, '긴 설명은 README나 근거 문서에 둡니다');
+  assert.ok(Buffer.byteLength(style) <= 2600, '긴 설명은 README나 docs/ 아래 문서에 둡니다');
   assert.match(style, /keep-coding-instructions: true/);
 });

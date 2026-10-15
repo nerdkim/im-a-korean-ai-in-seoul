@@ -62,7 +62,7 @@ export function checkText(input, rules, target = 'chat', options = {}) {
 
 export const blockingViolations = violations => violations.filter(v => v.severity !== 'warning');
 
-/* 도구 호출 하나에서 사람이 읽을 문자열과 그 경로를 모읍니다. */
+/* 도구 호출 하나에서 검사할 필드의 문자열과 그 경로를 모읍니다. */
 export function toolFieldTexts(toolName, input, rules, which = 'chatToolFields') {
   const wanted = rules[which].get(toolName);
   if (wanted === undefined || wanted.size === 0) return [];

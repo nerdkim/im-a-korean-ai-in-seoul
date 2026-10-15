@@ -19,7 +19,7 @@
 
 `문을 통해 들어갑니다`, `책을 가지고 있습니다`, `예전에는 서울에 살았었습니다`는 문맥에 맞는 표현입니다.
 `translationese`는 이 문장들도 잡습니다. `디스크에서 자리를 차지하는 파일입니다`도 `literal-verb`에 잡힙니다.
-수단, 소유, 시제, 비유를 나타내는 정상적인 문장에도 같은 구절이 들어가므로 두 규칙을 경고로 바꿨습니다.
+경로, 소유, 시제, 비유를 나타내는 정상적인 문장에도 같은 구절이 들어가므로 두 규칙을 경고로 바꿨습니다.
 
 쉼표 수, 문장 길이, 굵은 글씨 수, 명사형 종결이나 `~의` 같은 표현의 빈도는 문법이 아니라 문체의 경향을 보여 주는 값입니다.
 임계값은 전에 측정해 정한 값을 그대로 두고 경고에만 씁니다. 영어 용어 수는 기본값에서 제한하지 않습니다.
@@ -96,7 +96,7 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | `register`  | 이 프로젝트가 쓰는 어투입니다. |
 | `banned-address`  | 읽는 사람을 부를 때 쓰면 안 되는 말입니다. |
 | `imperative-endings`  | 사람에게 명령이 되는 어미입니다. |
-| `imperative-exempt`  | 그 어미로 끝나지만 명령이 아닌 표현입니다. |
+| `imperative-exempt`  | 명령 어미나 다른 어투의 어미로 끝나지만 위반으로 보지 않는 표현입니다. |
 | `flattery-openers`  | 답부터 하지 않고 질문이나 지적을 칭찬하는 문장입니다. |
 | `korean-required-min-chars`  | 코드와 공백을 뺀 글자 수가 이 값 이상인데 한글이 없으면 영어로 쓴 것으로 봅니다. |
 | `banned-char`  | `scripts/lib/rules/chars.mjs`의 글자 종류 가운데 켜 둘 것입니다. |
@@ -150,7 +150,7 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | `banned-address` | 금지 목록에 있는 호칭입니다. |
 | `wrong-register` | 선택한 어투와 다른 종결어미입니다. |
 | `imperative-to-human` | 프로젝트가 피하기로 한 직접 명령입니다. |
-| `flattery` | 칭찬으로 시작하는 표현입니다. |
+| `flattery` | 질문이나 지적을 칭찬하는 표현입니다. |
 | `korean-required` | 긴 영어 답변입니다. 요청한 언어인지는 사람이 판단합니다. |
 | `double-passive` | 목록에 있는 이중피동 후보입니다. |
 | `loanword-spelling` | 프로젝트가 정한 외래어 표기와 다른 표기입니다. |

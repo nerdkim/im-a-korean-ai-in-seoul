@@ -17,17 +17,17 @@ export function lineOf(text, index) {
   return text.slice(0, index).split('\n').length;
 }
 
-/* 줄 수를 유지하면서 내용만 공백으로 덮습니다. */
+/* 줄 수를 유지하면서 내용만 공백으로 바꿉니다. */
 function blank(s) {
   return s.replace(/[^\n]/g, ' ');
 }
 
-/* fenced block과 inline code를 공백으로 덮습니다. */
+/* fenced block과 inline code를 공백으로 바꿉니다. */
 export function stripCode(text) {
   return text.replace(/```[\s\S]*?```/g, blank).replace(/`[^`\n]*`/g, blank);
 }
 
-/* {@link stripCode}와 달리 fenced block 안쪽만 남깁니다. exemptInfo에 든 블록은 덮습니다. */
+/* {@link stripCode}와 달리 fenced block 안쪽만 남깁니다. info string이 exemptInfo에 든 블록은 공백으로 바꿉니다. */
 export function onlyFenced(text, exemptInfo = []) {
   let inFence = false;
   let reading = false;
@@ -50,7 +50,7 @@ function isDecorationLine(trimmed) {
   return trimmed.length >= 3 && !/[\p{L}\p{N}]/u.test(trimmed);
 }
 
-/* 따옴표 안을 공백으로 덮습니다. */
+/* 따옴표 안을 공백으로 바꿉니다. */
 export function stripQuoted(text) {
   return text
     .replace(/"[^"\n]*"/g, blank)

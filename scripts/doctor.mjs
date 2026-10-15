@@ -91,7 +91,7 @@ try {
   else if (hook.state === 'broken') bad(`commit-msg hook의 symlink가 끊겼습니다: ${hook.path}`);
   else if (hook.state === 'missing') warn('commit-msg hook이 없습니다. --install-commit-hook으로 설치할 수 있습니다');
   else if (!hook.executable) bad(`commit-msg hook에 실행 권한이 없습니다: ${hook.path}`);
-  else if (hook.state === 'occupied') warn('기존 commit-msg hook을 유지합니다. 이 hook이 한국어 검사기를 부르는지는 직접 확인해야 합니다');
+  else if (hook.state === 'occupied') warn('다른 commit-msg hook이 이미 있습니다. 이 hook이 한국어 검사기를 부르는지는 직접 확인해야 합니다');
   else ok('commit-msg hook이 연결되어 있고 실행할 수 있습니다');
 } catch (e) { bad(`커밋 hook 점검 실패: ${e.message}`); }
 if (installed && existsSync(join(root, '.git'))) {

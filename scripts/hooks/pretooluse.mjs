@@ -39,7 +39,7 @@ export function resultOfEdit(toolName, toolInput, filePath) {
     const from = edit.old_string ?? '';
     const to = edit.new_string ?? '';
     if (from === '' || !text.includes(from)) return to;
-    /* 두 경로 모두 `String.replace`를 쓰지 않습니다. 바꿀 문자열의 달러 기호를 치환 패턴으로 읽지 않기 위해서입니다. */
+    /* 두 경로 모두 `String.replace`를 쓰지 않습니다. `String.replace`는 새 문자열의 달러 기호를 치환 패턴으로 해석하기 때문입니다. */
     if (edit.replace_all === true) {
       text = text.split(from).join(to);
       continue;
@@ -59,7 +59,7 @@ function currentText(filePath) {
   }
 }
 
-/* 검사할 산문만 남긴 글입니다. 주석 밖과 code block을 공백으로 덮으므로 줄 수는 그대로입니다. */
+/* 검사할 산문만 남긴 글입니다. 주석 밖과 code block, inline code를 공백으로 바꾸므로 줄 수는 그대로입니다. */
 function proseLinesOf(text, target, path) {
   const normalized = text.normalize('NFC');
   const prose = target === 'comment' ? koreanCommentsOf(normalized, path) : normalized;
@@ -128,11 +128,11 @@ export function formatReviewNotes(notes, where, checker = 'check-korean.mjs') {
 export function commitMessagesIn(command) {
   if (typeof command !== 'string' || !/\bgit\b[^\n]*\bcommit\b/.test(command)) return [];
   const out = [];
-  /* 큰따옴표, 작은따옴표, 따옴표 없는 한 낱말을 잡습니다. */
+  /* 큰따옴표나 작은따옴표로 감싼 값과 따옴표 없이 쓴 낱말 하나를 잡습니다. */
   const re = /(?:-m|--message=)\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|(\S+))/g;
   for (const m of command.matchAll(re)) {
     const value = m[1] ?? m[2] ?? m[3] ?? '';
-    /* shell이 풀어 낼 이스케이프를 여기서도 풉니다. */
+    /* shell이 풀 이스케이프를 여기서도 풉니다. 글자 그대로 쓴 `\n`도 줄바꿈으로 바꿉니다. */
     const unescaped = value.replace(/\\(["'\\$`])/g, '$1').replace(/\\n/g, '\n');
     if (unescaped.trim().length > 0) out.push(unescaped);
   }
@@ -144,7 +144,7 @@ function stripHeredocBodies(command) {
   return command.replace(/<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1[\s\S]*?^\s*\2\s*$/gm, '<<$2');
 }
 
-/* shell 명령이 쓸 검사 대상 파일 경로를 찾습니다. */
+/* shell 명령이 내용을 쓸 검사 대상 파일의 경로를 찾습니다. */
 export function shellWritePaths(command, rules, projectRoot, cwd) {
   if (typeof command !== 'string' || command.length === 0) return [];
   const text = stripHeredocBodies(command);

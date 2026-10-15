@@ -74,7 +74,7 @@ function run() {
     process.exit(0);
   }
 
-  /* 이 hook 때문에 이미 이어진 turn이면 다시 차단하지 않습니다. */
+  /* Stop hook 때문에 이미 이어진 turn이면 재작성을 다시 요구하지 않습니다. */
   if (input.stop_hook_active === true) process.exit(0);
 
   /* Stop은 마지막 메시지가 transcript에 기록되기 전에 실행될 수 있습니다. */

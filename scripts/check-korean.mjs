@@ -17,7 +17,6 @@ export function rules() {
   return loadRules(rulesDocPath(PROJECT_ROOT));
 }
 
-/* 자체 검사 케이스입니다. */
 /* 밀도 여유 케이스가 쓰는 채움 문장입니다. */
 const FILLER = '상태를 다시 확인했습니다. ';
 
@@ -27,6 +26,7 @@ const connectiveCommas = (gap) =>
     ` ${FILLER.repeat(gap)}`,
   );
 
+/* 자체 검사 케이스입니다. */
 export const SELF_CHECK_CASES = [
 
   ['깨끗한 한국어 답변', '작업을 마쳤습니다. 결과를 정리해 드리겠습니다.', false, 'chat'],
@@ -36,7 +36,7 @@ export const SELF_CHECK_CASES = [
   ['굳어진 인사말은 예외', '안녕하세요. 확인해 보겠습니다.', false, 'chat'],
   /* 맨 명령형과 요청형을 가르는 두 케이스입니다. */
   ['맨 명령형은 위반', '결과를 확인하십시오.', true, 'chat'],
-  ['주다가 붙은 요청형은 통과', '값을 입력해 주십시오.', false, 'chat'],
+  ['`주다`가 붙은 요청형은 통과', '값을 입력해 주십시오.', false, 'chat'],
   ['제안형은 통과', '스크린샷을 더 찍으실 수 있습니다.', false, 'chat'],
   ['의문형은 통과', '지금 배포해 드릴까요?', false, 'chat'],
   ['조건부 요청은 통과', '알려 주시면 반영하겠습니다.', false, 'chat'],
@@ -44,7 +44,7 @@ export const SELF_CHECK_CASES = [
   ['칭찬으로 여는 문장', '좋은 질문입니다. 원인은 설정 값입니다.', true, 'chat'],
   ['문서 안의 명령형은 통과', '작업 전 이 절을 먼저 참조하십시오.', false, 'doc'],
   ['문서 안의 해요체는 위반', '값을 직접 입력해 주세요.', true, 'doc'],
-  ['답변이 영어로 흘렀다', 'The refactoring finished and every gate passed on the first run today.', true, 'chat'],
+  ['영어로 쓴 답변', 'The refactoring finished and every gate passed on the first run today.', true, 'chat'],
   ['짧은 영어 조각은 통과', 'ok', false, 'chat'],
 
   /* 금지 문자 케이스입니다. */
@@ -69,7 +69,7 @@ export const SELF_CHECK_CASES = [
     true,
     'doc',
   ],
-  ['나열의 쉼표는 통과', '수집 대상은 audit trail, config recorder, findings hub 셋입니다.', false, 'doc'],
+  ['나열의 쉼표는 통과', '수집 대상은 감사 로그, 설정 이력, 보안 알림, 접근 기록 넷입니다.', false, 'doc'],
   /* 같은 어미가 되풀이되면 나열입니다. */
   ['같은 어미로 이은 병렬 절 나열은 통과', '상태를 되돌리고, 표시를 찍고, 기록을 남기고, 다음 요청을 기다립니다.', false, 'doc'],
   /* 항목이 네 어절인 나열입니다. */
@@ -79,9 +79,9 @@ export const SELF_CHECK_CASES = [
     false,
     'doc',
   ],
-  /* 항목이 여섯 어절인 나열입니다. */
+  /* 가장 긴 항목이 일곱 어절인 나열입니다. */
   [
-    '항목이 여섯 어절인 나열도 통과',
+    '가장 긴 항목이 일곱 어절인 나열도 통과',
     '잡는 것은 굵기를 지나치게 많이 쓴 자리, 같은 용어를 괄호로 두 번 설명한 자리, 대조 구문을 문단마다 켠 자리, 영어 낱말이 몰린 자리 넷입니다.',
     false,
     'doc',
@@ -130,10 +130,10 @@ export const SELF_CHECK_CASES = [
     true,
     'doc',
   ],
-  /* 숫자의 자릿점, 괄호 안, 따옴표 안을 다루는 케이스입니다. */
-  ['숫자의 자릿점은 쉼표가 아니다', '어제 배포한 워커 이미지 아홉 개가 쓴 token이 모두 1,624개였습니다.', false, 'doc'],
+  /* 숫자의 천 단위 쉼표, 괄호 안, 따옴표 안을 다루는 케이스입니다. */
+  ['숫자의 천 단위 쉼표는 세지 않는다', '어제 배포한 워커 이미지 아홉 개가 쓴 token이 모두 1,624개였습니다.', false, 'doc'],
   [
-    '괄호 안의 쉼표는 삽입구 안의 나열이다',
+    '괄호 안의 쉼표는 세지 않는다',
     '그 결정을 문서에 적어 두었습니다(삭제를 먼저 차단한 이유, 승인을 두 번 받는 이유, 예약을 다시 세는 이유, 보고를 나중에 내는 이유).',
     false,
     'doc',
@@ -152,14 +152,14 @@ export const SELF_CHECK_CASES = [
     'doc',
   ],
   [
-    '뿐만 아니라 표현은 대조 구문이 아니다',
+    '`뿐만 아니라`처럼 덧붙이는 표현은 대조 구문이 아니다',
     '로그뿐만 아니라 지표도 확인했습니다. 서버뿐이 아니라 클라이언트도 고쳤습니다. 설정뿐만이 아니라 코드도 바꿨습니다. 속도만이 아니라 정확도도 봅니다.',
     false,
     'doc',
   ],
 
   ['같은 용어를 괄호로 두 번 설명', '요청(request)을 받았습니다. 요청(request)을 다시 적었습니다.', true, 'doc'],
-  ['식별자를 담은 괄호는 설명이 아니다', '판정(bot_outcome)은 진단입니다. 판정(bot_outcome)은 미해결입니다.', false, 'doc'],
+  ['식별자를 담은 괄호는 설명이 아니다', '결과(exit_code)는 1입니다. 결과(exit_code)는 로그에도 남습니다.', false, 'doc'],
 
   ['이중피동 보여집니다', '결과가 화면에 보여집니다.', true, 'doc'],
   ['이중피동 보여진', '화면에 보여진 값을 확인했습니다.', true, 'doc'],
@@ -181,15 +181,15 @@ export const SELF_CHECK_CASES = [
   ['를 통해', '로그를 통해 원인을 찾았습니다.', true, 'doc'],
   ['함에 있어', '배포를 검토함에 있어 기준이 필요합니다.', true, 'doc'],
   ['에 의하여', '이 값은 스케줄러에 의하여 결정됩니다.', true, 'doc'],
-  /* 있다에 어서가 붙은 평범한 한국어입니다. */
-  ['있다에 어서가 붙은 것은 통과', '그 파일은 목록에 있어서 검사받지 않습니다.', false, 'doc'],
+  /* `있다`에 `-어서`가 붙은 평범한 한국어입니다. */
+  ['`있다`에 `-어서`가 붙은 것은 통과', '그 파일은 목록에 있어서 검사받지 않습니다.', false, 'doc'],
   /* 목록에서 뺀 항목입니다. */
   ['에 대해는 영어식 표현 목록에 없다', 'iam:CreateRole에 대해 implicitDeny를 돌려줍니다.', false, 'doc'],
   ['진행 표현 중이었습니다는 정상 한국어', '35분째 조사 중이었습니다.', false, 'doc'],
   /* 'have + 명사'를 그대로 옮긴 직역입니다. */
   ['을 가지고 있다', '봇은 stage 환경에 쓰기 권한을 가지고 있습니다.', true, 'doc'],
   ['를 가지고 있다', '그 저장소는 tracked 파일만 보는 검사를 가지고 있습니다.', true, 'doc'],
-  /* '가지고' 뒤에 '있다'가 오지 않으면 무엇을 도구로 삼는다는 뜻의 평범한 한국어입니다. */
+  /* 이 문장의 '가지고'는 뒤에 '있다'가 없고 무엇을 도구로 삼는다는 뜻의 평범한 한국어입니다. */
   ['도구로 쓰는 가지고는 통과', '이 값을 가지고 다음 단계를 계산합니다.', false, 'doc'],
   /* 회귀 케이스입니다. */
   ['에 위치하다의 활용형', '이 값은 서울 리전에 위치합니다.', true, 'doc'],
@@ -209,8 +209,8 @@ export const SELF_CHECK_CASES = [
   ['대명사 그것을 허용합니다는 통과', '예외 요청이 오면 그것을 허용합니다.', false, 'doc'],
   ['cannot be overemphasized', '테스트 커버리지의 중요성은 아무리 강조해도 지나치지 않습니다.', true, 'doc'],
   /* 검토했지만 넣지 않은 후보입니다. */
-  ['중요한 역할을 한다는 목록에 없다', '그 사람은 팀에서 중요한 역할을 합니다.', false, 'doc'],
-  ['임에 틀림없다는 목록에 없다', '기록을 보면 그가 마지막으로 고친 사람임에 틀림없습니다.', false, 'doc'],
+  ['`중요한 역할을 한다`는 목록에 없다', '그 사람은 팀에서 중요한 역할을 합니다.', false, 'doc'],
+  ['`임에 틀림없다`는 목록에 없다', '기록을 보면 그가 마지막으로 고친 사람임에 틀림없습니다.', false, 'doc'],
   ['겹조사 에서의', 'apply에서의 잘못된 거절이 더 나쁩니다.', true, 'doc'],
   /* 검토했지만 넣지 않은 후보입니다. */
   ['앞으로의는 통과', '앞으로의 메시지에만 적용됩니다.', false, 'doc'],
@@ -219,7 +219,7 @@ export const SELF_CHECK_CASES = [
   ['계획을 세우다는 통과', '다음 배포 계획을 세웠습니다.', false, 'doc'],
   /* make a decision을 직역한 표현입니다. */
   ['결정을 만들다', '우리는 이 문제를 다루기 위한 결정을 만들었습니다.', true, 'doc'],
-  ['결정을 내리다는 통과', '우리는 이 문제를 어떻게 다룰지 결정했습니다.', false, 'doc'],
+  ['결정하다로 쓰면 통과', '우리는 이 문제를 어떻게 다룰지 결정했습니다.', false, 'doc'],
   /* 면제 낱말이 목적어와 동사 사이에 부사어로 낀 경우입니다. */
   ['사이에 낀 면제 낱말도 본다', 'VPN을 plan으로 세웠습니다.', false, 'doc'],
   ['가설을 세우다는 통과', '원인을 설명하는 가설을 세웠습니다.', false, 'doc'],
@@ -229,7 +229,7 @@ export const SELF_CHECK_CASES = [
   ['차별 소지 용어', 'Whitelist에 주소를 넣었습니다.', true, 'doc'],
   ['대체 용어는 통과', 'Allowlist에 주소를 넣었습니다.', false, 'doc'],
   /* 식별자 안은 산문이 아닙니다. */
-  ['식별자 안의 낱말은 산문이 아니다', 'REQUESTER_USER_WHITELIST 값을 바꿨습니다.', false, 'doc'],
+  ['식별자 안의 낱말은 산문이 아니다', 'ADMIN_IP_WHITELIST 값을 바꿨습니다.', false, 'doc'],
   /* 인용한 오타는 쓴 오타가 아닙니다. */
   ['낱말이 아닌 철자', '작업이 됬습니다.', true, 'doc'],
   ['따옴표 안에 인용한 오타는 통과', '봇이 "작업이 됬습니다"라고 적었습니다.', false, 'doc'],
@@ -238,13 +238,13 @@ export const SELF_CHECK_CASES = [
 
   /* --- 한 문장에 든 영어 낱말 ---  문장을 나누라고 조언하는 규칙이므로 문장에만 적용합니다. */
   [
-    '기술 용어의 영어 개수는 제한하지 않는다',
+    '영어 용어 수는 기본값에서 제한하지 않는다',
     'plan을 stage에서 apply로 넘기고 worker가 state를 lock으로 잡습니다.',
     false,
     'doc',
   ],
   [
-    '같은 낱말이 몰린 개조식 항목은 통과',
+    '영어 낱말이 몰린 개조식 항목은 통과',
     '- 배선: plan을 stage에서 apply로 넘기고 worker가 state를 lock으로 잡는 자리',
     false,
     'doc',
@@ -257,7 +257,7 @@ export const SELF_CHECK_CASES = [
     'doc',
   ],
 
-  ['fence 안의 낱말 규칙은 걸린다', '아래를 확인합니다.\n```\n워크플로우 확인\n```', true, 'doc'],
+  ['fence 안에도 낱말 규칙을 적용한다', '아래를 확인합니다.\n```\n워크플로우 확인\n```', true, 'doc'],
   ['fence 안의 명령어는 통과', '아래를 실행합니다.\n```\nterragrunt force-unlock 1234\n```', false, 'doc'],
 
   ['빈 텍스트는 통과', '', false, 'chat'],
@@ -276,7 +276,7 @@ function runSelfCheck(r) {
   const reference = loadRules(join(tool, 'docs', basename(tool) === '.korean-style' ? 'defaults.md' : 'rules.md'));
   let failed = 0;
   for (const [label, input, expect, target, register = '다나까체'] of SELF_CHECK_CASES) {
-    /* 배포본의 예제를 사용자 규칙으로 채점하지 않습니다. */
+    /* 자체 검사 케이스는 프로젝트 규칙 대신 함께 배포한 기본 규칙으로 판정합니다. */
     const rules = withRegister(reference, register);
     let got;
     try {
@@ -307,13 +307,13 @@ function runSelfCheck(r) {
   return passed;
 }
 
-/* 규칙 이름 하나가 무엇을 잡는지 문서에서 찾아 보여 줍니다. */
+/* 규칙 하나가 무엇을 잡는지 규칙 문서에서 찾아 보여 줍니다. */
 function explain(name) {
   let doc;
   try {
     doc = readFileSync(rulesDocPath(PROJECT_ROOT), 'utf-8');
   } catch {
-    process.stderr.write(`${RULES_DOC}를 열지 못했습니다.\n`);
+    process.stderr.write(`규칙 문서를 열지 못했습니다: ${RULES_DOC}\n`);
     return 2;
   }
   const hits = doc

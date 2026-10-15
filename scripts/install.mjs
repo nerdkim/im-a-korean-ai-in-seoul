@@ -63,11 +63,11 @@ const HOOKS = {
   PreToolUse: {
     matcher: 'Write|Edit|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMode|SendUserFile|Task|Agent|Bash',
     command: `node "${HOOK_BASE}/pretooluse.mjs"`,
-    statusMessage: '한국어 문체 규칙 확인',
+    statusMessage: '한국어 문체 검사 중',
   },
   Stop: {
     command: `node "${HOOK_BASE}/stop.mjs"`,
-    statusMessage: '이 turn의 답변 문체 확인',
+    statusMessage: '최종 답변 문체 검사 중',
   },
 };
 
@@ -80,10 +80,10 @@ export const REGISTER_FRAGMENTS = {
   혼용: 'honyong.md',
 };
 
-/* skill에서 어투 조각을 넣을 구간입니다. */
+/* skill과 output-style에서 어투 조각을 넣을 구간입니다. */
 export const REGISTER_SLOT = /<!-- register:begin -->[\s\S]*?<!-- register:end -->/;
 
-/* skill의 어투 구간을 고른 조각으로 바꿉니다. */
+/* skill과 output-style의 어투 구간을 고른 조각으로 바꿉니다. */
 export function skillWithRegister(body, fragment) {
   const filled = `<!-- register:begin -->\n${fragment.trim()}\n<!-- register:end -->`;
   return body.replace(REGISTER_SLOT, () => filled);
@@ -268,11 +268,11 @@ function main() {
       if (existsSync(join(root, rel))) throw new Error(`같은 이름의 기존 파일은 덮어쓰지 않습니다: ${rel}`);
     }
   }
-  // 로컬 설정은 진단만 합니다. worktree의 다른 checkout 설정도 바꾸지 않습니다.
+  // 로컬 설정은 진단만 합니다. 다른 worktree의 settings.local.json도 바꾸지 않습니다.
   console.log(`대상: ${root}\n규칙: ${refresh ? '최신 기본값 적용' : '프로젝트의 기존 규칙 유지'} (${register})`);
-  if (!refresh) console.log('새 기본 규칙이 필요하면 --force로 재설치합니다. 기존 규칙은 백업합니다.');
+  if (!refresh) console.log('새 기본 규칙이 필요하면 --force로 재설치합니다. 이때 설치 스크립트가 기존 규칙을 백업합니다.');
   if (backup) console.log(`규칙 백업: ${backup}`);
-  if (style.settings.outputStyle !== OUTPUT_STYLE_NAME) console.log('기존 output-style을 유지합니다. 한국어 지침을 선택하려면 --activate를 사용합니다.');
+  if (style.settings.outputStyle !== OUTPUT_STYLE_NAME) console.log('기존 output-style을 유지합니다. 작성 지침을 선택하려면 --activate를 사용합니다.');
   const effective = Object.assign({}, style.settings, ...local.map(x => x.settings));
   if (effective.disableAllHooks) console.log('주의: disableAllHooks가 켜져 있습니다. 해당 설정을 해제해야 hook이 실행됩니다.');
   if (effective.outputStyle !== style.settings.outputStyle) console.log('주의: settings.local.json의 outputStyle이 프로젝트 설정보다 우선합니다.');
@@ -304,7 +304,7 @@ function main() {
   console.log(`설치했습니다. 새 hook: ${added.join(', ') || '없음'}`);
   if (!hasGit) console.log('.git이 없어서 .gitignore를 수정하지 않았습니다. git init 후 다시 설치하면 필요한 항목을 추가합니다.');
   reportCommitHook(installCommitHook(root));
-  console.log('적용하려면 대상 프로젝트에서 Claude 세션을 새로 시작합니다. Claude는 문체 진단이나 교정이 필요할 때만 skill을 읽습니다.');
+  console.log('적용하려면 대상 프로젝트에서 Claude 세션을 새로 시작합니다. Claude는 skill 설명을 보고 필요할 때만 skill을 읽습니다.');
   const quoted = "'" + join(installDir, 'scripts/doctor.mjs').replaceAll("'", "'\\''") + "'";
   console.log(`점검: node ${quoted}`);
 }

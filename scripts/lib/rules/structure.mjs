@@ -29,6 +29,7 @@ export function structureViolations(text, rules) {
   const hangul = hangulLength(text);
   const sentences = sentencesOf(text);
 
+  /* 1) 이중피동입니다. */
   for (const [stem, right] of rules.doublePassive) {
     const re = new RegExp(`${escape(stem)}(?=[${JIDA_SYLLABLES}])`, 'u');
     const m = re.exec(text);
@@ -42,6 +43,7 @@ export function structureViolations(text, rules) {
     });
   }
 
+  /* 2) 긴 문장입니다. */
   if (rules.maxSentenceChars > 0) {
     for (const sentence of sentences) {
       if (!isKoreanProse(sentence.text, rules.finalEndings, rules.sentenceMinHangulRatio)) continue;
@@ -72,7 +74,7 @@ export function structureViolations(text, rules) {
       if (density !== null) {
         out.push({
           rule: 'nominalization',
-          detail: `명사형 종결 ${hits.length}회, 1000자당 ${density.toFixed(2)}회입니다.`,
+          detail: `명사형 종결 ${hits.length}회, 한글 1000자당 ${density.toFixed(2)}회입니다.`,
           line: lineOf(text, hits[hits.length - 1].index),
         });
       }
@@ -109,7 +111,7 @@ export function structureViolations(text, rules) {
       if (density !== null) {
         out.push({
           rule: 'suffix-jeok-density',
-          detail: `접미사 "~적" ${hits.length}회, 1000자당 ${density.toFixed(2)}회입니다.`,
+          detail: `접미사 "~적" ${hits.length}회, 한글 1000자당 ${density.toFixed(2)}회입니다.`,
           line: lineOf(text, hits[hits.length - 1].index),
         });
       }
@@ -124,13 +126,14 @@ export function structureViolations(text, rules) {
       if (density !== null) {
         out.push({
           rule: 'particle-ui-density',
-          detail: `조사 "의" ${hits.length}회, 1000자당 ${density.toFixed(2)}회입니다.`,
+          detail: `조사 "의" ${hits.length}회, 한글 1000자당 ${density.toFixed(2)}회입니다.`,
           line: lineOf(text, hits[hits.length - 1].index),
         });
       }
     }
   }
 
+  /* 7) 수량 표현 뒤의 복수 접미사입니다. */
   for (const quantifier of rules.pluralQuantifiers) {
     const re = new RegExp(`${escape(quantifier)}\\s+[가-힣]+들(?=[\\s.,)\\]은는이가을를에]|$)`, 'u');
     const m = re.exec(text);

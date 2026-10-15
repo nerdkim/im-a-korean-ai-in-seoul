@@ -22,7 +22,7 @@ export function toolRoot() {
   return resolve(here, '..', '..');
 }
 
-/* 이 파일을 명령줄에서 직접 실행했는지 봅니다. */
+/* 인자로 받은 모듈을 명령줄에서 직접 실행했는지 봅니다. */
 export function isEntryPoint(metaUrl) {
   const entry = process.argv[1];
   if (entry === undefined) return false;

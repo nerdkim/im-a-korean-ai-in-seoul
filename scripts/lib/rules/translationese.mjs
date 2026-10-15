@@ -43,12 +43,12 @@ export function translationeseViolations(text, rules) {
     });
   }
 
-  /* 2) 영어 동사를 글자대로 옮긴 동사입니다. */
+  /* 2) 영어 동사를 직역한 동사입니다. */
   for (const [key, right] of rules.literalVerbs) {
     if (key.startsWith(LATIN_PREFIX)) {
       const stems = alternation(key.slice(LATIN_PREFIX.length));
       if (stems.length === 0) continue;
-      /* 영어 낱말과 목적격 조사 뒤에 낱말을 두 개까지 건너뛰고 동사가 오는 모양입니다. */
+      /* 영어 낱말과 목적격 조사 뒤에 동사가 오는 모양입니다. 조사와 동사 사이에는 낱말이 두 개까지 올 수 있습니다. */
       const re = new RegExp(`(${LATIN_WORD})\\s*${OBJECT_PARTICLE}\\s+(?:\\S+\\s+){0,2}(?:${stems})`, 'gu');
       /* 목록에 있는 영어 낱말은 건너뜁니다. */
       const exempt = new Set(rules.literalVerbExempt.map((w) => w.toLowerCase()));

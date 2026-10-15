@@ -78,7 +78,7 @@ test('--stdin이 깨끗한 글을 통과시킨다', () => {
 test('--stdin은 shell이 해석하는 글자를 그대로 받는다', () => {
   /* 입력에 달러 기호와 따옴표와 역빗금을 넣습니다. */
   const r = run(['--stdin', '--target', 'doc'], { stdin: '값은 $1 이고 경로는 "a\\b" 입니다.' });
-  assert.equal(r.status, 0, `통과해야 합니다. 나온 것은 ${r.stdout}${r.stderr} 입니다`);
+  assert.equal(r.status, 0, `통과해야 합니다. 출력: ${r.stdout}${r.stderr}`);
 });
 
 test('--stdin이 여러 줄 입력의 둘째 줄 위반도 잡는다', () => {
@@ -87,11 +87,11 @@ test('--stdin이 여러 줄 입력의 둘째 줄 위반도 잡는다', () => {
   assert.match(r.stdout, /2줄/, '둘째 줄에서 걸려야 합니다');
 });
 
-/* 규칙 문서를 못 읽었을 때 네 진입점이 같은 판정을 내려야 합니다. */
+/* 규칙 문서를 못 읽으면 --text, --file, --stdin, --all, --self-check 가운데 어느 것도 통과로 끝나면 안 됩니다. */
 
 test('회귀: 규칙 문서를 못 읽으면 --text가 통과로 끝나지 않는다', () => {
   const r = run(['--text', REGISTER_VIOLATION], { rules: missingRulesPath() });
-  assert.notEqual(r.status, 0, '기본 최소 규칙만 남은 상태의 통과는 거짓입니다');
+  assert.notEqual(r.status, 0, '기본 최소 규칙으로만 검사하고 통과라고 보고하면 거짓입니다');
   assert.match(r.stdout, /이 결과는 통과가 아닙니다/);
 });
 

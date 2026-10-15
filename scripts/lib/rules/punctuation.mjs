@@ -55,7 +55,7 @@ export function punctuationViolations(text, rules) {
     .filter((s) => isKoreanProse(s.text, rules.finalEndings, rules.sentenceMinHangulRatio))
     .map((s) => ({ ...s, masked: maskCommaAsides(s.text) }));
 
-  /* 1) 한 문장에 든 쉼표 개수입니다. 한도는 `docs/rules.md`가 정합니다. */
+  /* 1) 한 문장에 든 쉼표 개수입니다. 한도는 규칙 문서가 정합니다. */
   if (rules.maxCommaPerSentence > 0) {
     for (const sentence of sentences) {
       const segments = commaSegments(sentence.masked);
@@ -91,7 +91,7 @@ export function punctuationViolations(text, rules) {
     }
   }
 
-  /* 접속부사 뒤의 쉼표를 검토 후보로 수집합니다. */
+  /* 3) 접속부사 뒤의 쉼표입니다. */
   for (const adverb of rules.conjunctiveAdverbs) {
     /* 문장이나 줄, 목록 항목의 맨 앞이어야 합니다. */
     const re = new RegExp(`(^|[.!?]\\s+|\\n\\s*|^\\s*[-*+]\\s+)(${adverb}),`, 'gmu');
@@ -116,7 +116,7 @@ export function punctuationViolations(text, rules) {
       if (density !== null) {
         out.push({
           rule: 'comma-after-connective',
-          detail: `연결어미 뒤 쉼표 ${hits.length}회, 1000자당 ${density.toFixed(2)}회입니다.`,
+          detail: `연결어미 뒤 쉼표 ${hits.length}회, 한글 1000자당 ${density.toFixed(2)}회입니다.`,
           line: lineOf(text, hits[hits.length - 1].index),
         });
       }

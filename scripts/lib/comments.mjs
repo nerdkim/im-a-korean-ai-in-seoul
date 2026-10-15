@@ -30,7 +30,7 @@ export function commentSyntaxOf(relPath) {
 
 const NEWLINE = '\n';
 
-/* 주석 밖을 공백으로 덮습니다. */
+/* 주석 밖을 공백으로 바꿉니다. */
 export function onlyComments(text, syntax) {
   if (syntax === null) return text.replace(/[^\n]/g, ' ');
 
@@ -90,7 +90,7 @@ export function onlyComments(text, syntax) {
           j += 1;
           break;
         }
-        /* 줄이 끝나면 따옴표가 닫히지 않은 것입니다. */
+        /* 따옴표가 닫히기 전에 줄이 끝나면 닫히지 않은 것으로 봅니다. */
         if (text[j] === NEWLINE) break;
         j += 1;
       }
@@ -106,7 +106,7 @@ export function onlyComments(text, syntax) {
   return out.join('');
 }
 
-/* 주석 표시를 공백으로 덮습니다. */
+/* 주석 표시를 공백으로 바꿉니다. */
 function withoutMarkers(line) {
   return line
     .replace(/\/\*+/g, (m) => ' '.repeat(m.length))
@@ -115,7 +115,7 @@ function withoutMarkers(line) {
     .replace(/(\s)(\/\/+)/g, (m, space, mark) => space + ' '.repeat(mark.length));
 }
 
-/* 한글이 든 줄만 남기고 주석 표시를 덮습니다. */
+/* 한글이 든 줄만 남기고 주석 표시를 공백으로 바꿉니다. */
 function hangulLinesOnly(text) {
   return text
     .split(NEWLINE)

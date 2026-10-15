@@ -2,7 +2,7 @@
 
 이 도구는 Claude Code가 자연스러운 한국어를 쓰도록 프로젝트에 작성 지침(output-style)과 문체 검사 hook을 설치합니다.
 
-- **작성 지침:** Claude가 한국어로 답하거나 글을 쓸 때 따를 원칙을 담습니다. 정한 어투를 지키고 뜻을 바꾸지 않게 하며, 보내기 전에 영어식 표현과 조사를 한 번 더 점검하게 합니다.
+- **작성 지침:** Claude가 한국어로 답하거나 글을 쓸 때 따를 원칙을 담습니다. 정한 어투를 지키고 뜻을 바꾸지 않게 하며, 답변을 보내거나 파일에 쓰기 전에 영어식 표현과 조사를 한 번 더 점검하게 합니다.
 - **문체 검사 hook:** Claude Code가 도구를 실행하기 직전에 파일에 쓸 내용, 사용자에게 묻는 질문, subagent 프롬프트, 커밋 메시지를 검사합니다. 최종 답변도 검사해 오류가 있으면 한 번만 다시 쓰게 합니다.
 - **skill:** 문체를 진단하는 `korean-style`과 문장을 다듬거나 번역하는 `korean-rewrite`를 함께 설치합니다.
 - **커밋 메시지 검사:** Git의 `commit-msg` hook으로 커밋 메시지를 검사합니다.
@@ -55,7 +55,7 @@ node /tmp/im-a-korean-ai-in-seoul/scripts/install.mjs --target "$PWD" --activate
 | --- | --- |
 | `--target <경로>` | 이 도구를 설치할 프로젝트의 루트입니다. 반드시 지정합니다. |
 | `--activate` | 프로젝트의 output-style을 `korean-style`로 지정합니다. 생략하면 다른 output-style이 선택되어 있을 때는 그 설정을 유지하고, 선택된 것이 없을 때만 `korean-style`로 지정합니다. |
-| `--register <어투>` | 작성 지침과 어투 검사에 쓸 어투입니다. `다나까체`(합니다체, 기본값), `해요체`, `혼용` 가운데 하나를 고릅니다. `혼용`은 두 어투를 모두 허용하되 한 답변 안에서는 하나로 맞추게 합니다. |
+| `--register <어투>` | 작성 지침과 어투 검사에 쓸 어투입니다. `다나까체`(합니다체, 기본값), `해요체`, `혼용` 가운데 하나를 고릅니다. `혼용`이면 검사기는 두 어투를 모두 허용하고, 작성 지침은 한 답변 안에서 어투를 하나로 맞추라고 지시합니다. |
 | `--dry-run` | 파일을 쓰지 않고 규칙 갱신 여부, 어투, 커밋 hook 경로 같은 설치 결과만 미리 보여 줍니다. |
 | `--force` | 직접 수정한 규칙을 새 기본값으로 교체합니다. 교체하기 전에 백업합니다. |
 
@@ -63,7 +63,7 @@ node /tmp/im-a-korean-ai-in-seoul/scripts/install.mjs --target "$PWD" --activate
 
 설치 스크립트는 기존 `CLAUDE.md`, 다른 hook, 권한, MCP 설정, 다른 output-style 파일을 그대로 둡니다.
 `.claude/settings.json`에는 hook 두 개를 더하고 필요할 때만 `outputStyle`을 바꿉니다. 사용자 전역 설정과 `.claude/settings.local.json`은 바꾸지 않습니다.
-설정 파일이 손상되었거나 설치 경로에 같은 이름의 파일이나 symlink가 있으면 덮어쓰지 않고 멈춥니다.
+설정 파일이 손상되었거나 설치 경로에 symlink가 있으면 덮어쓰지 않고 멈춥니다. 처음 설치할 때 skill이나 output-style을 놓을 경로에 파일이 이미 있어도 멈춥니다.
 
 ## 설치되는 파일
 
@@ -89,7 +89,7 @@ node /tmp/im-a-korean-ai-in-seoul/scripts/install.mjs --target "$PWD" --activate
 `outputStyle`이 `korean-style`이면 설치 후 새 세션부터 자동으로 적용됩니다. `.claude/settings.local.json`에 `outputStyle`이 있으면 그 값이 우선합니다.
 다른 스타일을 쓰려면 `.claude/settings.json`의 `outputStyle`을 바꿉니다.
 지침은 모델이 읽는 지시문이라 영어로 짧게 썼고, 예문과 어미만 한국어로 두었습니다.
-마지막 항목은 답변을 보내거나 파일에 쓰기 전에 한국어를 한 번 더 읽고 영어식 표현과 조사를 고치게 합니다. 이 점검은 도구를 부르지 않으므로 응답이 크게 늦어지지 않습니다.
+마지막 항목은 답변을 보내거나 파일에 쓰기 전에 한국어를 한 번 더 읽고 영어식 표현과 조사를 고치게 합니다. 이 점검은 도구를 부르지 않으므로 모델 호출이나 hook 실행이 늘지 않습니다.
 
 ### 문체 검사 hook
 
@@ -99,13 +99,13 @@ node /tmp/im-a-korean-ai-in-seoul/scripts/install.mjs --target "$PWD" --activate
 | Claude Code가 답변을 마칠 때 | 이번 turn의 최종 답변 | 재작성을 한 번만 요청합니다 |
 | Git이 커밋할 때(`commit-msg` hook) | 커밋 메시지 | 커밋을 멈춥니다 |
 
-파일 쓰기에 오류는 없고 영어식 표현 같은 경고만 있으면 쓰기는 그대로 진행합니다. 다만 `review-rules`에 든 규칙의 경고가 이번에 바꾼 문단에서 새로 생겼다면 hook이 Claude에게 검토 후보로 알립니다. Claude는 답을 마치기 전에 그 표현을 다시 보고 어색하면 고칩니다.
+파일 쓰기에 오류는 없고 영어식 표현 같은 경고만 있으면 쓰기를 막지 않습니다. 다만 `review-rules`에 든 규칙의 경고가 이번에 바꾼 문단에서 새로 생겼다면 hook이 Claude에게 검토 후보로 알립니다. Claude는 답을 마치기 전에 그 표현을 다시 보고 어색하면 고칩니다.
 Claude가 shell 명령으로 검사 대상 파일에 직접 쓰면 그 내용은 검사를 거치지 않습니다. 그래서 hook은 이런 명령을 알아보면 막고 Write나 Edit 도구로 다시 쓰라고 안내합니다.
 Stop hook은 답변이 화면에 표시된 뒤에 검사하므로 이미 표시된 답변은 되돌리지 못합니다. hook 실행 중에 예외가 발생하면 작업을 막지 않고 통과시킵니다.
 
 ### skill
 
-Claude Code는 skill 설명을 보고 필요할 때 skill을 읽습니다. 직접 부르려면 메시지 맨 앞에 `/`와 skill 이름을 입력합니다.
+Claude는 skill 설명을 보고 필요할 때 skill을 읽습니다. 직접 부르려면 메시지 맨 앞에 `/`와 skill 이름을 입력합니다.
 
 | skill | 용도 | 예 |
 | --- | --- | --- |
@@ -176,14 +176,14 @@ Claude Code는 `outputStyle`로 고른 파일을 세션을 시작할 때 system 
 | 모듈 | 보는 것 | 기본 등급 |
 | --- | --- | --- |
 | `chars.mjs` | middle dot, em-dash, en-dash, emoji, 한자, 일본어 가나, 전각 괄호 | 오류 |
-| `register.mjs` | 선택한 어투와 다른 종결어미, 사람에게 내리는 명령, 금지 호칭, 칭찬으로 여는 문장, 영어로만 쓴 답변 | 오류(영어 답변은 경고) |
+| `register.mjs` | 선택한 어투와 다른 종결어미, 사람에게 내리는 명령, 금지 호칭, 질문이나 지적을 칭찬하는 표현, 영어로만 쓴 답변 | 오류(영어 답변은 경고) |
 | `punctuation.mjs` | 쉼표 수, 쉼표 구간 길이, 접속부사와 연결어미 뒤 쉼표 | 경고 |
 | `structure.mjs` | 이중피동, 긴 문장, 수량 표현 뒤 복수 접미사, 명사형 종결과 지시 표현, `~적`, `~의`의 빈도 | 이중피동은 오류, 나머지는 경고 |
 | `translationese.mjs` | 영어식 구절, 영어 동사를 직역한 동사 | 경고 |
 | `vocabulary.mjs` | 외래어 표기, 오타, 한글 음차, 팀 용어 표기, 설명 없이 쓴 용어, 차별 소지가 있는 용어, 영어 낱말에 한글 부정 접두사를 붙인 표현 | 오류(차별 소지 용어와 부정 접두사 표현은 경고) |
 | `density.mjs` | 조사가 붙은 영어 낱말, 같은 용어의 반복 설명, 굵은 글씨, 대조 구문의 빈도 | 경고 |
 
-`banned-transliteration`, `banned-translation`, `required-spelling`, `needs-gloss`는 기본값이 비어 있고 `max-bound-english-per-sentence`는 0입니다. 팀이 값을 채우면 그때부터 검사합니다.
+`banned-transliteration`, `banned-translation`, `required-spelling`, `needs-gloss`는 기본값이 비어 있고 `max-bound-english-per-sentence`는 0입니다. 팀이 목록을 채우거나 한도를 0보다 크게 정하면 검사기가 그때부터 검사합니다.
 어투, 명령, 호칭, 칭찬, 오타 규칙은 따옴표 안을 보지 않으므로 인용한 문장은 이 규칙들에 걸리지 않습니다.
 문장 단위 규칙은 문단, 목록 항목, 표 칸을 따로 나눈 뒤 마침표, 물음표, 느낌표 뒤에서 문장을 자릅니다. 제목 줄과 부호만 늘어놓은 장식 줄은 문장으로 세지 않습니다.
 쉼표 수, 쉼표 구간 길이, 긴 문장 규칙은 한글 비율이 `sentence-min-hangul-ratio` 이상이고 종결어미나 물음표, 느낌표로 끝나는 조각만 한국어 문장으로 셉니다.
@@ -225,7 +225,7 @@ Claude Code가 답변을 마치면 `stop.mjs`가 마지막 답변(`last_assistan
 
 ### 규칙 문서를 읽는 방식
 
-검사기는 `.korean-style/rules.md`에서 `korean-style-rules` code block만 설정으로 읽고, 블록 밖의 설명은 읽지 않습니다.
+검사기는 `.korean-style/rules.md`에서 `korean-style-rules` code block만 설정으로 읽습니다. 블록 밖의 설명은 판정에 쓰지 않고 `--explain`이 보여 줄 때만 읽습니다.
 블록의 각 줄은 `키: 값` 형식이고 `#`으로 시작하는 줄은 주석입니다. 목록은 쉼표로 나누고, 치환 후보는 `원문=후보`로, 도구 필드는 `도구.필드`로 적습니다.
 규칙 문서를 열지 못하거나 블록이 없으면 CLI는 실패합니다. hook은 금지 글자와 호칭, 영어 답변만 보는 기본 최소 규칙으로 검사를 이어 갑니다.
 
@@ -291,7 +291,7 @@ npm run eval -- --run           # 실모델 비교, API 사용량 발생
 ```
 
 일반 테스트는 API를 호출하지 않습니다. 실모델 비교는 기본적으로 임시 프로젝트에서 `low` effort로 요청을 묶어 실행합니다.
-`--individual`은 요청마다 새 세션을 쓰고 `--with-hooks`는 임시 프로젝트에 이 도구를 설치해 hook까지 검증합니다.
+`--individual`은 요청마다 새 세션을 쓰고 `--with-hooks`는 임시 프로젝트에 이 도구를 설치해 Stop hook의 동작까지 검증합니다.
 `--cases test/fixtures/eval/regression.json`처럼 입력을 고를 수 있습니다. `calque.json`은 한국어로 옮기면 영어식 표현이 나오기 쉬운 영어 문장을 모은 입력입니다. 평가 스크립트는 사례마다 `mustNot`에 적은 표현이 응답에 나오면 제약 위반으로 셉니다.
 응답 원본은 `.eval/latest/`에 저장하며 다시 실행할 때는 `--out .eval/run2`처럼 새 경로를 지정합니다.
 [평가 입력](test/fixtures/eval/)만 Git에 두고 실행 결과는 커밋하지 않습니다.

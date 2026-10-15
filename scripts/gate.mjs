@@ -16,10 +16,10 @@ const SELF_CHECK_EXEMPT = {
   'gate.mjs': '이 파일 자신입니다. gate를 검사하는 단계를 gate가 실행하면 결과가 자기 참조가 됩니다.',
 };
 
-/* hook은 stdin으로 harness가 주는 JSON을 받으므로 명령줄 자체 검사를 두지 않습니다. */
+/* hook은 Claude Code가 stdin으로 주는 JSON이나 Git이 넘겨 주는 메시지 파일을 받으므로 명령줄 자체 검사를 두지 않습니다. */
 const HOOK_DIR = 'hooks';
 
-/* 돌릴 테스트 파일입니다. */
+/* 실행할 테스트 파일입니다. */
 function testFiles() {
   const dir = join(TOOL, 'test');
   /* 설치된 프로젝트에는 `test/`가 없습니다. */
@@ -73,7 +73,7 @@ function selfCheckContract(scripts) {
     if (s.dir === HOOK_DIR) {
       exempt.push({
         name: s.rel,
-        reason: 'hook은 stdin으로 harness의 JSON을 받으므로 명령줄 자체 검사가 없습니다. 대신 test/의 테스트가 검사합니다.',
+        reason: 'hook은 Claude Code가 stdin으로 주는 JSON이나 Git이 넘겨 주는 메시지 파일을 받으므로 명령줄 자체 검사가 없습니다. 대신 test/의 테스트가 검사합니다.',
       });
       continue;
     }

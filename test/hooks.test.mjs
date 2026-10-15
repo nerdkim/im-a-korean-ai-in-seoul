@@ -111,10 +111,10 @@ test('규칙을 지킨 문서 쓰기는 통과시킨다', () => {
     tool_name: 'Write',
     tool_input: { file_path: join(ROOT, 'docs', '시험.md'), content: '워크플로를 확인했습니다.' },
   });
-  assert.equal(out, null, '통과는 아무것도 내지 않습니다');
+  assert.equal(out, null, '통과할 때는 아무것도 출력하지 않습니다');
 });
 
-/* 오류가 없는 파일 쓰기는 막지 않고, 새로 쓴 부분의 경고는 Claude에게만 알립니다. */
+/* 오류가 없는 파일 쓰기는 막지 않습니다. 새로 쓴 부분에서 review-rules에 든 규칙의 경고는 Claude에게만 알립니다. */
 
 test('새로 쓴 문서의 영어식 표현 후보는 쓰기를 막지 않고 Claude에게 알린다', () => {
   const out = runHook('pretooluse.mjs', {
@@ -366,13 +366,13 @@ test('읽기만 하는 명령은 통과시킨다', () => {
 });
 
 test('회귀: shell이 확장할 부분이 남은 경로는 판정하지 않는다', () => {
-  /* 첫 측정에서 임시 디렉터리를 가리키는 변수가 프로젝트 안의 소스 파일로 읽혔습니다. */
+  /* 임시 디렉터리를 가리키는 변수가 든 경로를 hook이 프로젝트 안의 소스 파일로 판정한 적이 있습니다. */
   assert.ok(!bashDenied('cat > $SCRATCH/probe.mjs <<EOF\n내용\nEOF'));
   assert.ok(!bashDenied('echo x > ~/notes.md'));
 });
 
 test('heredoc 본문 안의 부등호를 방향 재지정으로 읽지 않는다', () => {
-  /* 본문에 마크다운 인용문이 들어 있는 경우입니다. */
+  /* 본문에 Markdown 인용문이 들어 있는 경우입니다. */
   assert.ok(!bashDenied('cat > /tmp/a.txt <<EOF\n> docs/rules.md 를 보십시오\nEOF'));
 });
 
@@ -446,27 +446,27 @@ test('현재 Agent 도구에서도 오류를 검사한다', () => {
   assert.match(out.hookSpecificOutput.permissionDecisionReason, /double-passive/);
 });
 
-test('규칙을 어긴 답변이면 turn을 차단한다', () => {
+test('규칙을 어긴 답변이면 재작성을 요구한다', () => {
   const path = transcriptWith('당신이 요청한 대로 워크플로우를 정리했어요.');
   const out = runHook('stop.mjs', { transcript_path: path, stop_hook_active: false });
-  assert.ok(out !== null, '차단해야 합니다');
+  assert.ok(out !== null, '재작성을 요구해야 합니다');
   assert.equal(out.decision, 'block');
   assert.ok(out.reason.includes('당신'));
   assert.ok(out.reason.includes('--explain'), '어디서 규칙을 볼지 알려 주어야 합니다');
 });
 
-test('깨끗한 답변은 차단하지 않는다', () => {
+test('깨끗한 답변에는 재작성을 요구하지 않는다', () => {
   const path = transcriptWith('요청한 대로 워크플로를 정리했습니다.');
   assert.equal(runHook('stop.mjs', { transcript_path: path, stop_hook_active: false }), null);
 });
 
-test('이미 이어진 turn은 다시 차단하지 않는다', () => {
+test('이미 이어진 turn에는 재작성을 다시 요구하지 않는다', () => {
   /* 이 검사가 없으면 만족할 수 없는 규칙 하나 때문에 차단과 재작성이 끝없이 되풀이됩니다. */
   const path = transcriptWith('당신이 요청한 것입니다.');
   assert.equal(runHook('stop.mjs', { transcript_path: path, stop_hook_active: true }), null);
 });
 
-test('기록 경로가 없으면 아무 일도 하지 않는다', () => {
+test('기록 경로와 최종 응답 필드가 둘 다 없으면 아무 일도 하지 않는다', () => {
   assert.equal(runHook('stop.mjs', { stop_hook_active: false }), null);
 });
 
@@ -505,7 +505,7 @@ test('설치는 대상 프로젝트의 기존 hook을 지우지 않는다', () =
   assert.equal(settings.env.FOO, 'bar');
 });
 
-test('설치를 두 번 해도 hook 항목이 하나다', () => {
+test('설치를 두 번 해도 이벤트마다 hook 항목이 하나다', () => {
   const once = mergeHookSettings({}).settings;
   const twice = mergeHookSettings(once);
   assert.equal(twice.added.length, 0);

@@ -79,7 +79,7 @@ export function vocabularyViolations(text, rules, target) {
       rules.knownTypos,
       'known-typo',
       (wrong, right) =>
-        `오타 후보: ${JSON.stringify(wrong)} → ${JSON.stringify(right)}.`,
+        `오타입니다: ${JSON.stringify(wrong)} → ${JSON.stringify(right)}.`,
     ),
   );
 
