@@ -295,13 +295,16 @@ function runSelfCheck(r) {
       if (v.length > 0) process.stdout.write(`${formatViolations(v, rules)}\n`);
     }
   }
-  const where = r.source === null ? `기본값 (${r.reason})` : toProjectRelative(r.source, PROJECT_ROOT);
+  const where = r.source === null ? `기본값 (${r.reason})` : toProjectRelative(r.source, PROJECT_ROOT) ?? r.source;
   process.stdout.write(`검사기 기본 규칙: ${reference.source ?? '읽기 실패'}\n프로젝트 규칙을 읽은 곳: ${where}\n`);
   if (r.source === null) {
     process.stdout.write('규칙 문서를 읽지 못했으므로 이 실행을 실패로 봅니다. 통과라고 보고하면 거짓이 되기 때문입니다.\n');
   }
-  process.stdout.write(failed === 0 ? '자체 검사 통과\n' : `자체 검사 실패: ${failed}건\n`);
-  return failed === 0 && r.source !== null && reference.source !== null;
+  const passed = failed === 0 && r.source !== null && reference.source !== null;
+  if (passed) process.stdout.write('자체 검사 통과\n');
+  else if (failed > 0) process.stdout.write(`자체 검사 실패: ${failed}건\n`);
+  else process.stdout.write('자체 검사 실패: 규칙 문서를 읽지 못했습니다\n');
+  return passed;
 }
 
 /* 규칙 이름 하나가 무엇을 잡는지 문서에서 찾아 보여 줍니다. */
@@ -324,6 +327,9 @@ function explain(name) {
   for (const { line, n } of hits) process.stdout.write(`${RULES_DOC}:${n}: ${line.trim()}\n`);
   return 0;
 }
+
+/* 규칙 문서를 못 읽었으면 위반이 없어도 통과라고 쓰지 않습니다. */
+const passLabel = (r) => (r.source === null ? '위반 없음' : '통과');
 
 /* 통과로 보고해도 되는지를 종료 코드로 돌려줍니다. */
 function exitCodeForPass(r) {
@@ -393,7 +399,7 @@ function main() {
     }
     const v = checkText(text, r, target);
     if (v.length === 0) {
-      process.stdout.write(`통과 (${target})\n`);
+      process.stdout.write(`${passLabel(r)} (${target})\n`);
       process.exit(exitCodeForPass(r));
     }
     process.stdout.write(`${formatViolations(v, r)}\n`);
@@ -412,7 +418,7 @@ function main() {
       process.exit(0);
     }
     if (violations.length === 0) {
-      process.stdout.write(`통과: ${rel} (${target})\n`);
+      process.stdout.write(`${passLabel(r)}: ${rel} (${target})\n`);
       process.exit(exitCodeForPass(r));
     }
     process.stdout.write(`${formatViolations(violations, r, `${rel} (${target})`)}\n`);
@@ -431,14 +437,14 @@ function main() {
       if (argv.includes('--strict') || blockingViolations(violations).length) bad += 1;
       process.stdout.write(`${formatViolations(violations, r, `${rel} (${target})`)}\n`);
     }
-    process.stdout.write(bad === 0 ? `통과: 파일 ${seen}개\n` : `파일 ${seen}개 가운데 ${bad}개에 위반이 있습니다\n`);
-    /* 규칙 문서를 못 읽었으면 통과로 보고하지 않습니다. */
+    process.stdout.write(bad === 0 ? `${passLabel(r)}: 파일 ${seen}개\n` : `파일 ${seen}개 가운데 ${bad}개가 검사를 통과하지 못했습니다\n`);
+    /* 규칙 문서를 못 읽었으면 위반이 없어도 종료 코드 1로 끝냅니다. */
     const guard = exitCodeForPass(r);
     process.exit(bad === 0 ? guard : 1);
   }
 
   process.stderr.write(
-    '사용법: --self-check | --text <문장> | --stdin [--target chat|doc|comment|commit] | --file <경로> | --all | --explain <규칙> | --rules [--strict]\n',
+    '사용법: (--text <문장> | --stdin | --file <경로>) [--target chat|doc|comment|commit] [--strict] | --all [--strict] | --explain <규칙> | --rules | --self-check\n',
   );
   process.exit(2);
 }

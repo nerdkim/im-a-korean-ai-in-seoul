@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -117,7 +117,26 @@ test('규칙 문서를 못 읽으면 --self-check가 통과로 끝나지 않는�
   assert.notEqual(r.status, 0);
 });
 
-test('규칙 문서를 읽으면 경고를 붙이지 않는다', () => {
+test('회귀: 규칙 문서를 못 읽으면 위반이 없어도 출력에 통과라고 쓰지 않는다', () => {
+  /* 실제로 있었던 결함을 재현합니다. 종료 코드는 1인데 출력에는 통과라고 적었습니다. */
+  const text = run(['--text', CLEAN], { rules: missingRulesPath() });
+  assert.match(text.stdout, /^위반 없음 \(chat\)$/m);
+  assert.doesNotMatch(text.stdout, /^통과/m);
+  const self = run(['--self-check'], { rules: missingRulesPath() });
+  assert.match(self.stdout, /자체 검사 실패: 규칙 문서를 읽지 못했습니다/);
+  assert.doesNotMatch(self.stdout, /자체 검사 통과/);
+});
+
+test('회귀: 프로젝트 밖에 있는 규칙 문서를 읽으면 그 경로를 그대로 보여 준다', () => {
+  /* 실제로 있었던 결함을 재현합니다. 경로 대신 null을 출력했습니다. */
+  const path = join(mkdtempSync(join(tmpdir(), 'korean-style-cli-')), 'rules.md');
+  writeFileSync(path, readFileSync(join(ROOT, 'docs', 'rules.md'), 'utf-8'));
+  const r = run(['--self-check'], { rules: path });
+  assert.equal(r.status, 0, r.stdout);
+  assert.ok(r.stdout.includes(`프로젝트 규칙을 읽은 곳: ${path}`), r.stdout);
+});
+
+test('규칙 문서를 읽었으면 "통과가 아닙니다" 경고를 붙이지 않는다', () => {
   const r = run(['--text', CLEAN]);
   assert.equal(r.status, 0);
   assert.doesNotMatch(r.stdout, /통과가 아닙니다/, '정상일 때 경고가 붙으면 사람이 경고를 무시하게 됩니다');
