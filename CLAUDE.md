@@ -13,6 +13,7 @@ Claude Code, Codex and Gemini CLI share this file: `AGENTS.md` and `GEMINI.md` a
 - Write model-facing prompts (the output style, skills, register fragments and this file) in English. Keep human-facing docs, messages and commit messages in Korean.
 - In Korean prose, write on-screen terms whose Korean spelling is unstable in English, such as shell, hook and skill. Established loanwords such as 파일, 디렉터리 and 커밋 are fine.
 - In Korean prose and answers, call phrasing that copies English structure 영어식 표현. Do not use the word 번역투.
+- Never translate English word for word, including your own English reasoning and the English names of project concepts. Write who does what in plain Korean, and describe what the reader sees instead of internal mechanism names. If a Korean sentence maps word for word back onto English, rewrite it.
 - Before committing a change that adds or edits Korean prose (docs, messages, comments, test titles, release notes), run the `korean-reviewer` agent on the diff and resolve its findings. Agents without `.claude/agents` review the diff against the checklist in `.claude/agents/korean-reviewer.md`.
 - When you change behavior, add regression tests that include false positives, and pass `npm run gate`.
 - Real-model checks run with `npm run eval -- --run`. They make paid API calls, so keep them out of the regular tests.

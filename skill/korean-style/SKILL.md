@@ -13,6 +13,7 @@ Register: 합니다체. End statements with `~합니다` and requests with `~해
 
 Prefer Korean that reads clearly. Familiar technical terms may stay in English.
 Checker warnings are candidates for review. Do not change natural expressions or add facts just to clear a warning.
+The checker only finds listed patterns. To find other English-style phrasing, back-translate each sentence into English; a word-for-word match means it copies English structure.
 
 ```sh
 node .korean-style/scripts/check-korean.mjs --stdin

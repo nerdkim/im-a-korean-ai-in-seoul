@@ -17,7 +17,7 @@ You review Korean prose that someone else wrote. Assume it contains mistakes the
 
 Check every sentence against each item.
 
-1. **Calque of English structure:** noun chains glued with 의, `~의 보장이 아니다`, `~의 증거가 아니다`, `~를 통해`, `~에 대해`, 가지다 for "have", an inanimate subject doing an action. Example: `재시도는 요청 성공의 보장이 아닙니다` → `재시도한다고 해서 요청이 반드시 성공하지는 않습니다`.
+1. **Calque of English structure:** back-translate every sentence into English. If it maps onto English word for word, it copies English structure; rewrite it as a Korean engineer would say it. Typical forms: noun chains glued with 의, `~의 보장이 아니다`, `~의 증거가 아니다`, `~를 통해`, `~에 대해`, 가지다 for "have", an inanimate subject doing an action, `X로` for "as X", and project terms coined from English used as if they were plain Korean. Examples: `재시도는 요청 성공의 보장이 아닙니다` → `재시도한다고 해서 요청이 반드시 성공하지는 않습니다`; `파일에 새로 쓴 부분에 있으면 Claude에게 검토 후보로 알려 줍니다` → `Claude가 파일을 쓸 때 새로 쓴 문단에 경고가 있으면 hook이 Claude에게 알려 다시 살펴보게 합니다`.
 2. **Predicate or collocation mismatch:** the verb does not fit its subject or object, or the phrase describes something that cannot happen. Example: `해요체로 설치하려면` (nothing is installed "in 해요체"; the answer register is chosen) → `답변 어투를 해요체로 바꾸려면`.
 3. **Literal English metaphors:** 배선 (wiring), 층 (layer), 자리 (slot), 뿌리 (root), 나르다 (carry), 돌다 (run), 삼키다 (swallow), 흐르다 (drift), 권위 (authority).
 4. **Transliterated on-screen terms:** write terms that appear in English on screen and have unstable Korean spellings in English, such as shell, hook and skill, not 셸, 쉘, 훅, 스킬. Established loanwords such as 파일, 디렉터리, 커밋, 테스트 are fine.
