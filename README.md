@@ -11,6 +11,19 @@
 기본 규칙에서는 산문에 쓴 middle dot, em-dash, en-dash, emoji, 한자, 일본어 가나, 전각 괄호도 막습니다.
 영어식 표현과 긴 문장은 막지 않고 경고만 합니다. 경고는 CLI로 검사할 때 보입니다. Claude가 파일을 쓸 때 새로 쓴 문단에 경고가 있으면 hook이 Claude에게 알려 줍니다.
 
+## 설치 전후
+
+아래는 같은 번역 요청을 이 도구가 없는 프로젝트와 설치한 프로젝트에서 보내서 받은 실제 답변입니다.
+
+![설치 전과 설치 후에 Claude Sonnet 5.5가 같은 번역 요청에 한 답변을 나란히 놓은 그림](docs/images/before-after.png)
+
+`test/fixtures/eval/calque.json`의 요청 6개를 두 프로젝트에서 각각 두 번씩 Claude Sonnet 5.5(low effort)에 보냈습니다. 설치한 프로젝트에서 Stop hook은 재작성을 요구하지 않았습니다. 그래서 설치 후 답변은 Claude가 처음 쓴 그대로이며, 작성 지침만으로 나온 결과입니다.
+이 저장소에서 아래 명령을 실행하면 같은 요청을 다시 보내 답변을 `.eval/latest/results.json`에 저장합니다. 이 명령은 유료 API를 호출합니다. 그림의 경고와 오류 수는 저장된 답변을 하나씩 `node scripts/check-korean.mjs --stdin`으로 검사해 센 것입니다.
+
+```bash
+npm run eval -- --run --cases test/fixtures/eval/calque.json --models claude-sonnet-5-5 --repeat 2 --with-hooks
+```
+
 ## 요구 사항
 
 - Node.js 20 이상(npm 포함)
