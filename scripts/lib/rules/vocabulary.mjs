@@ -34,7 +34,7 @@ export function vocabularyViolations(text, rules, target) {
       rules.loanwordSpelling,
       'loanword-spelling',
       (wrong, right) =>
-        `프로젝트 표기: ${JSON.stringify(wrong)} → ${JSON.stringify(right)}.`,
+        `프로젝트가 정한 외래어 표기와 다릅니다: ${JSON.stringify(wrong)} → ${JSON.stringify(right)}.`,
     ),
   );
 

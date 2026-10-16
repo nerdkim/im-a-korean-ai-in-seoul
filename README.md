@@ -13,19 +13,21 @@
 
 ## 설치 전후
 
-아래 그림은 같은 메모를 주고 PR 설명을 써 달라고 했을 때 Claude가 쓴 실제 답변입니다. 왼쪽은 이 도구가 없는 프로젝트에서, 오른쪽은 이 도구를 설치한 프로젝트에서 쓴 답변입니다.
+아래 그림은 "배포하고 나서 결제 API가 가끔 502를 내. 어디부터 보면 돼?"라고 물었을 때 Claude가 쓴 실제 답변입니다. 왼쪽은 이 도구가 없는 프로젝트에서, 오른쪽은 이 도구를 설치한 프로젝트에서 쓴 답변입니다.
 
-![같은 PR 설명 요청에 Claude가 설치 전과 설치 후에 쓴 답변을 나란히 놓고 달라진 점을 표시한 그림](docs/images/before-after.png)
+![같은 질문에 Claude가 설치 전과 설치 후에 쓴 답변을 나란히 놓고 달라진 점을 표시한 그림](docs/images/before-after.png)
 
-설치 전 답변에는 메모에 없는 테스트 목록과 끝에 덧붙인 설명, emoji, 해요체 어미가 들어갔습니다. 설치 후 답변은 메모에 있는 내용만 합니다체로 썼습니다. 설치한 프로젝트에서 Stop hook은 다시 쓰라고 요구하지 않았으므로 설치 후 답변은 작성 지침만으로 나온 결과입니다.
+설치 전 답변은 모든 문장을 해요체로 끝냈고, 마지막에 작업 디렉터리의 배포 설정이나 코드를 직접 열어 점검해 주겠다는 제안을 붙였습니다. 설치 후 답변은 합니다체로 썼고, 원인을 좁히는 데 필요한 정보만 물었습니다.
 
-요청은 `test/fixtures/eval/showcase.json`에 있고, Claude Sonnet 5.5(low effort)에 두 번씩 보냈습니다. 두 번 모두 같은 양상이었고 그림은 첫 번째 답변입니다. 이 저장소에서 아래 명령을 실행하면 같은 요청을 다시 보내 답변을 `.eval/latest/results.json`에 저장합니다. 이 명령은 유료 API를 호출합니다.
+같은 질문을 두 프로젝트에서 세 번씩 했습니다. 설치 전 답변은 어투가 매번 달랐습니다. 첫 번째는 합니다체에 `~하세요`를 섞었고, 두 번째는 반말로, 세 번째는 해요체로 썼습니다. 세 번 모두 파일을 직접 살펴보겠다고 제안했고, 첫 번째와 두 번째에는 가운뎃점도 있었습니다. 설치 후 답변은 세 번 모두 합니다체였고 이런 제안이나 가운뎃점이 없었습니다. 설치한 프로젝트에서 Stop hook이 한 번도 다시 쓰라고 요구하지 않았으므로 설치 후 답변은 작성 지침만으로 나온 결과입니다. 그림은 두 프로젝트의 세 번째 답변입니다.
+
+질문은 `test/fixtures/eval/showcase.json`에 있고, Claude Sonnet 5.5에 `low` effort로 보냈습니다. 이 저장소에서 아래 명령을 실행하면 같은 질문을 다시 보내 답변을 `.eval/latest/results.json`에 저장합니다. 이 명령은 유료 API를 호출합니다. 그림에 적은 검사기 결과는 저장된 답변을 `node scripts/check-korean.mjs --stdin`으로 검사해 얻었습니다.
 
 ```bash
-npm run eval -- --run --cases test/fixtures/eval/showcase.json --models claude-sonnet-5-5 --repeat 2 --individual --with-hooks
+npm run eval -- --run --cases test/fixtures/eval/showcase.json --models claude-sonnet-5-5 --repeat 3 --individual --with-hooks
 ```
 
-영어 문장을 한국어로 옮겨 달라는 요청 6개(`test/fixtures/eval/calque.json`)도 두 번씩 보내 비교했습니다. 설치 전 답변 12개에서는 영어식 표현 경고 4건과 어투 오류 2건이 나왔고, 설치 후 답변 12개에서는 한 건도 나오지 않았습니다.
+영어 문장을 한국어로 옮겨 달라는 요청 6개(`test/fixtures/eval/calque.json`)도 프로젝트마다 두 번씩 보내 비교했습니다. 설치 전 답변 12개에서는 영어식 표현 경고 4건과 어투 오류 2건이 나왔고, 설치 후 답변 12개에서는 한 건도 나오지 않았습니다.
 
 ## 요구 사항
 
@@ -138,7 +140,7 @@ node .korean-style/scripts/check-korean.mjs --explain translationese
 ```
 
 `--stdin`으로 표준 입력을 검사할 수 있고, `--target chat|doc|comment|commit`으로 글의 종류를 지정할 수 있습니다. 설치 스크립트의 `--target <경로>`와는 다른 옵션입니다.
-오류가 있으면 종료 코드 1, 사용법이 틀리면 2입니다. 경고만 있으면 0이며 `--strict`를 주면 1입니다.
+오류가 있으면 종료 코드는 1이고, 사용법이 틀리면 2입니다. 경고만 있으면 0이며 `--strict`를 주면 1입니다.
 검사기는 파일을 자동으로 고치지 않습니다. 기존 문서에 오류가 있어도 설치가 실패한 것은 아닙니다.
 
 ## 동작 원리
@@ -160,10 +162,10 @@ flowchart LR
 
 ### 작성 지침이 적용되는 방식
 
-Claude Code는 `outputStyle`로 고른 파일을 세션을 시작할 때 system prompt에 넣습니다. 그래서 모델은 답변할 때마다 파일을 다시 읽지 않고도 지침을 따릅니다.
+Claude Code는 세션을 시작할 때 `outputStyle`로 고른 파일을 system prompt에 넣습니다. 그래서 모델은 답변할 때마다 파일을 다시 읽지 않고도 지침을 따릅니다.
 지침의 frontmatter에 `keep-coding-instructions: true`가 있어서 Claude Code의 기본 코딩 지침도 함께 적용됩니다.
 설치 스크립트는 지침에서 `register:begin` 표시와 `register:end` 표시 사이를 고른 어투의 문구로 바꿉니다. 어투별 문구는 `skill/korean-style/register/`에 있습니다.
-어투는 `--register`로 고르고, 생략하면 기존 규칙의 어투를 씁니다. 처음 설치할 때 생략하면 다나까체입니다. `korean-style` skill에도 같은 문구를 넣습니다.
+어투는 `--register`로 고르고, 생략하면 기존 규칙의 어투를 씁니다. 처음 설치할 때 생략하면 다나까체입니다. 설치 스크립트는 `korean-style` skill에도 같은 문구를 넣습니다.
 
 ### 검사 순서
 
@@ -174,7 +176,7 @@ Claude Code는 `outputStyle`로 고른 파일을 세션을 시작할 때 system 
 2. **주석 추출:** 종류가 `comment`이면 확장자별 주석 문법(`//`, `/* */`, `#`, `--`, Python docstring)으로 주석만 남기고 문자열 리터럴은 지웁니다. 한글이 든 줄만 남긴 뒤 `doc`으로 검사합니다.
 3. **코드 제외:** fenced code block과 inline code를 같은 길이의 공백으로 바꿉니다. 줄 수가 그대로여서 보고하는 줄 번호가 원문과 일치합니다.
 4. **규칙 실행:** `scripts/lib/rules/`의 규칙 모듈 일곱 개를 차례로 실행해 위반을 모읍니다.
-5. **code block 검사:** code block 안쪽은 따로 꺼내 일부 규칙으로만 검사합니다. 금지 글자(emoji 제외)와 어투, 호칭, 표기(외래어, 음차, 팀 용어), 오타 규칙을 적용하고 차별 소지 용어와 수량 표현 뒤 복수 접미사도 봅니다. 규칙 설정 블록(`korean-style-rules`)은 제외합니다.
+5. **code block 검사:** code block 안쪽은 따로 꺼내 일부 규칙으로만 검사합니다. 금지 문자(emoji 제외)와 어투, 호칭, 표기(외래어, 음차, 팀 용어), 오타 규칙을 적용하고 수량 표현 뒤에 쓴 복수 접미사와 차별 소지가 있는 용어도 봅니다. 규칙 설정 블록(`korean-style-rules`)은 제외합니다.
 6. **등급 분류:** `advisory-rules`에 든 규칙의 위반은 경고로, 나머지는 오류로 분류합니다. hook은 오류만 막습니다.
 
 | 종류 | 대상 | 적용하는 규칙 |
@@ -249,7 +251,7 @@ Claude Code가 답변을 마치면 `stop.mjs`가 마지막 답변(`last_assistan
 
 설치 스크립트는 기본 규칙 문서에서 `register:` 줄의 값만 비우고 SHA-256 값을 구해 `.korean-style/defaults.sha256`에 적습니다.
 다시 설치할 때 현재 `rules.md`에서 같은 방식으로 구한 값이 저장된 값이나 새 기본 규칙에서 구한 값과 같으면 규칙을 고치지 않은 것으로 보고 새 기본값으로 바꿉니다.
-값이 다르면 직접 고친 규칙으로 보고 그대로 둡니다. 어투 줄은 비교에서 빼므로 `--register`로 어투만 바꾼 규칙은 고치지 않은 규칙으로 봅니다.
+값이 다르면 직접 고친 규칙으로 보고 그대로 둡니다. `register:` 줄은 비교에서 빼므로 `--register`로 어투만 바꾼 규칙은 고치지 않은 규칙으로 봅니다.
 `.claude/settings.json`에서는 명령에 `.korean-style/scripts/hooks/pretooluse.mjs`나 `.korean-style/scripts/hooks/stop.mjs`가 든 hook만 이 도구의 것으로 보고 교체합니다. 다른 hook 항목은 그대로 둡니다.
 
 ## 규칙 바꾸기
@@ -277,16 +279,16 @@ Git 없이 설치해도 Claude Code hook은 동작합니다. 나중에 `git init
 
 1. `.korean-style/`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`를 지웁니다.
 2. `.claude/settings.json`에서 명령에 `.korean-style/scripts/hooks/`가 들어간 hook 항목과 `"outputStyle": "korean-style"`을 지웁니다.
-3. `.gitignore`에서 `# korean-style`로 시작하는 줄과 이 도구가 추가한 다음 여섯 줄을 지웁니다: `.korean-style/*`, `!.korean-style/rules.md`, `!.korean-style/defaults.sha256`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`.
+3. `.gitignore`에서 `# korean-style`로 시작하는 줄과 이 도구가 추가한 여섯 줄(`.korean-style/*`, `!.korean-style/rules.md`, `!.korean-style/defaults.sha256`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`)을 지웁니다.
 4. `git rev-parse --git-path hooks/commit-msg`가 가리키는 파일에 `korean-style commit hook`이 들어 있는 줄이 있으면 그 파일을 지웁니다. 기존 hook에 검사기 호출을 직접 추가했다면 그 줄도 지웁니다.
 
 ## 문제 해결
 
 먼저 `node .korean-style/scripts/doctor.mjs`로 설치 상태를 확인합니다. 실패 항목이 있으면 종료 코드 1로 끝납니다.
 
-- **스타일이나 hook이 적용되지 않을 때:** `.claude/settings.local.json`의 `outputStyle`과 `disableAllHooks`를 확인합니다. worktree에서는 주 checkout의 로컬 설정도 확인합니다. 적용 순서는 Claude Code의 [설정 우선순위](https://code.claude.com/docs/en/settings#settings-precedence)를 따릅니다.
+- **스타일이나 hook이 적용되지 않을 때:** `.claude/settings.local.json`의 `outputStyle`과 `disableAllHooks`를 확인합니다. worktree에서는 main worktree의 로컬 설정도 확인합니다. 적용 순서는 Claude Code의 [설정 우선순위](https://code.claude.com/docs/en/settings#settings-precedence)를 따릅니다.
 - **조직 정책, 세션 옵션, 사용자 전역 설정을 확인할 때:** `doctor`는 프로젝트와 로컬 설정 파일만 읽습니다. Claude Code의 `/status`에서 실제 설정 출처를 확인합니다.
-- **주의 항목:** 다른 커밋 hook을 쓰거나 커밋해야 할 파일이 Git에서 제외되어 있으면 `doctor`가 주의 항목으로 표시합니다.
+- **주의 항목이 나올 때:** 다른 커밋 hook을 쓰거나 커밋해야 할 파일이 Git에서 제외되어 있으면 `doctor`가 주의 항목으로 표시합니다.
 - **설치가 멈출 때:** 손상된 설정 파일을 고치고, 같은 이름의 기존 파일이나 설치 경로의 symlink를 옮기거나 지운 뒤 다시 설치합니다.
 
 ## 다른 코딩 agent
@@ -303,13 +305,13 @@ output-style과 문체 검사 hook은 Claude Code에서만 동작합니다. Code
 ```sh
 npm run gate                    # 자체 검사, 회귀 테스트, 문체 검사
 npm run doctor                  # 이 저장소의 설정 확인
-npm run eval -- --run           # 실모델 비교, API 사용량 발생
+npm run eval -- --run           # 설치 전후 답변 비교, 유료 API 호출
 ```
 
-일반 테스트는 API를 호출하지 않습니다. 실모델 비교는 기본적으로 임시 프로젝트에서 `low` effort로 요청을 묶어 실행합니다.
+일반 테스트는 API를 호출하지 않습니다. 평가 스크립트는 기본적으로 임시 프로젝트에서 `low` effort로 요청을 묶어 보냅니다.
 `--individual`은 요청마다 새 세션을 쓰고 `--with-hooks`는 임시 프로젝트에 이 도구를 설치해 Stop hook의 동작까지 검증합니다.
-`--cases test/fixtures/eval/regression.json`처럼 입력을 고를 수 있습니다. `calque.json`은 한국어로 옮기면 영어식 표현이 나오기 쉬운 영어 문장을 모은 입력입니다. `showcase.json`은 위의 설치 전후 그림에 쓴 요청입니다. 평가 스크립트는 사례마다 `mustNot`에 적은 표현이 응답에 나오면 제약 위반으로 셉니다.
-응답 원본은 `.eval/latest/`에 저장하며 다시 실행할 때는 `--out .eval/run2`처럼 새 경로를 지정합니다.
+`--cases test/fixtures/eval/regression.json`처럼 입력을 고를 수 있습니다. `calque.json`은 한국어로 옮기면 영어식 표현이 나오기 쉬운 영어 문장을 모은 입력입니다. `showcase.json`은 위의 설치 전후 그림에 쓴 질문입니다. 평가 스크립트는 사례마다 `mustNot`에 적은 표현이 응답에 나오면 제약 위반으로 셉니다.
+응답 원본은 `.eval/latest/`에 저장됩니다. 다시 실행할 때는 `--out .eval/run2`처럼 새 경로를 지정합니다.
 [평가 입력](test/fixtures/eval/)만 Git에 두고 실행 결과는 커밋하지 않습니다.
 원문과 응답은 함께 놓고 검토합니다.
 

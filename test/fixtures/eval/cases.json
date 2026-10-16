@@ -26,7 +26,7 @@
       "CPU"
     ],
     "maxChars": 280,
-    "rubric": "CPU request와 배치 가능한 노드 자원을 설명한다. 실제 CPU 사용률 부족으로 단정하지 않는다.",
+    "rubric": "CPU request와 배치 가능한 노드 자원을 설명한다. 실제 CPU 사용률이 높아서 CPU가 부족하다고 단정하지 않는다.",
     "maxSentences": 3
   },
   {
@@ -37,7 +37,7 @@
       "경고"
     ],
     "maxChars": 120,
-    "rubric": "현재 시제와 수신 동작을 유지한다. 확인 완료나 이미 열린 파일이라는 사실을 추가하지 않는다."
+    "rubric": "서버가 요청을 받는다는 내용과 현재 시제를 유지한다. 확인을 마쳤다거나 파일이 이미 열려 있다는 사실을 추가하지 않는다."
   },
   {
     "id": "english",
@@ -52,7 +52,7 @@
       "GitHub Actions"
     ],
     "maxChars": 220,
-    "rubric": "기술 용어와 연결 관계를 유지한다. 영어 수를 줄이려고 뜻을 빼거나 문장을 억지로 쪼개지 않는다.",
+    "rubric": "기술 용어와 연결 관계를 유지한다. 영어 단어 수를 줄이려고 내용을 빼거나 문장을 억지로 쪼개지 않는다.",
     "sentences": 1
   },
   {
@@ -60,7 +60,7 @@
     "prompt": "다음 문장을 한국어로 번역해 주세요. 해설은 필요 없습니다: The lock prevents two workers from processing the same job at the same time. It does not guarantee that the job will succeed.",
     "must": [],
     "maxChars": 170,
-    "rubric": "동시 처리 방지와 성공 보장의 차이를 유지한다. 락이 성공을 보장한다고 바꾸지 않는다."
+    "rubric": "동시 처리를 막는 것과 성공을 보장하는 것을 구분한다. 락이 성공을 보장한다고 바꾸지 않는다."
   },
   {
     "id": "uncertainty",

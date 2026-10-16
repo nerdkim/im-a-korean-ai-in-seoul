@@ -43,7 +43,7 @@ test('경고는 보고하되 --strict를 줄 때만 실패한다', () => {
 
 test('회귀: --text 다음에 문장이 없으면 통과로 보고하지 않는다', () => {
   const r = run(['--text']);
-  assert.equal(r.status, 2, '사용법 오류이므로 2여야 합니다');
+  assert.equal(r.status, 2, '사용법 오류이므로 종료 코드가 2여야 합니다');
   assert.match(r.stderr, /문장이 필요합니다/);
   assert.doesNotMatch(r.stdout, /통과/, '빈 문장을 검사해 통과라고 말하면 안 됩니다');
 });
@@ -118,7 +118,7 @@ test('규칙 문서를 못 읽으면 --self-check가 통과로 끝나지 않는�
 });
 
 test('회귀: 규칙 문서를 못 읽으면 위반이 없어도 출력에 통과라고 쓰지 않는다', () => {
-  /* 실제로 있었던 결함을 재현합니다. 종료 코드는 1인데 출력에는 통과라고 적었습니다. */
+  /* 실제로 있었던 결함을 재현합니다. 종료 코드는 1이었는데 출력에는 통과라고 나왔습니다. */
   const text = run(['--text', CLEAN], { rules: missingRulesPath() });
   assert.match(text.stdout, /^위반 없음 \(chat\)$/m);
   assert.doesNotMatch(text.stdout, /^통과/m);

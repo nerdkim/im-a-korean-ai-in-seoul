@@ -24,7 +24,7 @@ test('회귀: 규칙 문서를 못 읽으면 문자 규칙이 남는다', () => 
   assert.ok(missing.reason.length > 0, '왜 못 읽었는지 적혀야 합니다');
   assert.ok(missing.bannedChar.length > 0, '문자 규칙은 남아야 합니다');
   const found = checkText('이것은 — 저것입니다. 항목 A·B 이며 완료했습니다 ✅', missing, 'chat');
-  assert.ok(found.length >= 3, `문자 위반 셋이 걸려야 하는데 ${found.length}건입니다`);
+  assert.ok(found.length >= 3, `문자 규칙 위반이 세 건 이상 나와야 하는데 ${found.length}건입니다`);
   assert.ok(formatViolations(found, missing).includes('규칙 설정을 찾지 못했습니다'), '보고에 규칙 문서를 못 읽었다는 경고가 있어야 합니다');
 });
 
@@ -53,7 +53,7 @@ test('회귀: 백틱으로 감싼 항목 사이의 쉼표는 절을 잇는 쉼�
   /* 실제로 있었던 결함을 재현합니다. */
   const r = rulesOf(['max-comma-per-sentence: 2', 'enumeration-word-max: 3']);
   const quoted = '`~적`은 `인`, `으로`, `이다`, `성` 가운데 하나가 따라옵니다.';
-  assert.equal(checkText(quoted, r, 'doc').length, 0, '백틱 나열은 통과해야 합니다');
+  assert.equal(checkText(quoted, r, 'doc').length, 0, '백틱으로 감싼 항목을 나열한 문장은 통과해야 합니다');
   const clauses = '오늘 배포를 마쳤고, 남은 것은 보고 하나이며, 확인이 필요하고, 일정은 내일입니다.';
   assert.deepEqual(names(checkText(clauses, r, 'doc')), ['comma-per-sentence'], '절을 잇는 쉼표는 걸려야 합니다');
 });
@@ -108,7 +108,7 @@ test('해요체에서 `아니다`를 다나까체로 보지 않는다', () => {
   assert.ok(checkText('그것은 사실입니다', r, 'doc').length > 0);
 });
 
-test('알 수 없는 어투 이름은 어미를 금지하지 않는다', () => {
+test('어투 이름을 알 수 없으면 어미를 금지하지 않는다', () => {
   /* 알 수 없는 이름 때문에 검사기가 멈추면 그때부터 어떤 규칙도 적용되지 않습니다. */
   const r = rulesOf(['register: 알수없는어투']);
   assert.equal(r.bannedRegisterEndings.length, 0);
@@ -131,7 +131,7 @@ test('경로가 없으면 주석을 뽑지 못하므로 검사하지 않는다',
   assert.equal(checkText('// 워크플로우', r, 'comment').length, 0);
 });
 
-test('모르는 확장자는 산문으로 읽지 않는다', () => {
+test('확장자를 모르는 파일은 산문으로 읽지 않는다', () => {
   assert.equal(commentSyntaxOf('a.unknown'), null);
   assert.equal(koreanCommentsOf('한국어 산문입니다.', 'a.unknown').trim(), '');
 });
@@ -185,7 +185,7 @@ test('fence 안에는 낱말 규칙을 적용하고 문장 규칙은 적용하�
   assert.equal(checkText(command, r, 'doc').length, 0);
 });
 
-test('규칙 블록은 fence 재검사에서 빠진다', () => {
+test('fence 안을 다시 검사할 때 규칙 블록은 빠진다', () => {
   /* 규칙 블록에는 금지할 낱말이 그대로 적혀 있습니다. */
   const r = rulesOf(['loanword-spelling: 워크플로우=워크플로']);
   const doc = ['문서입니다.', '```' + RULE_FENCE, 'loanword-spelling: 워크플로우=워크플로', '```'].join('\n');
@@ -228,7 +228,7 @@ test('목록 항목은 이어지는 줄까지 한 단위로 묶는다', () => {
   assert.equal(units.length, 2, `항목 둘이어야 하는데 ${units.length}개입니다`);
 });
 
-test('어절은 공백으로 센다', () => {
+test('어절은 공백으로 나눠 센다', () => {
   assert.equal(wordCount('한 줄 주석'), 3);
   assert.equal(wordCount('   '), 0);
 });
@@ -248,7 +248,7 @@ test('도구 입력의 산문을 필드 이름으로 찾는다', () => {
 });
 
 test('필드마다 따로 본다', () => {
-  /* 한국어 질문과 영어 선택지를 합쳐서 검사하면 통과하고 따로 검사하면 걸립니다. */
+  /* 한국어 질문과 영어 선택지를 합쳐서 검사하면 통과하지만 따로 검사하면 영어 선택지가 걸립니다. */
   const r = rulesOf([
     'chat-tool-fields: AskUserQuestion.question, AskUserQuestion.label',
     'korean-required-min-chars: 20',
@@ -280,7 +280,7 @@ test('회귀: 자모가 분리된(NFD) 한글도 완성형과 똑같이 검사�
   assert.deepEqual(names(decomposed), names(composed), '자모가 분리된(NFD) 글의 검사 결과가 완성형과 다르게 나왔습니다');
 });
 
-test('회귀: 자모가 분리된(NFD) 한글을 한국어가 없는 글로 판정하지 않는다', () => {
+test('회귀: 자모가 분리된(NFD) 한글을 한국어가 없는 글로 보지 않는다', () => {
   const r = rulesOf(['korean-required-min-chars: 20', 'register: 다나까체']);
   const decomposed = '이 문장은 한국어로 쓰였고 충분히 깁니다.'.normalize('NFD');
   assert.equal(names(checkText(decomposed, r, 'chat')).includes('korean-required'), false);
@@ -301,7 +301,7 @@ test('subagent 프롬프트의 영어식 표현과 이중피동을 잡는다', (
 });
 
 test('영어로 쓴 subagent 프롬프트는 거부하지 않는다', () => {
-  /* 이 케이스가 더 중요합니다. */
+  /* 규칙을 어긴 한국어 프롬프트를 막는 것보다 영어 프롬프트를 통과시키는 것이 더 중요합니다. */
   const r = rulesOf(['agent-tool-fields: Task.prompt', 'korean-required-min-chars: 20', 'register: 다나까체']);
   const input = { prompt: 'Read scripts/lib/text.mjs and report the sentence splitting contract in detail.' };
   assert.equal(checkToolCall('Task', input, r, 'doc').length, 0);
@@ -314,7 +314,7 @@ test('chat-tool-fields와 agent-tool-fields가 서로 섞이지 않는다', () =
   assert.equal(toolFieldTexts('Task', { prompt: '확인했습니다' }, r, 'agentToolFields').length, 1);
 });
 
-test('glob의 **는 경로 조각 0개와도 일치한다', () => {
+test('glob의 **는 경로 조각이 하나도 없어도 일치한다', () => {
   assert.ok(globToRegExp('docs/**/*.md').test('docs/a.md'));
   assert.ok(globToRegExp('docs/**/*.md').test('docs/x/y/a.md'));
   assert.ok(!globToRegExp('docs/*.md').test('docs/x/a.md'));
@@ -342,7 +342,7 @@ test('주석 줄과 빈 줄은 규칙이 아니다', () => {
   assert.deepEqual(r.bannedAddress, ['당신']);
 });
 
-test('오른쪽이 빈 매핑은 교정안을 만들어 내지 않는다', () => {
+test('오른쪽이 빈 매핑에는 교정안을 만들어 내지 않는다', () => {
   const r = rulesOf(['translationese-patterns: 를 통해']);
   assert.equal(r.translationesePatterns.get('를 통해'), '');
   const v = checkText('로그를 통해 확인했습니다.', r, 'doc');

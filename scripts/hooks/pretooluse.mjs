@@ -115,7 +115,7 @@ const shellQuote = (s) => (/^[\w./-]+$/.test(s) ? s : `'${s.replaceAll("'", "'\\
 export function formatReviewNotes(notes, where, checker = 'check-korean.mjs') {
   const shown = notes.slice(0, MAX_REVIEW_NOTES);
   const head =
-    `한국어 검사: 이번에 쓴 문단에서 경고 ${notes.length}건 (${where}). 쓰기는 막지 않았습니다. ` +
+    `한국어 검사: 이번에 ${where}에 쓴 문단에서 경고 ${notes.length}건이 나왔습니다. 쓰기는 막지 않았습니다. ` +
     '어색한 표현이면 고치고, 문맥에 맞으면 그대로 두십시오. 고쳤는지 그대로 두었는지는 답변에 적지 마십시오.';
   const body = shown.map((v) => `  [${v.rule}] ${v.line}줄: ${v.detail}`);
   const rest = notes.length > shown.length
@@ -257,7 +257,7 @@ function run() {
         `shell 명령으로 검사 대상 파일에 쓰려 했습니다: ${writes.join(', ')}\n\n` +
           'shell 명령이 무엇을 쓸지 이 hook이 미리 알 수 없으므로 그 내용의 문체를 검사하지 못합니다.\n' +
           'Write 또는 Edit 도구로 같은 일을 하십시오. 두 도구로 쓰는 내용은 쓰기 직전에 검사합니다.\n' +
-          `검사하지 않는 경로에는 shell 명령으로 써도 됩니다. 어떤 파일을 검사할지는 확장자와 규칙 문서(${RULES_DOC})의 경로 패턴으로 정합니다.`,
+          `검사하지 않는 경로에는 shell 명령으로 써도 됩니다. 어떤 파일을 검사할지는 확장자와 규칙 문서(${RULES_DOC})에 적힌 경로 패턴으로 정합니다.`,
       );
     }
     process.exit(0);

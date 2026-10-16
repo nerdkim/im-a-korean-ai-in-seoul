@@ -25,7 +25,7 @@ function runHook(script, input) {
     cwd: ROOT,
     env: { ...process.env, CLAUDE_PROJECT_DIR: ROOT },
   });
-  assert.equal(r.status, 0, `hook은 언제나 종료 코드 0으로 끝나야 합니다. 나온 값은 ${r.status}입니다`);
+  assert.equal(r.status, 0, `hook은 언제나 종료 코드 0으로 끝나야 합니다. 이번에는 ${r.status}입니다.`);
   const out = (r.stdout ?? '').trim();
   if (out.length === 0) return null;
   return JSON.parse(out);
@@ -81,7 +81,7 @@ test('회귀: 이번 turn의 답변을 모두 모은다', () => {
   const got = lastAssistantText(path);
   assert.ok(got.includes('첫 답변입니다'), '같은 turn의 앞선 답변도 모아야 합니다');
   assert.ok(got.includes('둘째 답변입니다'));
-  assert.ok(!got.includes('지난 turn'), '사용자 메시지를 넘어가지 않아야 합니다');
+  assert.ok(!got.includes('지난 turn'), '마지막 사용자 메시지보다 앞선 답변은 모으지 않아야 합니다');
   assert.ok(got.indexOf('첫 답변') < got.indexOf('둘째 답변'), '순서가 유지되어야 합니다');
 });
 
@@ -122,7 +122,7 @@ test('새로 쓴 문서에 영어식 표현으로 보이는 곳이 있으면 쓰
     tool_input: { file_path: join(ROOT, 'docs', '시험.md'), content: '로그를 통해 원인을 찾았습니다.' },
   });
   assert.ok(out !== null, 'Claude에게 알려야 합니다');
-  assert.equal(out.hookSpecificOutput.permissionDecision, undefined, '`allow`를 돌려주면 사용자 승인 절차를 건너뜁니다');
+  assert.equal(out.hookSpecificOutput.permissionDecision, undefined, '`allow`를 돌려주면 Claude Code가 사용자 승인 절차를 건너뜁니다');
   assert.match(out.hookSpecificOutput.additionalContext, /\[translationese\] 1줄: .*를 통해/);
 });
 
@@ -213,7 +213,7 @@ test('편집 조각에 주석 표시가 없어도 주석 안의 경고를 알린
   assert.deepEqual(rulesOf(before, after, 'comment', 'src/a.js'), ['translationese']);
 });
 
-test('문자열 리터럴만 바꾼 소스 편집은 경고를 알리지 않는다', () => {
+test('문자열 리터럴만 바꾼 소스 편집에는 경고를 알리지 않는다', () => {
   assert.deepEqual(rulesOf("// 주석입니다.\nconst a = '확인';\n", "// 주석입니다.\nconst a = '로그를 통해 확인';\n", 'comment', 'src/a.js'), []);
 });
 
@@ -291,7 +291,7 @@ test('subagent에게 주는 한국어 프롬프트가 규칙을 어기면 거부
 });
 
 test('영어로 쓴 subagent 프롬프트는 거부하지 않는다', () => {
-  /* 이 케이스가 더 중요합니다. */
+  /* 규칙을 어긴 한국어 프롬프트를 막는 것보다 영어 프롬프트를 통과시키는 것이 더 중요합니다. */
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Task',
     tool_input: { prompt: 'Read scripts/lib/text.mjs and report the sentence splitting contract in detail.' },
@@ -366,12 +366,12 @@ test('읽기만 하는 명령은 통과시킨다', () => {
 });
 
 test('회귀: shell이 확장할 부분이 남은 경로는 건너뛴다', () => {
-  /* 임시 디렉터리를 가리키는 변수가 든 경로를 hook이 프로젝트 안의 소스 파일로 판정한 적이 있습니다. */
+  /* 임시 디렉터리를 가리키는 변수가 든 경로를 hook이 프로젝트 안의 소스 파일로 본 적이 있습니다. */
   assert.ok(!bashDenied('cat > $SCRATCH/probe.mjs <<EOF\n내용\nEOF'));
   assert.ok(!bashDenied('echo x > ~/notes.md'));
 });
 
-test('heredoc 본문 안의 부등호를 방향 재지정으로 읽지 않는다', () => {
+test('heredoc 본문 안의 부등호를 redirection으로 읽지 않는다', () => {
   /* 본문에 Markdown 인용문이 들어 있는 경우입니다. */
   assert.ok(!bashDenied('cat > /tmp/a.txt <<EOF\n> docs/rules.md 를 보십시오\nEOF'));
 });
@@ -441,7 +441,7 @@ test('도구 결과를 새 사용자 요청으로 오인하지 않는다', () =>
   assert.equal(lastAssistantText(path), '먼저 살펴보겠습니다.\n\n확인했습니다.');
 });
 
-test('현재 Agent 도구에서도 오류를 검사한다', () => {
+test('Task 대신 지금 쓰는 Agent 도구에서도 오류를 검사한다', () => {
   const out = runHook('pretooluse.mjs', { tool_name: 'Agent', tool_input: { prompt: '결과가 보여집니다.' } });
   assert.match(out.hookSpecificOutput.permissionDecisionReason, /double-passive/);
 });
@@ -460,7 +460,7 @@ test('규칙을 지킨 답변에는 재작성을 요구하지 않는다', () => 
   assert.equal(runHook('stop.mjs', { transcript_path: path, stop_hook_active: false }), null);
 });
 
-test('이미 이어진 turn에는 재작성을 다시 요구하지 않는다', () => {
+test('Stop hook 때문에 이미 이어진 turn에는 재작성을 다시 요구하지 않는다', () => {
   /* 이 검사가 없으면 만족할 수 없는 규칙 하나 때문에 차단과 재작성이 끝없이 되풀이됩니다. */
   const path = transcriptWith('당신이 요청한 것입니다.');
   assert.equal(runHook('stop.mjs', { transcript_path: path, stop_hook_active: true }), null);

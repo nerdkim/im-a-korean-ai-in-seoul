@@ -1,4 +1,4 @@
-/* 영어식 표현입니다. */
+/* 영어식 표현을 찾는 규칙입니다. */
 import { lineOf } from '../text.mjs';
 
 /* `@latin:` 규칙에서 목적어로 인정하는 영어 낱말입니다. */
@@ -24,9 +24,7 @@ function alternation(left) {
 }
 
 function advise(right) {
-  return right.length > 0
-    ? ` ${JSON.stringify(right)}처럼 고칠 수도 있습니다. 문맥에 맞으면 그대로 두어도 됩니다.`
-    : ' 문맥에 맞으면 그대로 두어도 됩니다.';
+  return right.length > 0 ? ` ${JSON.stringify(right)}처럼 고칠 수도 있습니다.` : '';
 }
 
 export function translationeseViolations(text, rules) {
@@ -57,7 +55,7 @@ export function translationeseViolations(text, rules) {
       let m = null;
       for (const candidate of text.matchAll(re)) {
         if (exempt.has(candidate[1].toLowerCase())) continue;
-        /* 첫 낱말 뒤부터 동사까지 사이에 예외 낱말이 있으면 건너뜁니다. */
+        /* 첫 낱말과 동사 사이에 예외 낱말이 있으면 건너뜁니다. */
         if (exemptRe !== null && exemptRe.test(candidate[0].slice(candidate[1].length))) continue;
         m = candidate;
         break;

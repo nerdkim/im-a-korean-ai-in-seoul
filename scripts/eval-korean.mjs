@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* 실모델 비교입니다. 유료 API를 쓰므로 --run을 줄 때만 실행합니다. 도구와 skill은 끄고 hook은 --with-hooks를 줄 때만 켭니다. */
+/* 실제 모델의 답변을 비교하는 스크립트입니다. 유료 API를 쓰므로 --run을 줄 때만 실행합니다. Claude Code의 도구와 skill은 끄고 hook은 --with-hooks를 줄 때만 켭니다. */
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -53,7 +53,7 @@ function main() {
         !g.length || g.some(t => typeof t !== 'string')))) ||
       (c.mustNot !== undefined && (!Array.isArray(c.mustNot) || c.mustNot.some(t => typeof t !== 'string' || !t))) ||
       !Number.isFinite(c.maxChars)) ||
-      new Set(cases.map(c => c.id)).size !== cases.length) throw new Error('평가 입력의 형식이 올바르지 않습니다');
+      new Set(cases.map(c => c.id)).size !== cases.length) throw new Error('평가 입력 파일의 형식이 올바르지 않습니다');
   const individual = args.includes('--individual');
   const withHooks = args.includes('--with-hooks');
   const effort = value('--effort', 'low');
@@ -67,7 +67,7 @@ function main() {
   const repeat = Number(value('--repeat', '1'));
   if (!Number.isInteger(repeat) || repeat < 1 || repeat > 10) throw new Error('--repeat는 1부터 10까지의 정수여야 합니다');
   const out = resolve(value('--out', '.eval/latest'));
-  if (existsSync(join(out, 'results.json'))) throw new Error('결과가 이미 있습니다. --out으로 새 경로를 지정하십시오');
+  if (existsSync(join(out, 'results.json'))) throw new Error('결과가 이미 있습니다. --out으로 새 경로를 지정하십시오.');
   mkdirSync(out, { recursive: true });
   writeFileSync(join(out, 'cases.json'), JSON.stringify(cases, null, 2) + '\n');
   const batchPrompt = '각 요청에 독립적으로 답하세요. 결과만 <answer id="ID">답변</answer> 형식으로 출력하세요. 다른 설명은 붙이지 마세요.\n' + cases.map(c => `${c.id}: ${c.prompt}`).join('\n');

@@ -41,10 +41,13 @@ const OUTPUT_STYLE_DIR_POSIX = '.claude/output-styles';
 const OUTPUT_STYLE_NAME = 'korean-style';
 
 /* .gitignore에서 이 도구가 넣은 줄을 알아보는 표시입니다. */
-const GITIGNORE_MARKER = '# korean-style이 설치한 파일입니다. 직접 고치는 파일은 rules.md뿐입니다';
+const GITIGNORE_MARKER = '# korean-style이 설치한 파일입니다. 이 가운데 직접 고치는 파일은 rules.md뿐입니다.';
 
-/* 0.2.0까지 쓰던 표시입니다. 다시 설치하면 새 표시로 바꿉니다. */
-const OLD_GITIGNORE_MARKERS = ['# korean-style 설치 산출물입니다. rules.md만 이 프로젝트의 것입니다'];
+/* 0.2.1까지 쓰던 표시입니다. 다시 설치하면 새 표시로 바꿉니다. */
+const OLD_GITIGNORE_MARKERS = [
+  '# korean-style 설치 산출물입니다. rules.md만 이 프로젝트의 것입니다',
+  '# korean-style이 설치한 파일입니다. 직접 고치는 파일은 rules.md뿐입니다',
+];
 
 /* 설치할 저장소의 .gitignore에 더할 줄입니다. */
 export const GITIGNORE_LINES = [
@@ -146,9 +149,9 @@ function selfCheck() {
   };
 
   report(mergeHookSettings({}).added.length === 2, '빈 설정에 hook 둘을 더한다');
-  report(mergeHookSettings(null).added.length === 2, '설정 파일이 없어도 더한다');
+  report(mergeHookSettings(null).added.length === 2, '설정 파일이 없어도 hook 둘을 더한다');
 
-  /* 두 번 합쳐도 하나여야 합니다. */
+  /* 두 번 합쳐도 항목은 하나여야 합니다. */
   const once = mergeHookSettings({}).settings;
   const twice = mergeHookSettings(once);
   report(twice.added.length === 0 && twice.settings.hooks.PreToolUse.length === 1, '두 번 설치해도 항목이 하나다');
@@ -167,7 +170,7 @@ function selfCheck() {
 
   /* 어투를 바꿀 때 `register:` 줄만 바뀌는지 확인합니다. */
   const swapped = 'register: 다나까체\nbanned-address: 당신\n'.replace(RULES_REGISTER_LINE, 'register: 해요체');
-  report(swapped === 'register: 해요체\nbanned-address: 당신\n', '어투 줄만 바꾼다');
+  report(swapped === 'register: 해요체\nbanned-address: 당신\n', '어투를 바꾸면 register 줄만 바뀐다');
 
   /* 어투 조각이 register 표시 사이에만 들어가는지 확인합니다. */
   const body = '# 제목\n<!-- register:begin -->\n옛 조각입니다.\n<!-- register:end -->\n남은 산문입니다.\n';
@@ -180,7 +183,7 @@ function selfCheck() {
   /* 달러 기호가 치환 패턴으로 읽히면 파일에 쓰는 내용이 달라집니다. */
   report(skillWithRegister(body, '값은 $1 입니다.').includes('$1'), '조각의 달러 기호를 치환 패턴으로 읽지 않는다');
 
-  /* 어투 이름 셋마다 조각 파일이 있어야 합니다. */
+  /* 어투 이름 세 개에 모두 조각 파일이 있어야 합니다. */
   report(
     Object.keys(REGISTER_FRAGMENTS).length === 3 &&
       Object.values(REGISTER_FRAGMENTS).every((name) => existsSync(join(SOURCE_ROOT, 'skill', 'korean-style', 'register', name))),
@@ -205,12 +208,14 @@ function selfCheck() {
   /* 이 도구의 경로가 이미 적힌 파일은 손대지 않습니다. */
   report(mergeGitignore(`${INSTALLED_DIR}/\n`).added === false, '이 도구의 경로가 이미 적힌 gitignore는 손대지 않는다');
 
-  /* 예전 표시는 새 표시로 바꾸고, 표시 줄은 하나만 남아야 합니다. */
-  const legacy = mergeGitignore(`${OLD_GITIGNORE_MARKERS[0]}\n${INSTALLED_DIR}/*\n`);
-  report(
-    legacy.added && legacy.text.split('\n').filter((line) => line.startsWith('# korean-style')).length === 1 && legacy.text.includes(GITIGNORE_MARKER),
-    '예전 표시 줄을 새 문구로 바꾼다',
-  );
+  /* 예전 버전의 주석은 새 주석으로 바뀌어야 하고, 이 도구의 주석 줄은 하나만 남아야 합니다. */
+  for (const old of OLD_GITIGNORE_MARKERS) {
+    const legacy = mergeGitignore(`${old}\n${INSTALLED_DIR}/*\n`);
+    report(
+      legacy.added && legacy.text.split('\n').filter((line) => line.startsWith('# korean-style')).length === 1 && legacy.text.includes(GITIGNORE_MARKER),
+      `예전 버전의 주석을 새 문구로 바꾼다: ${old}`,
+    );
+  }
 
   process.stdout.write(failed === 0 ? '자체 검사 통과\n' : `자체 검사 실패: ${failed}건\n`);
   return failed === 0;
@@ -252,13 +257,13 @@ function main() {
   const hashTarget = join(installDir, 'defaults.sha256');
   const before = existsSync(rulesTarget) ? readFileSync(rulesTarget, 'utf8') : null;
   const register = args.register ?? before?.match(RULES_REGISTER_LINE)?.[0].split(':')[1].trim() ?? '다나까체';
-  if (!Object.hasOwn(REGISTER_FRAGMENTS, register)) throw new Error(`알 수 없는 어투: ${register}`);
+  if (!Object.hasOwn(REGISTER_FRAGMENTS, register)) throw new Error(`알 수 없는 어투입니다: ${register}`);
   const defaults = readFileSync(join(SOURCE_ROOT, 'docs/rules.md'), 'utf8').replace(RULES_REGISTER_LINE, `register: ${register}`);
   const baseHash = existsSync(hashTarget) ? readFileSync(hashTarget, 'utf8').trim() : null;
   const refresh = !before || args.force || hashRules(before) === baseHash || hashRules(before) === hashRules(defaults);
   let rules = refresh ? defaults : before;
   if (args.register) {
-    if (!RULES_REGISTER_LINE.test(rules)) throw new Error('기존 규칙에 register 줄이 없습니다. 규칙을 복구하거나 --force를 사용합니다.');
+    if (!RULES_REGISTER_LINE.test(rules)) throw new Error('기존 규칙에 register 줄이 없습니다. 규칙을 복구하거나 --force를 사용해야 합니다.');
     rules = rules.replace(RULES_REGISTER_LINE, `register: ${register}`);
   }
   const backup = args.force && before && before !== rules
@@ -282,9 +287,9 @@ function main() {
   }
   // 로컬 설정은 진단만 합니다. 다른 worktree의 settings.local.json도 바꾸지 않습니다.
   console.log(`설치할 프로젝트: ${root}\n규칙: ${refresh ? '최신 기본값 적용' : '프로젝트의 기존 규칙 유지'} (${register})`);
-  if (!refresh) console.log('새 기본 규칙이 필요하면 --force로 재설치합니다. 이때 설치 스크립트가 기존 규칙을 백업합니다.');
+  if (!refresh) console.log('새 기본 규칙이 필요하면 --force로 재설치해야 합니다. 이때 설치 스크립트가 기존 규칙을 백업합니다.');
   if (backup) console.log(`규칙 백업: ${backup}`);
-  if (style.settings.outputStyle !== OUTPUT_STYLE_NAME) console.log('기존 output-style을 유지합니다. 작성 지침을 선택하려면 --activate를 사용합니다.');
+  if (style.settings.outputStyle !== OUTPUT_STYLE_NAME) console.log('기존 output-style을 유지합니다. 작성 지침을 선택하려면 --activate를 사용해야 합니다.');
   const effective = Object.assign({}, style.settings, ...local.map(x => x.settings));
   if (effective.disableAllHooks) console.log('주의: disableAllHooks가 켜져 있습니다. 해당 설정을 해제해야 hook이 실행됩니다.');
   if (effective.outputStyle !== style.settings.outputStyle) console.log('주의: settings.local.json의 outputStyle이 프로젝트 설정보다 우선합니다.');

@@ -1,4 +1,4 @@
-/* 낱말을 잡는 대신 습관을 세는 규칙입니다. */
+/* 낱말을 잡는 대신 습관처럼 쓰는 표현이 몇 번 나오는지 세는 규칙입니다. */
 import { hangulLength, isKoreanProse, lineOf, overDensity, proseLength, sentencesOf, unitsOf } from '../text.mjs';
 
 /* 조사나 경동사가 붙은 영어 낱말입니다. */
@@ -12,7 +12,7 @@ const BOUND_ENGLISH = new RegExp(
   'gu',
 );
 
-/* `한글(English)` 모양의 괄호 설명입니다. */
+/* `한글(English)`처럼 괄호 안에 영어를 덧붙인 설명입니다. */
 const PARENTHETICAL_GLOSS = /[가-힣]\s?\(([A-Za-z][A-Za-z0-9 ._-]{1,40})\)/gu;
 
 /* 설명이 아니라 인용인 괄호입니다. */
@@ -45,7 +45,7 @@ export function densityViolations(text, rules) {
       if (words.length <= rules.maxBoundEnglishPerSentence) continue;
       out.push({
         rule: 'bound-english',
-        detail: `한국어 문장 하나에 조사나 경동사가 붙은 서로 다른 영어 낱말이 ${words.length}개입니다(한도 ${rules.maxBoundEnglishPerSentence}개): ${words
+        detail: `한국어 문장 하나에 조사나 경동사가 붙은 서로 다른 영어 낱말이 ${words.length}개로 기준 ${rules.maxBoundEnglishPerSentence}개보다 많습니다: ${words
           .slice(0, 6)
           .map((w) => JSON.stringify(w))
           .join(', ')}. 문장을 나누십시오. 용어를 한국어로 바꾸지는 마십시오.`,
@@ -79,7 +79,7 @@ export function densityViolations(text, rules) {
       if (hits.length <= rules.maxBoldPerUnit) continue;
       out.push({
         rule: 'bold-density',
-        detail: `문단 또는 항목의 강조 ${hits.length}개, 기준 ${rules.maxBoldPerUnit}개입니다.`,
+        detail: `문단이나 항목 하나에 굵은 글씨가 ${hits.length}개로 기준 ${rules.maxBoldPerUnit}개보다 많습니다.`,
         line: unit.line,
       });
     }
@@ -95,7 +95,7 @@ export function densityViolations(text, rules) {
     if (density === null) continue;
     out.push({
       rule: 'contrast-density',
-      detail: `대조 표현 ${hits.length}회, 1000자당 ${density.toFixed(2)}회입니다.`,
+      detail: `대조 표현을 ${hits.length}회 썼습니다. 1000자당 ${density.toFixed(2)}회입니다.`,
       line: lineOf(text, hits[hits.length - 1].index),
     });
   }

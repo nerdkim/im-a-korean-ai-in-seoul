@@ -1,10 +1,10 @@
-/* 어투와 존대입니다. */
+/* 어투와 존대를 검사하는 규칙입니다. */
 import { findAllEndings, HANGUL_SYLLABLE, lineOf, stripQuoted } from '../text.mjs';
 
 /* 어투별로 대신 쓸 표현입니다. */
 const REGISTER_ADVICE = {
   다나까체:
-    '사람에게 요청할 때는 `~해 주시기 바랍니다`나 `~해 주십시오`를, 행위 명사 뒤에는 `~ 부탁드립니다`를 쓰십시오. 서술은 `~습니다`, 의문은 `~합니까`나 `~할까요`로 끝냅니다.',
+    '사람에게 요청할 때는 `~해 주시기 바랍니다`나 `~해 주십시오`를, 행위 명사 뒤에는 `~ 부탁드립니다`를 쓰십시오. 서술은 `~습니다`로, 의문은 `~합니까`나 `~할까요`로 끝냅니다.',
   해요체:
     '서술과 의문을 `~해요`, `~예요`, `~할까요`로 맞추십시오. 요청은 `~해 주시면 좋겠어요`나 `~ 부탁드려요`로 씁니다.',
   혼용: '문서 하나 안에서는 서술 어투를 하나로 맞추십시오.',
@@ -28,7 +28,7 @@ export function registerViolations(text, rules, target, inFence = false) {
   /* 아래 1)부터 4)까지는 따옴표 안을 보지 않습니다. */
   const written = stripQuoted(text);
 
-  /* 1) 어투. 모든 종류에 걸립니다. */
+  /* 1) 어투입니다. 모든 종류에 걸립니다. */
   const reported = new Set();
   for (const ending of rules.bannedRegisterEndings) {
     const hits = findAllEndings(written, ending, exemptWords(rules));
@@ -41,7 +41,7 @@ export function registerViolations(text, rules, target, inFence = false) {
     });
   }
 
-  /* 2) 사람에게 내리는 명령. 사람이 직접 읽는 종류에만 걸립니다. */
+  /* 2) 사람에게 내리는 명령입니다. 사람이 직접 읽는 종류에만 걸립니다. */
   if (human) {
     for (const ending of rules.imperativeEndings) {
       const hits = findAllEndings(written, ending, exemptWords(rules)).filter(
@@ -63,7 +63,7 @@ export function registerViolations(text, rules, target, inFence = false) {
       if (idx === -1) continue;
       out.push({
         rule: 'banned-address',
-        detail: `금지한 호칭으로 읽는 사람을 불렀습니다: ${JSON.stringify(word)}. 상대가 알려 준 호칭을 쓰거나 주어를 생략하십시오. 한국어는 주어를 생략해도 문장이 어색해지지 않습니다.`,
+        detail: `읽는 사람을 금지한 호칭으로 불렀습니다: ${JSON.stringify(word)}. 상대가 알려 준 호칭을 쓰거나 주어를 생략하십시오. 한국어는 주어를 생략해도 문장이 어색해지지 않습니다.`,
         line: lineOf(text, idx),
       });
     }
@@ -88,7 +88,7 @@ export function registerViolations(text, rules, target, inFence = false) {
     if (prose.length >= rules.koreanRequiredMinChars && !HANGUL_SYLLABLE.test(text)) {
       out.push({
         rule: 'korean-required',
-        detail: `한글이 하나도 없는 긴 글입니다 (코드 밖 ${prose.length}글자). 설명이 길수록 영어로 넘어가기 쉽습니다. 읽는 사람이 한국어를 요청했다면 한국어로 다시 쓰십시오.`,
+        detail: `코드 밖에 쓴 글이 ${prose.length}글자나 되는데 한글이 하나도 없습니다. 설명이 길수록 영어로 넘어가기 쉽습니다. 읽는 사람이 한국어를 요청했다면 한국어로 다시 쓰십시오.`,
         line: 1,
       });
     }

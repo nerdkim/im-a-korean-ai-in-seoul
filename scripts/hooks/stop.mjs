@@ -89,7 +89,7 @@ function run() {
   block(
     `내용은 그대로 두고 아래 표현을 고쳐 답변을 한 번 다시 작성하십시오. 무엇을 고쳤는지는 설명하지 마십시오.\n` +
     violations.slice(0, 3).map(v => `[${v.rule}] ${v.line}줄: ${v.detail}`).join('\n') +
-    `\n규칙: ${RULES_DOC} (설명: check-korean.mjs --explain <규칙 이름>)`,
+    `\n규칙: ${RULES_DOC}\n규칙 설명은 check-korean.mjs --explain <규칙 이름>으로 볼 수 있습니다.`,
   );
 }
 

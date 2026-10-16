@@ -1,7 +1,7 @@
 # 검사 규칙
 
-이 문서의 `korean-style-rules` 블록이 검사기의 설정 원본입니다.
-작성 지침은 이 저장소의 `output-styles/korean-style.md`에 있고, 설치한 프로젝트에서는 `.claude/output-styles/korean-style.md`에 있습니다.
+검사기는 이 문서의 `korean-style-rules` 블록에서 설정을 읽습니다.
+작성 지침은 이 도구 저장소의 `output-styles/korean-style.md`에 있고, 설치한 프로젝트에서는 `.claude/output-styles/korean-style.md`에 있습니다.
 지침은 세션을 시작할 때 system prompt에 들어가고, hook은 실행될 때마다 이 문서를 새로 읽습니다. 그래서 모델이 두 파일을 직접 읽을 필요는 없습니다.
 
 ## 오류와 경고
@@ -10,10 +10,10 @@
 - 기본 규칙에서는 산문에 쓴 middle dot(U+00B7), em-dash(U+2014) 등 `banned-char`에 든 문자를 오류로 막습니다. 나열은 쉼표나 조사로 잇고 부연은 괄호나 별도 문장으로 씁니다.
 - `advisory-rules`에 든 규칙에 걸리면 경고로만 보고합니다. CLI는 경고를 보여 주고, hook은 경고 때문에 쓰기를 막거나 재작성을 요구하지 않습니다.
 - `review-rules`에 든 규칙의 경고는 PreToolUse hook이 쓰기를 막지 않고 Claude에게 알립니다. 이번에 바꾼 문단에서 새로 생긴 경고만 알리며, 알림에는 어색하면 고치고 문맥에 맞으면 그대로 두라는 안내가 붙습니다.
-- CLI는 오류가 있으면 1, 사용법이 틀리면 2를 반환합니다. 경고만 있으면 0이며 `--strict`에서는 1입니다.
+- CLI는 오류가 있으면 1, 사용법이 틀리면 2를 반환합니다. 경고만 있으면 0이며 `--strict`를 붙이면 1입니다.
 - CLI는 규칙을 읽지 못하면 실패합니다. hook은 규칙을 읽지 못해도 멈추지 않습니다. 이때 검사하는 것은 금지 문자, 금지 호칭, 영어로만 쓴 답변뿐입니다. 규칙을 읽지 못하는 문제는 `doctor`와 `gate`로 확인합니다.
 
-## 일부 규칙을 경고로 바꾸고 영어 제한을 푼 근거
+## 일부 규칙을 경고로 바꾸고 영어 용어 수 제한을 푼 근거
 
 교정은 원문의 의미를 보존해야 합니다. 검사 규칙은 자연스러운 표현을 바꾸거나 원문에 없는 사실을 덧붙이도록 강제하지 않습니다.
 
@@ -29,9 +29,9 @@
 
 ## 설정
 
-목록 항목은 쉼표로 구분하고, 치환 후보는 `원문=후보` 형식으로 씁니다. 목록 키와 치환 후보 키는 여러 줄에 나눠 쓸 수 있습니다.
+목록 항목은 쉼표로 구분하고, 치환 후보는 `원문=후보` 형식으로 씁니다. 목록 키와 치환 후보 키는 줄마다 키를 다시 적어 여러 줄에 나눠 쓸 수 있습니다.
 `max-`로 시작하는 한도 값과 `korean-required-min-chars`는 0으로 두면 그 검사가 꺼집니다. `max-contrast-per-1k`는 `ko=0`처럼 언어별 값을 0으로 두면 그 언어의 검사가 꺼집니다. `register`는 `다나까체`, `해요체`, `혼용` 중 하나입니다.
-직역 동사의 활용형은 `|`로 나열하고 영어 목적어 조건은 `@latin:`으로 표시합니다.
+직역 동사의 활용형은 `|`로 나열하고, 목적어가 영어 낱말일 때만 잡으려면 항목 앞에 `@latin:`을 붙입니다.
 
 ```korean-style-rules
 advisory-rules: translationese, literal-verb, comma-per-sentence, comma-segment-length, comma-after-conjunctive-adverb, comma-after-connective, sentence-too-long, nominalization, demonstrative-density, suffix-jeok-density, particle-ui-density, redundant-plural, bound-english, repeated-gloss, bold-density, contrast-density, inclusive-term, hybrid-negation, korean-required
@@ -115,15 +115,15 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | `nominalization-endings`  | 용언을 명사로 바꾸는 어미입니다. |
 | `max-nominalization-per-1k`  | 산문 문장이 명사형으로 끝나는 빈도의 한도입니다. |
 | `demonstratives`  | 지시 표현입니다. |
-| `max-demonstrative-per-1k`  | 위 목록의 빈도 한도입니다. |
+| `max-demonstrative-per-1k`  | 지시 표현의 빈도 한도입니다. |
 | `max-suffix-jeok-per-1k`  | 접미사 `~적`의 빈도 한도입니다. |
 | `max-particle-ui-per-1k`  | 관형격 조사 `~의`의 빈도 한도입니다. |
 | `plural-quantifiers`  | 뒤따르는 명사에 `~들`을 붙이면 안 되는 수량 표현입니다. |
-| `density-rule-floor`  | 밀도 규칙을 적용하는 최소 횟수입니다. |
+| `density-rule-floor`  | 밀도 규칙을 적용하려면 표현이 나와야 하는 최소 횟수입니다. |
 | `density-margin`  | 밀도 규칙이 한도에 더하는 여유입니다. |
 | `translationese-patterns`  | 영어식 구절과 대신 쓸 표현입니다. |
 | `literal-verbs`  | 영어 동사를 직역한 동사입니다. |
-| `literal-verb-exempt`  | 직역 동사 규칙이 건드리지 않을 영어 목적어입니다. |
+| `literal-verb-exempt`  | 직역 동사 규칙에서 예외로 두는 영어 목적어입니다. |
 | `loanword-spelling`  | 틀린 외래어 표기와 규범 표기입니다. |
 | `inclusive-terms`  | 차별 소지가 있는 용어와 대체 용어입니다. |
 | `banned-transliteration`  | 한글 음차와 대신 쓸 영어입니다. |
@@ -182,4 +182,4 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 
 규칙 값과 설명을 함께 고치고, 잡아야 할 문장과 잡으면 안 되는 문장을 함께 확인합니다.
 이 도구 저장소에서는 두 종류의 문장을 테스트에 넣고 `npm run gate`로 확인합니다. 설치한 프로젝트에서는 `check-korean.mjs --text`로 확인합니다.
-작성 지침을 바꾸면 같은 입력으로 실모델 응답도 비교합니다.
+작성 지침을 바꾸면 같은 입력을 실제 모델에 보내 답변도 비교합니다.

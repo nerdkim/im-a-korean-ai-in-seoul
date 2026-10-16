@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* 한국어 문체 검사기의 명령줄 진입점입니다. */
+/* 명령줄에서 한국어 문체 검사기를 실행하는 스크립트입니다. */
 import { readFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { isEntryPoint, projectRoot, rulesDocLabel, rulesDocPath, toolRoot } from './lib/paths.mjs';
@@ -17,7 +17,7 @@ export function rules() {
   return loadRules(rulesDocPath(PROJECT_ROOT));
 }
 
-/* 밀도 여유를 확인하는 케이스에서 글 길이를 늘리려고 끼워 넣는 문장입니다. */
+/* 밀도 한도에 더하는 여유를 확인하는 케이스에서 글 길이를 늘리려고 끼워 넣는 문장입니다. */
 const FILLER = '상태를 다시 확인했습니다. ';
 
 /* 연결어미 뒤 쉼표가 네 번 나오는 글을 만듭니다. */
@@ -31,11 +31,11 @@ export const SELF_CHECK_CASES = [
 
   ['위반이 없는 한국어 답변', '작업을 마쳤습니다. 결과를 정리해 드리겠습니다.', false, 'chat'],
   ['해요체가 섞였다', '확인했어요. 곧 알려 드릴게요.', true, 'chat'],
-  ['요청형 명령', '값을 직접 입력해 주세요.', true, 'chat'],
+  ['해요체로 쓴 요청은 위반', '값을 직접 입력해 주세요.', true, 'chat'],
   ['같은 요청을 맞는 어투로 쓰면 통과', '값을 직접 입력해 주시기 바랍니다.', false, 'chat'],
   ['굳어진 인사말은 예외', '안녕하세요. 확인해 보겠습니다.', false, 'chat'],
-  /* 맨 명령형과 요청형을 가르는 두 케이스입니다. */
-  ['맨 명령형은 위반', '결과를 확인하십시오.', true, 'chat'],
+  /* 명령형과 요청형을 가르는 두 케이스입니다. */
+  ['`주다` 없는 명령형은 위반', '결과를 확인하십시오.', true, 'chat'],
   ['`주다`가 붙은 요청형은 통과', '값을 입력해 주십시오.', false, 'chat'],
   ['제안형은 통과', '스크린샷을 더 찍으실 수 있습니다.', false, 'chat'],
   ['의문형은 통과', '지금 배포해 드릴까요?', false, 'chat'],
@@ -71,8 +71,8 @@ export const SELF_CHECK_CASES = [
   ],
   ['나열의 쉼표는 통과', '수집 대상은 감사 로그, 설정 이력, 보안 알림, 접근 기록 넷입니다.', false, 'doc'],
   /* 같은 어미가 되풀이되면 나열입니다. */
-  ['같은 어미로 이은 병렬 절 나열은 통과', '상태를 되돌리고, 표시를 찍고, 기록을 남기고, 다음 요청을 기다립니다.', false, 'doc'],
-  /* 항목이 네 어절인 나열입니다. */
+  ['같은 어미로 절을 나란히 이으면 통과', '상태를 되돌리고, 표시를 찍고, 기록을 남기고, 다음 요청을 기다립니다.', false, 'doc'],
+  /* 가장 긴 항목이 네 어절인 나열입니다. */
   [
     '항목이 긴 나열도 통과',
     '잡는 것은 굵기 남용, 같은 용어 반복 설명, 대조 구문 남용, 몰린 영어 낱말입니다.',
@@ -105,7 +105,7 @@ export const SELF_CHECK_CASES = [
   /* 백틱 구간을 가리면 접속부사와 쉼표 사이에 공백이 생깁니다. */
   ['백틱 구간을 가린 탓에 접속부사 뒤에 쉼표가 온 것처럼 보여도 통과', '그래서 `가`, `나` 두 낱말을 지웠습니다.', false, 'doc'],
 
-  /* --- 한국어 산문 문장으로 볼 범위 ---  세 규칙은 검사하기 전에 한국어 산문 문장인지부터 따집니다. */
+  /* --- 한국어 산문 문장으로 볼 범위 ---  `comma-per-sentence`, `comma-segment-length`, `sentence-too-long` 세 규칙은 검사하기 전에 한국어 산문 문장인지부터 따집니다. */
   [
     '영어 문장은 한국어 쉼표 규칙으로 재지 않는다',
     'The scheduler stores the rendered plan document in the durable queue, and then waits for approval.',
@@ -125,7 +125,7 @@ export const SELF_CHECK_CASES = [
     'doc',
   ],
   [
-    '이어진 문장은 그대로 잡힌다',
+    '길게 이어 쓴 문장은 그대로 잡힌다',
     '어제 오후에 확인한 배포 기록과 실행 로그와 승인 이력을 모두 다시 읽었지만 원인을 아직 확정하지 못했고 오늘 다시 같은 자리를 열어 세 가지를 차례로 비교해 보려고 하며 그래도 남는 것이 있으면 어제 손으로 만들어 둔 재현 절차를 처음부터 끝까지 다시 밟아 볼 생각입니다.',
     true,
     'doc',
@@ -138,13 +138,13 @@ export const SELF_CHECK_CASES = [
     false,
     'doc',
   ],
-  ['따옴표 안은 인용이고 쓴 말이 아니다', '사용자가 "값을 직접 입력해 주세요"라고 하셨습니다.', false, 'chat'],
+  ['따옴표 안은 인용이고 직접 쓴 말이 아니다', '사용자가 "값을 직접 입력해 주세요"라고 하셨습니다.', false, 'chat'],
 
-  /* --- 밀도 여유 ---  두 케이스 모두 연결어미 뒤 쉼표가 네 번 나옵니다. */
+  /* --- 밀도 한도에 더하는 여유 ---  두 케이스 모두 연결어미 뒤 쉼표가 네 번 나옵니다. */
   ['짧은 글에서는 적은 횟수도 잡는다', connectiveCommas(3), true, 'doc'],
   ['긴 글에서는 똑같이 네 번 나와도 위반으로 보지 않는다', connectiveCommas(12), false, 'doc'],
 
-  /* 대조 구문 밀도입니다. `뿐만 아니라`처럼 내용을 덧붙이는 표현은 세지 않습니다. */
+  /* 대조 구문 밀도를 보는 케이스입니다. `뿐만 아니라`처럼 내용을 덧붙이는 표현은 세지 않습니다. */
   [
     '대조 구문이 몰린 글',
     '원인은 코드가 아니라 설정입니다. 고칠 곳은 서버가 아니라 클라이언트입니다. 필요한 것은 재시작이 아니라 롤백입니다. 문제는 속도가 아니라 정확도입니다.',
@@ -158,7 +158,7 @@ export const SELF_CHECK_CASES = [
     'doc',
   ],
 
-  ['같은 용어를 괄호로 두 번 설명', '요청(request)을 받았습니다. 요청(request)을 다시 적었습니다.', true, 'doc'],
+  ['같은 용어를 괄호로 두 번 설명한 글', '요청(request)을 받았습니다. 요청(request)을 다시 적었습니다.', true, 'doc'],
   ['식별자를 담은 괄호는 설명이 아니다', '결과(exit_code)는 1입니다. 결과(exit_code)는 로그에도 남습니다.', false, 'doc'],
 
   ['이중피동 보여집니다', '결과가 화면에 보여집니다.', true, 'doc'],
@@ -215,25 +215,25 @@ export const SELF_CHECK_CASES = [
   /* 검토했지만 넣지 않은 후보입니다. */
   ['앞으로의는 통과', '앞으로의 메시지에만 적용됩니다.', false, 'doc'],
   ['영어 목적어에 붙인 직역 동사', 'Agent를 VPC에 세우거나 내부 LB를 앞단에 둡니다.', true, 'doc'],
-  ['영어 목적어에 붙인 직역 동사, 활용형', 'Agent를 VPC에 세웁니다.', true, 'doc'],
+  ['영어 목적어에 붙인 직역 동사의 활용형', 'Agent를 VPC에 세웁니다.', true, 'doc'],
   ['계획을 세우다는 통과', '다음 배포 계획을 세웠습니다.', false, 'doc'],
   /* make a decision을 직역한 표현입니다. */
   ['결정을 만들다', '우리는 이 문제를 다루기 위한 결정을 만들었습니다.', true, 'doc'],
   ['결정하다로 쓰면 통과', '우리는 이 문제를 어떻게 다룰지 결정했습니다.', false, 'doc'],
   /* `literal-verb-exempt`에 든 낱말이 목적어와 동사 사이에 부사어로 낀 경우입니다. */
-  ['목적어와 동사 사이에 낀 예외 낱말도 본다', 'VPN을 plan으로 세웠습니다.', false, 'doc'],
+  ['목적어와 동사 사이에 예외 낱말이 끼어 있으면 통과', 'VPN을 plan으로 세웠습니다.', false, 'doc'],
   ['가설을 세우다는 통과', '원인을 설명하는 가설을 세웠습니다.', false, 'doc'],
 
   ['외래어 표기가 틀렸다', '워크플로우를 다시 확인했습니다.', true, 'doc'],
   ['옳은 외래어 표기는 통과', '워크플로를 다시 확인했습니다.', false, 'doc'],
-  ['차별 소지 용어', 'Whitelist에 주소를 넣었습니다.', true, 'doc'],
+  ['차별 소지가 있는 용어', 'Whitelist에 주소를 넣었습니다.', true, 'doc'],
   ['대체 용어는 통과', 'Allowlist에 주소를 넣었습니다.', false, 'doc'],
   /* 식별자 안은 산문이 아닙니다. */
   ['식별자 안의 낱말은 산문이 아니다', 'ADMIN_IP_WHITELIST 값을 바꿨습니다.', false, 'doc'],
   /* 인용한 오타는 직접 낸 오타가 아닙니다. */
   ['낱말이 아닌 철자', '작업이 됬습니다.', true, 'doc'],
   ['따옴표 안에 인용한 오타는 통과', '봇이 "작업이 됬습니다"라고 적었습니다.', false, 'doc'],
-  ['한글 부정 접두사에 영어 어간', '이 경로는 비blocking 으로 동작합니다.', true, 'chat'],
+  ['한글 부정 접두사를 영어 어간에 붙인 표현', '이 경로는 비blocking 으로 동작합니다.', true, 'chat'],
   ['접두사 음절로 끝나는 한글 낱말은 통과', '장비 목록을 정리했습니다.', false, 'chat'],
 
   /* --- 한 문장에 든 영어 낱말 ---  문장을 나누라고 조언하는 규칙이므로 문장에만 적용합니다. */
@@ -268,7 +268,7 @@ export const SELF_CHECK_CASES = [
   ['해요체에서도 아니다는 통과', '그것은 아니에요.', false, 'chat', '해요체'],
   ['혼용에서 다나까체는 통과', '확인했습니다.', false, 'chat', '혼용'],
   ['혼용에서 해요체도 통과', '확인했어요.', false, 'chat', '혼용'],
-  ['혼용에서도 맨 명령형은 위반', '값을 직접 입력하십시오.', true, 'chat', '혼용'],
+  ['혼용에서도 `주다` 없는 명령형은 위반', '값을 직접 입력하십시오.', true, 'chat', '혼용'],
 ];
 
 function runSelfCheck(r) {
@@ -303,7 +303,7 @@ function runSelfCheck(r) {
   const passed = failed === 0 && r.source !== null && reference.source !== null;
   if (passed) process.stdout.write('자체 검사 통과\n');
   else if (failed > 0) process.stdout.write(`자체 검사 실패: ${failed}건\n`);
-  else process.stdout.write('자체 검사 실패: 규칙 문서를 읽지 못했습니다\n');
+  else process.stdout.write('자체 검사 실패: 규칙 문서를 읽지 못했습니다.\n');
   return passed;
 }
 
@@ -321,7 +321,7 @@ function explain(name) {
     .map((line, i) => ({ line, n: i + 1 }))
     .filter(({ line }) => line.includes(`\`${name}\``) || line.includes(`| ${name} |`));
   if (hits.length === 0) {
-    process.stdout.write(`${RULES_DOC}에 ${JSON.stringify(name)}에 대한 설명이 없습니다.\n`);
+    process.stdout.write(`${RULES_DOC}에 ${JSON.stringify(name)} 설명이 없습니다.\n`);
     return 1;
   }
   for (const { line, n } of hits) process.stdout.write(`${RULES_DOC}:${n}: ${line.trim()}\n`);
@@ -437,7 +437,7 @@ function main() {
       if (argv.includes('--strict') || blockingViolations(violations).length) bad += 1;
       process.stdout.write(`${formatViolations(violations, r, `${rel} (${target})`)}\n`);
     }
-    process.stdout.write(bad === 0 ? `${passLabel(r)}: 파일 ${seen}개\n` : `파일 ${seen}개 가운데 ${bad}개가 검사를 통과하지 못했습니다\n`);
+    process.stdout.write(bad === 0 ? `${passLabel(r)}: 파일 ${seen}개\n` : `파일 ${seen}개 가운데 ${bad}개가 검사를 통과하지 못했습니다.\n`);
     /* 규칙 문서를 못 읽었으면 위반이 없어도 종료 코드 1로 끝냅니다. */
     const guard = exitCodeForPass(r);
     process.exit(bad === 0 ? guard : 1);

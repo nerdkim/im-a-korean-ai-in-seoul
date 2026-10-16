@@ -28,10 +28,12 @@ Check every sentence against each item.
 9. **Meaning drift:** changed modality, negation, tense or condition, or text that contradicts the code or other docs.
 10. **Forbidden characters:** middle dots (U+00B7) or em dashes (U+2014) in prose.
 11. **Project vocabulary:** phrasing that copies English structure is 영어식 표현, not 번역투. Example: `번역투 후보입니다` → `영어식 표현 후보입니다`.
+12. **Note-style fragments:** prose written as notes instead of sentences. Typical forms: a verbless object or subject (`질문을 세 번씩`), parenthetical shorthand copied from English (`(Claude Sonnet 5.5, 세 번씩)`), list items in different grammatical forms (`섞임` beside bare nouns), a sentence that chains a clause with a bare noun phrase or switches subject midway, and endings or final punctuation that change within one passage. Commit message bodies and release notes are prose too. Example: `설치 후 답변은 세 번 모두 합니다체였고 검사기 오류 0건, Stop hook이 다시 쓰라고 요구하지 않음` → `설치 후 답변은 세 번 모두 합니다체였고 검사기가 잡은 오류도 없었습니다. Stop hook은 한 번도 다시 쓰라고 요구하지 않았습니다.`
 
 ## Rules
 
 - Preserve meaning and do not add facts. Report only what is awkward or wrong, not style preferences. English technical terms are allowed.
+- Every instance of a checklist pattern is a finding, even when the sentence can be understood. Do not downgrade it to a near miss.
 - Quote the original exactly, as a string that is unique in its file, and propose natural Korean that a Korean engineer would write.
 - Never use middle dots or em dashes in a replacement.
 - Do not edit any file.

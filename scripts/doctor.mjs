@@ -34,7 +34,7 @@ for (const name of rules.bannedChar) {
   if (!Object.hasOwn(CHAR_CLASSES, name)) bad(`알 수 없는 금지 문자 종류입니다: ${name}`);
 }
 if (rules.source && rules.reviewRules.length === 0) {
-  warn('review-rules가 없거나 비어 있어 hook이 영어식 표현 같은 경고를 Claude에게 알리지 않습니다. 기본 규칙의 review-rules 줄을 옮겨 오면 알림이 켜집니다');
+  warn('review-rules가 없거나 비어 있어 hook이 영어식 표현 같은 경고를 Claude에게 알리지 않습니다. 기본 규칙의 review-rules 줄을 옮겨 오면 알림이 켜집니다.');
 }
 /* 경고 규칙이 아닌 이름은 오타이거나 쓰기를 막는 규칙이므로 알림이 나가지 않습니다. */
 const strayReview = rules.reviewRules.filter((name) => !rules.advisoryRules.includes(name));
@@ -61,7 +61,7 @@ for (const [event, name] of [['PreToolUse', 'pretooluse'], ['Stop', 'stop']]) {
   const entries = sources.flatMap(s => s.settings.hooks?.[event] ?? []).filter(e => e.hooks.some(h =>
     h.type === 'command' && h.command === command && h.async !== true));
   if (!existsSync(join(tool, 'scripts/hooks', `${name}.mjs`))) bad(`${name} 파일이 없습니다`);
-  else if (!entries.length) bad(`${event}에 올바른 ${name} 명령이 없습니다. 다시 설치하면 복구됩니다`);
+  else if (!entries.length) bad(`${event}에 올바른 ${name} 명령이 없습니다. 다시 설치하면 복구됩니다.`);
   else {
     ok(`${name} hook 연결: ${event}`);
     if (event === 'PreToolUse') {
@@ -70,7 +70,7 @@ for (const [event, name] of [['PreToolUse', 'pretooluse'], ['Stop', 'stop']]) {
       });
       for (const name of ['Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'AskUserQuestion', 'ExitPlanMode', 'SendUserFile', 'Task', 'Agent', 'Bash']) {
         if (covered(name)) ok(`PreToolUse 검사 대상: ${name}`);
-        else bad(`PreToolUse 검사 대상에서 빠졌습니다: ${name}. 다시 설치하면 복구됩니다`);
+        else bad(`PreToolUse 검사 대상에서 빠졌습니다: ${name}. 다시 설치하면 복구됩니다.`);
       }
     }
   }
@@ -79,25 +79,25 @@ const stylePath = join(root, '.claude/output-styles/korean-style.md');
 if (!existsSync(stylePath)) bad('output-style 파일이 없습니다');
 else ok('output-style 파일이 있습니다');
 if (effective.outputStyle === 'korean-style') ok('outputStyle이 korean-style로 설정되어 있습니다');
-else bad(`outputStyle이 ${effective.outputStyle ?? '(없음)'}입니다. --activate로 재설치하거나 로컬 설정에서 korean-style을 선택합니다`);
+else bad(`outputStyle이 ${effective.outputStyle ?? '(없음)'}입니다. --activate로 재설치하거나 로컬 설정에서 korean-style을 선택합니다.`);
 for (const name of ['korean-style', 'korean-rewrite']) {
   if (existsSync(join(root, '.claude/skills', name, 'SKILL.md'))) ok(`${name} skill이 있습니다`);
   else bad(`${name} skill이 없습니다`);
 }
-if (installed && !existsSync(join(tool, 'defaults.sha256'))) warn('기본 규칙 해시(defaults.sha256)가 없어 재설치해도 기존 규칙을 유지합니다. 기본값을 적용하려면 --force로 재설치합니다');
+if (installed && !existsSync(join(tool, 'defaults.sha256'))) warn('기본 규칙 해시(defaults.sha256)가 없어 재설치해도 기존 규칙이 그대로 남습니다. 기본값을 적용하려면 --force로 재설치합니다.');
 try {
   const hook = commitHookState(root);
   if (hook.state === 'not-git') console.log('  건너뜀  프로젝트 루트에 .git이 없습니다');
   else if (hook.state === 'broken') bad(`commit-msg hook의 symlink가 끊겼습니다: ${hook.path}`);
-  else if (hook.state === 'missing') warn('commit-msg hook이 없습니다. --install-commit-hook으로 설치할 수 있습니다');
+  else if (hook.state === 'missing') warn('commit-msg hook이 없습니다. --install-commit-hook으로 설치할 수 있습니다.');
   else if (!hook.executable) bad(`commit-msg hook에 실행 권한이 없습니다: ${hook.path}`);
-  else if (hook.state === 'occupied') warn('다른 commit-msg hook이 이미 있습니다. 이 hook이 한국어 검사기를 부르는지는 직접 확인해야 합니다');
-  else ok('commit-msg hook이 연결되어 있고 실행할 수 있습니다');
+  else if (hook.state === 'occupied') warn('다른 commit-msg hook이 이미 있습니다. 그 hook이 한국어 검사기를 호출하는지는 직접 확인해야 합니다.');
+  else ok('commit-msg hook이 연결되어 있고 실행 권한도 있습니다');
 } catch (e) { bad(`커밋 hook 점검 실패: ${e.message}`); }
 if (installed && existsSync(join(root, '.git'))) {
   for (const path of ['.korean-style/rules.md', '.korean-style/defaults.sha256', '.claude/settings.json']) {
     if (spawnSync('git', ['check-ignore', '-q', '--no-index', path], { cwd: root }).status === 0) {
-      warn(`Git에서 제외된 파일입니다: ${path}. 팀과 공유하려면 ignore 규칙을 조정합니다`);
+      warn(`Git에서 제외된 파일입니다: ${path}. 팀과 공유하려면 ignore 규칙을 조정합니다.`);
     }
   }
 }

@@ -38,7 +38,7 @@ export function structureViolations(text, rules) {
     const written = text.slice(m.index, Math.min(text.length, m.index + stem.length + 3));
     out.push({
       rule: 'double-passive',
-      detail: `이중피동 후보 ${JSON.stringify(written)}입니다.${right.length > 0 ? ` 어간을 ${JSON.stringify(right)}로 고치십시오.` : ""}`,
+      detail: `이중피동 후보입니다: ${JSON.stringify(written)}.${right.length > 0 ? ` 어간을 ${JSON.stringify(right)}로 고치십시오.` : ""}`,
       line: lineOf(text, m.index),
     });
   }
@@ -51,7 +51,7 @@ export function structureViolations(text, rules) {
       if (len <= rules.maxSentenceChars) continue;
       out.push({
         rule: 'sentence-too-long',
-        detail: `문장 길이 ${len}자, 기준 ${rules.maxSentenceChars}자입니다.`,
+        detail: `문장이 ${len}자로 기준 ${rules.maxSentenceChars}자보다 깁니다.`,
         line: lineOf(text, sentence.index),
       });
     }
@@ -74,7 +74,7 @@ export function structureViolations(text, rules) {
       if (density !== null) {
         out.push({
           rule: 'nominalization',
-          detail: `명사형 종결 ${hits.length}회, 한글 1000자당 ${density.toFixed(2)}회입니다.`,
+          detail: `명사형 종결을 ${hits.length}회 썼습니다. 한글 1000자당 ${density.toFixed(2)}회입니다.`,
           line: lineOf(text, hits[hits.length - 1].index),
         });
       }
@@ -85,7 +85,7 @@ export function structureViolations(text, rules) {
   if (rules.maxDemonstrativePer1k > 0 && rules.demonstratives.length > 0) {
     const hits = [];
     for (const word of rules.demonstratives) {
-      /* 낱말 경계를 요구합니다. */
+      /* 낱말 경계에서만 찾습니다. */
       const re = new RegExp(`(^|[^가-힣])${escape(word)}(?=\\s)`, 'gu');
       for (const m of text.matchAll(re)) hits.push({ index: m.index + m[1].length, word });
     }
@@ -96,7 +96,7 @@ export function structureViolations(text, rules) {
         const worst = [...new Set(hits.map((h) => h.word))].slice(0, 5);
         out.push({
           rule: 'demonstrative-density',
-          detail: `지시 표현 ${hits.length}회입니다: ${worst.join(", ")}.`,
+          detail: `지시 표현을 ${hits.length}회 썼습니다: ${worst.join(", ")}.`,
           line: lineOf(text, hits[hits.length - 1].index),
         });
       }
@@ -111,7 +111,7 @@ export function structureViolations(text, rules) {
       if (density !== null) {
         out.push({
           rule: 'suffix-jeok-density',
-          detail: `접미사 "~적" ${hits.length}회, 한글 1000자당 ${density.toFixed(2)}회입니다.`,
+          detail: `접미사 "~적"을 ${hits.length}회 썼습니다. 한글 1000자당 ${density.toFixed(2)}회입니다.`,
           line: lineOf(text, hits[hits.length - 1].index),
         });
       }
@@ -126,7 +126,7 @@ export function structureViolations(text, rules) {
       if (density !== null) {
         out.push({
           rule: 'particle-ui-density',
-          detail: `조사 "의" ${hits.length}회, 한글 1000자당 ${density.toFixed(2)}회입니다.`,
+          detail: `조사 "의"를 ${hits.length}회 썼습니다. 한글 1000자당 ${density.toFixed(2)}회입니다.`,
           line: lineOf(text, hits[hits.length - 1].index),
         });
       }
@@ -140,7 +140,7 @@ export function structureViolations(text, rules) {
     if (m === null) continue;
     out.push({
       rule: 'redundant-plural',
-      detail: `수량 표현 뒤의 복수형입니다: ${JSON.stringify(m[0].trim())}`,
+      detail: `수량 표현 뒤의 복수형입니다: ${JSON.stringify(m[0].trim())}.`,
       line: lineOf(text, m.index),
     });
   }

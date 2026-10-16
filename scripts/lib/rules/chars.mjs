@@ -1,4 +1,4 @@
-/* 쓰지 않는 글자입니다. */
+/* 쓰지 않는 글자를 찾는 규칙입니다. */
 import { lineOf } from '../text.mjs';
 
 /* 글자 종류입니다. */
@@ -41,7 +41,7 @@ export function charViolations(text, rules) {
     if (m !== null && !asked) {
       out.push({
         rule: 'banned-char',
-        detail: `Slack emoji shortcode를 썼습니다: ${JSON.stringify(m[2])}. 반응 이름처럼 프로토콜 토큰이라면 백틱 안에 두십시오. 산문에서는 쓰지 않습니다.`,
+        detail: `Slack emoji shortcode를 썼습니다: ${JSON.stringify(m[2])}. 반응 이름처럼 글자 그대로 써야 하는 값이라면 백틱으로 감싸십시오. 산문에서는 쓰지 않습니다.`,
         line: lineOf(text, m.index),
       });
     }

@@ -35,7 +35,7 @@ test('영어 기술 용어가 많아도 용어 수를 줄이라고 요구하지 
   assert.ok(!checkText(text, rules).some(v => v.rule === 'bound-english'));
 });
 
-test('산문의 middle dot과 em-dash는 차단하고 대체 표현과 문자 인용은 허용한다', () => {
+test('산문의 middle dot과 em-dash는 차단하고 대체 표현과 백틱으로 감싼 문자는 허용한다', () => {
   for (const target of ['chat', 'doc']) {
     for (const char of ['\u00b7', '\u2014']) {
       assert.ok(blockingViolations(checkText(`API${char}DB를 확인합니다.`, rules, target))
@@ -49,7 +49,7 @@ test('산문의 middle dot과 em-dash는 차단하고 대체 표현과 문자 �
 });
 
 test('hook이 Claude에게 알릴 규칙은 모두 경고 규칙이고 규칙 이름 표에 있다', () => {
-  /* 오류 규칙을 넣으면 쓰기가 막혀 알릴 기회가 없고, 이름을 틀리면 조용히 꺼집니다. */
+  /* 오류 규칙을 넣으면 쓰기가 막혀 알릴 기회가 없고, 이름을 틀리면 그 규칙의 알림이 조용히 꺼집니다. */
   const reported = new Set([...readFileSync(rulesPath, 'utf8').matchAll(/^\| `([a-z-]+)` \|/gm)].map(m => m[1]));
   assert.ok(rules.reviewRules.length > 0);
   for (const name of rules.reviewRules) {
@@ -58,7 +58,7 @@ test('hook이 Claude에게 알릴 규칙은 모두 경고 규칙이고 규칙 �
   }
 });
 
-test('기본 규칙은 `_workspace/` 아래의 작업 파일을 검사하지 않는다', () => {
+test('기본 규칙에서는 `_workspace/` 아래의 작업 파일을 검사하지 않는다', () => {
   for (const path of ['_workspace/run/note.md', 'docs/_workspace/draft.md']) {
     assert.equal(targetForPath(path, rules), null, path);
   }
@@ -75,7 +75,7 @@ test('경고로 둘 규칙은 규칙 문서에서 고르며 파싱 결과끼리 
   assert.deepEqual(strict.advisoryRules, []);
 });
 
-test('실모델 평가에서 빠지거나 중복된 응답과 제약을 어긴 응답을 통과로 보고하지 않는다', () => {
+test('실제 모델로 평가할 때 빠지거나 중복된 응답과 제약을 어긴 응답을 통과로 보고하지 않는다', () => {
   assert.throws(() => answersOf('<answer id="a">응답</answer>', [{ id: 'a' }, { id: 'b' }]), /응답이 없거나 중복되었습니다: b/);
   assert.throws(() => answersOf('<answer id="a">첫째</answer><answer id="a">둘째</answer>', [{ id: 'a' }]), /응답이 없거나 중복되었습니다: a/);
   const score = assessAnswer({ id: 'a', text: '끝났습니다.' }, { must: ['API'], maxChars: 3, sentences: 2 });

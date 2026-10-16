@@ -47,7 +47,7 @@ const MAP_KEYS = {
   'inclusive-terms': 'inclusiveTerms',
 };
 
-/* 숫자 하나인 키입니다. */
+/* 값이 숫자 하나인 키입니다. */
 const NUMBER_KEYS = {
   'korean-required-min-chars': 'koreanRequiredMinChars',
   'max-comma-per-sentence': 'maxCommaPerSentence',

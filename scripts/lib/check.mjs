@@ -108,7 +108,7 @@ export function formatViolations(violations, rules, where) {
   const errors = blockingViolations(violations).length;
   const head = `한국어 검사: 오류 ${errors}건, 경고 ${violations.length - errors}건${where === undefined ? '' : ` (${where})`}`;
   const body = violations.map((v) => v.severity === 'warning'
-    ? `  [${v.rule}] ${v.line}줄: ${v.detail} (경고: 문맥에 맞으면 유지)`
+    ? `  [${v.rule}] ${v.line}줄: ${v.detail} (경고: 문맥에 맞으면 그대로 두어도 됩니다)`
     : `  [${v.rule}] ${v.line}줄: ${v.detail}`);
   return [head, ...body, sourceNote(rules)].join('\n');
 }

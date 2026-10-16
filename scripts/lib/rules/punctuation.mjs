@@ -1,4 +1,4 @@
-/* 쉼표입니다. */
+/* 쉼표를 검사하는 규칙입니다. */
 import {
   endsWithAny,
   hangulLength,
@@ -37,7 +37,7 @@ function looksLikeEnumeration(segments, maxWords, rules) {
   if (segments.length < 3) return false;
   const middle = segments.slice(1, -1);
   if (middle.length === 0) return false;
-  /* 병렬 절 나열입니다. */
+  /* 같은 연결어미로 끝나는 절이 이어지면 나열로 봅니다. */
   if (middle.length >= 2) {
     const endings = middle.map((s) => clauseEnding(s, rules));
     if (endings.every((e) => e !== null && e === endings[0])) return true;
@@ -64,7 +64,7 @@ export function punctuationViolations(text, rules) {
       if (looksLikeEnumeration(segments, rules.enumerationWordMax, rules)) continue;
       out.push({
         rule: 'comma-per-sentence',
-        detail: `문장 안의 쉼표 ${commas}개, 기준 ${rules.maxCommaPerSentence}개입니다.`,
+        detail: `한 문장에 쉼표가 ${commas}개로 기준 ${rules.maxCommaPerSentence}개보다 많습니다.`,
         line: lineOf(text, sentence.index),
       });
     }
@@ -81,11 +81,11 @@ export function punctuationViolations(text, rules) {
         .slice(0, -1)
         .find((s) => s.words > rules.maxCommaSegmentWords && !isClause(s, rules));
       if (over === undefined) continue;
-      /* 보고는 원문에서 잘라 보여 줍니다. */
+      /* 보고에는 원문에서 잘라 낸 구간을 담습니다. */
       const written = sentence.text.slice(over.index, over.index + over.text.length);
       out.push({
         rule: 'comma-segment-length',
-        detail: `쉼표 앞 ${over.words}어절, 기준 ${rules.maxCommaSegmentWords}어절입니다: ${JSON.stringify(written.trim().slice(0, 40))}`,
+        detail: `쉼표 앞 구간이 ${over.words}어절로 기준 ${rules.maxCommaSegmentWords}어절보다 깁니다: ${JSON.stringify(written.trim().slice(0, 40))}.`,
         line: lineOf(text, sentence.index + over.index),
       });
     }
@@ -116,7 +116,7 @@ export function punctuationViolations(text, rules) {
       if (density !== null) {
         out.push({
           rule: 'comma-after-connective',
-          detail: `연결어미 뒤 쉼표 ${hits.length}회, 한글 1000자당 ${density.toFixed(2)}회입니다.`,
+          detail: `연결어미 뒤에 쉼표를 ${hits.length}회 찍었습니다. 한글 1000자당 ${density.toFixed(2)}회입니다.`,
           line: lineOf(text, hits[hits.length - 1].index),
         });
       }
