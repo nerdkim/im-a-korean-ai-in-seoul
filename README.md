@@ -13,16 +13,19 @@
 
 ## 설치 전후
 
-아래는 같은 번역 요청을 이 도구가 없는 프로젝트와 설치한 프로젝트에서 보내서 받은 실제 답변입니다.
+아래 그림은 같은 메모를 주고 PR 설명을 써 달라고 했을 때 Claude가 쓴 실제 답변입니다. 왼쪽은 이 도구가 없는 프로젝트에서, 오른쪽은 이 도구를 설치한 프로젝트에서 쓴 답변입니다.
 
-![설치 전과 설치 후에 Claude Sonnet 5.5가 같은 번역 요청에 한 답변을 나란히 놓은 그림](docs/images/before-after.png)
+![같은 PR 설명 요청에 Claude가 설치 전과 설치 후에 쓴 답변을 나란히 놓고 달라진 점을 표시한 그림](docs/images/before-after.png)
 
-`test/fixtures/eval/calque.json`의 요청 6개를 두 프로젝트에서 각각 두 번씩 Claude Sonnet 5.5(low effort)에 보냈습니다. 설치한 프로젝트에서 Stop hook은 재작성을 요구하지 않았습니다. 그래서 설치 후 답변은 Claude가 처음 쓴 그대로이며, 작성 지침만으로 나온 결과입니다.
-이 저장소에서 아래 명령을 실행하면 같은 요청을 다시 보내 답변을 `.eval/latest/results.json`에 저장합니다. 이 명령은 유료 API를 호출합니다. 그림의 경고와 오류 수는 저장된 답변을 하나씩 `node scripts/check-korean.mjs --stdin`으로 검사해 센 것입니다.
+설치 전 답변에는 메모에 없는 테스트 목록과 끝에 덧붙인 설명, emoji, 해요체 어미가 들어갔습니다. 설치 후 답변은 메모에 있는 내용만 합니다체로 썼습니다. 설치한 프로젝트에서 Stop hook은 다시 쓰라고 요구하지 않았으므로 설치 후 답변은 작성 지침만으로 나온 결과입니다.
+
+요청은 `test/fixtures/eval/showcase.json`에 있고, Claude Sonnet 5.5(low effort)에 두 번씩 보냈습니다. 두 번 모두 같은 양상이었고 그림은 첫 번째 답변입니다. 이 저장소에서 아래 명령을 실행하면 같은 요청을 다시 보내 답변을 `.eval/latest/results.json`에 저장합니다. 이 명령은 유료 API를 호출합니다.
 
 ```bash
-npm run eval -- --run --cases test/fixtures/eval/calque.json --models claude-sonnet-5-5 --repeat 2 --with-hooks
+npm run eval -- --run --cases test/fixtures/eval/showcase.json --models claude-sonnet-5-5 --repeat 2 --individual --with-hooks
 ```
+
+영어 문장을 한국어로 옮겨 달라는 요청 6개(`test/fixtures/eval/calque.json`)도 두 번씩 보내 비교했습니다. 설치 전 답변 12개에서는 영어식 표현 경고 4건과 어투 오류 2건이 나왔고, 설치 후 답변 12개에서는 한 건도 나오지 않았습니다.
 
 ## 요구 사항
 
@@ -305,7 +308,7 @@ npm run eval -- --run           # 실모델 비교, API 사용량 발생
 
 일반 테스트는 API를 호출하지 않습니다. 실모델 비교는 기본적으로 임시 프로젝트에서 `low` effort로 요청을 묶어 실행합니다.
 `--individual`은 요청마다 새 세션을 쓰고 `--with-hooks`는 임시 프로젝트에 이 도구를 설치해 Stop hook의 동작까지 검증합니다.
-`--cases test/fixtures/eval/regression.json`처럼 입력을 고를 수 있습니다. `calque.json`은 한국어로 옮기면 영어식 표현이 나오기 쉬운 영어 문장을 모은 입력입니다. 평가 스크립트는 사례마다 `mustNot`에 적은 표현이 응답에 나오면 제약 위반으로 셉니다.
+`--cases test/fixtures/eval/regression.json`처럼 입력을 고를 수 있습니다. `calque.json`은 한국어로 옮기면 영어식 표현이 나오기 쉬운 영어 문장을 모은 입력입니다. `showcase.json`은 위의 설치 전후 그림에 쓴 요청입니다. 평가 스크립트는 사례마다 `mustNot`에 적은 표현이 응답에 나오면 제약 위반으로 셉니다.
 응답 원본은 `.eval/latest/`에 저장하며 다시 실행할 때는 `--out .eval/run2`처럼 새 경로를 지정합니다.
 [평가 입력](test/fixtures/eval/)만 Git에 두고 실행 결과는 커밋하지 않습니다.
 원문과 응답은 함께 놓고 검토합니다.
