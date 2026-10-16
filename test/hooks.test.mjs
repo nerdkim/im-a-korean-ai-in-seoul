@@ -114,14 +114,14 @@ test('규칙을 지킨 문서 쓰기는 통과시킨다', () => {
   assert.equal(out, null, '통과할 때는 아무것도 출력하지 않습니다');
 });
 
-/* 오류가 없는 파일 쓰기는 막지 않습니다. 새로 쓴 부분에서 review-rules에 든 규칙의 경고는 Claude에게만 알립니다. */
+/* 오류가 없으면 파일 쓰기를 막지 않습니다. 새로 쓴 부분이 review-rules에 든 규칙에 걸리면 Claude에게만 알립니다. */
 
-test('새로 쓴 문서의 영어식 표현 후보는 쓰기를 막지 않고 Claude에게 알린다', () => {
+test('새로 쓴 문서에 영어식 표현으로 보이는 곳이 있으면 쓰기를 막지 않고 Claude에게 알린다', () => {
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Write',
     tool_input: { file_path: join(ROOT, 'docs', '시험.md'), content: '로그를 통해 원인을 찾았습니다.' },
   });
-  assert.ok(out !== null, '검토 후보를 알려야 합니다');
+  assert.ok(out !== null, 'Claude에게 알려야 합니다');
   assert.equal(out.hookSpecificOutput.permissionDecision, undefined, '`allow`를 돌려주면 사용자 승인 절차를 건너뜁니다');
   assert.match(out.hookSpecificOutput.additionalContext, /\[translationese\] 1줄: .*를 통해/);
 });
@@ -140,11 +140,11 @@ test('바뀌기 전 파일에 있던 경고는 Edit로 그 줄을 고쳐도 다�
     env: { ...process.env, CLAUDE_PROJECT_DIR: project, KOREAN_STYLE_RULES: join(ROOT, 'docs', 'rules.md') },
   });
   assert.equal(r.status, 0);
-  assert.equal(r.stdout.trim(), '', '이번 편집이 만든 표현이 아닙니다');
+  assert.equal(r.stdout.trim(), '', '이번 편집으로 생긴 표현이 아닙니다');
 });
 
 test('review-rules에 없는 경고는 알리지 않는다', () => {
-  /* 쉼표 수 규칙은 경고 규칙이지만 검토 후보로는 알리지 않습니다. */
+  /* 쉼표 수 규칙은 경고 규칙이지만 Claude에게 알리지는 않습니다. */
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Write',
     tool_input: {
@@ -155,7 +155,7 @@ test('review-rules에 없는 경고는 알리지 않는다', () => {
   assert.equal(out, null);
 });
 
-test('오류가 있으면 검토 후보를 알리지 않고 쓰기를 거부한다', () => {
+test('오류가 있으면 경고는 알리지 않고 쓰기를 거부한다', () => {
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Write',
     tool_input: { file_path: join(ROOT, 'docs', '시험.md'), content: '로그를 통해 원인을 찾았어요.' },
@@ -164,7 +164,7 @@ test('오류가 있으면 검토 후보를 알리지 않고 쓰기를 거부한�
   assert.equal(out.hookSpecificOutput.additionalContext, undefined);
 });
 
-test('커밋 메시지와 질문의 경고는 검토 후보로 알리지 않는다', () => {
+test('커밋 메시지와 질문의 경고는 Claude에게 알리지 않는다', () => {
   /* 알림은 도구가 실행된 뒤에 도착하므로 이미 끝난 커밋이나 보낸 질문은 고칠 수 없습니다. */
   assert.equal(runHook('pretooluse.mjs', { tool_name: 'Bash', tool_input: { command: 'git commit -m "로그를 통해 원인을 찾았습니다"' } }), null);
   assert.equal(runHook('pretooluse.mjs', {
@@ -183,7 +183,7 @@ function edited(name, before, toolName, toolInput) {
 const rulesOf = (before, after, target = 'doc', path = 'docs/a.md') =>
   reviewNotes(before, after, RULES, target, path).map(v => v.rule);
 
-test('MultiEdit로 문단을 옮겨도 원래 있던 후보는 다시 알리지 않는다', () => {
+test('MultiEdit로 문단을 옮겨도 원래 있던 경고는 다시 알리지 않는다', () => {
   const moved = edited('a.md', '로그를 통해 봤습니다.\n\n둘째 문단입니다.\n', 'MultiEdit', { edits: [
     { old_string: '로그를 통해 봤습니다.\n\n', new_string: '' },
     { old_string: '둘째 문단입니다.\n', new_string: '둘째 문단입니다.\n\n로그를 통해 봤습니다.\n' },
@@ -201,11 +201,11 @@ test('Write로 기존 파일을 덮어쓰면 원래 있던 경고는 다시 알�
   assert.deepEqual(notes.map(v => [v.rule, v.line]), [['redundant-plural', 3]], '줄 번호는 파일 기준입니다');
 });
 
-test('같은 문단에서 바꾸지 않은 줄의 후보는 다시 알리지 않는다', () => {
+test('같은 문단에서 바꾸지 않은 줄의 경고는 다시 알리지 않는다', () => {
   assert.deepEqual(rulesOf('로그를 통해 원인을 찾았습니다.\n결과를 적었습니다.\n', '로그를 통해 원인을 찾았습니다.\n결과를 다시 적었습니다.\n'), []);
 });
 
-test('편집 조각에 주석 표시가 없어도 주석 안의 후보를 알린다', () => {
+test('편집 조각에 주석 표시가 없어도 주석 안의 경고를 알린다', () => {
   /* Edit는 바꿀 부분만 담는 경우가 많아 조각에 `//`가 없습니다. */
   const { before, after } = edited('a.js', '// 사용자를 조회합니다.\nconst a = 1;\n', 'Edit', {
     old_string: '사용자를 조회합니다.', new_string: '로그를 통해 사용자를 조회합니다.',
@@ -213,40 +213,40 @@ test('편집 조각에 주석 표시가 없어도 주석 안의 후보를 알린
   assert.deepEqual(rulesOf(before, after, 'comment', 'src/a.js'), ['translationese']);
 });
 
-test('문자열 리터럴만 바꾼 소스 편집은 검토 후보를 알리지 않는다', () => {
+test('문자열 리터럴만 바꾼 소스 편집은 경고를 알리지 않는다', () => {
   assert.deepEqual(rulesOf("// 주석입니다.\nconst a = '확인';\n", "// 주석입니다.\nconst a = '로그를 통해 확인';\n", 'comment', 'src/a.js'), []);
 });
 
-test('기존 code block 안에 쓴 글은 검토 후보로 알리지 않는다', () => {
+test('기존 code block 안에 쓴 글의 경고는 Claude에게 알리지 않는다', () => {
   const { before, after } = edited('a.md', '# 제목\n\n```\n예시입니다.\n```\n', 'Edit', {
     old_string: '예시입니다.', new_string: '로그를 통해 예시입니다.',
   });
   assert.deepEqual(rulesOf(before, after), []);
 });
 
-test('규칙 설정 블록에 치환 후보를 더해도 검토 후보로 알리지 않는다', () => {
+test('규칙 설정 블록의 영어식 표현 목록에 항목을 더해도 Claude에게 알리지 않는다', () => {
   /* 규칙 문서를 고치는 것은 설치한 프로젝트가 규칙을 바꾸는 정상 절차입니다. */
   const before = '# 규칙\n\n```korean-style-rules\ntranslationese-patterns: 를 통해=~해\n```\n';
   assert.deepEqual(rulesOf(before, before.replace('=~해', '=~해, 문서를 통하여서=로'), 'doc', '.korean-style/rules.md'), []);
 });
 
-test('review-rules가 비어 있으면 검토 후보를 알리지 않는다', () => {
+test('review-rules가 비어 있으면 경고를 알리지 않는다', () => {
   /* 이 키가 없는 구버전 규칙으로 설치한 프로젝트입니다. */
   assert.deepEqual(reviewNotes('', '로그를 통해 원인을 찾았습니다.', { ...RULES, reviewRules: [] }, 'doc', 'a.md'), []);
 });
 
-test('검토 후보가 많으면 앞의 다섯 건만 보여 주고 나머지 건수를 알린다', () => {
+test('경고가 많으면 앞의 다섯 건만 보여 주고 나머지 건수를 알린다', () => {
   const notes = Array.from({ length: 7 }, (_, i) => ({ rule: 'translationese', line: i + 1, detail: `후보 ${i + 1}` }));
   const text = formatReviewNotes(notes, 'a.md', '.korean-style/scripts/check-korean.mjs');
-  assert.match(text, /검토 후보 7건/);
+  assert.match(text, /경고 7건/);
   assert.match(text, /후보 5$/m);
   assert.doesNotMatch(text, /후보 6/);
   assert.match(text, /나머지 2건은 `node \.korean-style\/scripts\/check-korean\.mjs --file a\.md` 명령으로/);
   assert.match(formatReviewNotes(notes, 'docs/my notes.md'), /--file 'docs\/my notes\.md'/, '공백이 든 경로는 따옴표로 감싸야 명령이 그대로 실행됩니다');
 });
 
-test('프로젝트 밖의 파일은 판정하지 않는다', () => {
-  /* hook은 agent가 컴퓨터의 어느 경로에 쓰든 발동합니다. */
+test('프로젝트 밖의 파일은 검사하지 않는다', () => {
+  /* agent가 컴퓨터 어디에 파일을 쓰든 hook은 실행됩니다. */
   const outside = join(scratch(), 'a.md');
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Write',
@@ -263,7 +263,7 @@ test('검사 대상이 아닌 확장자는 보지 않는다', () => {
   assert.equal(out, null);
 });
 
-test('`_workspace/` 아래의 작업 산출물 쓰기는 판정하지 않는다', () => {
+test('`_workspace/` 아래에 쓰는 작업 파일은 검사하지 않는다', () => {
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Write',
     tool_input: { file_path: join(ROOT, '_workspace', 'run', 'note.md'), content: 'API·DB를 확인했어요 ✅' },
@@ -299,7 +299,7 @@ test('영어로 쓴 subagent 프롬프트는 거부하지 않는다', () => {
   assert.equal(out, null);
 });
 
-test('깨끗한 한국어 subagent 프롬프트는 통과시킨다', () => {
+test('규칙을 지킨 한국어 subagent 프롬프트는 통과시킨다', () => {
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Task',
     tool_input: { prompt: '이 파일을 읽고 문장 분해 계약을 정확히 보고하십시오. 추측하지 마십시오.' },
@@ -337,7 +337,7 @@ test('회귀: >>로 검사 대상 문서에 덧붙이면 거부한다', () => {
   assert.ok(bashDenied('echo hi >> README.md'));
 });
 
-test('회귀: 제자리 편집으로 규칙 문서를 고치면 거부한다', () => {
+test('회귀: sed -i로 규칙 문서를 고치면 거부한다', () => {
   assert.ok(bashDenied("sed -i 's/a/b/' docs/rules.md"));
 });
 
@@ -354,7 +354,7 @@ test('프로젝트 밖의 파일로 내보내면 통과시킨다', () => {
   assert.ok(!bashDenied('cat > /tmp/scratch.md <<EOF\n아무 내용\nEOF'));
 });
 
-test('/dev/null과 파일 서술자 재지정은 검사 대상 경로로 보지 않는다', () => {
+test('/dev/null이나 파일 서술자로 보내는 redirection은 검사할 파일에 쓰는 것으로 보지 않는다', () => {
   assert.ok(!bashDenied('git diff > /dev/null'));
   assert.ok(!bashDenied('node scripts/gate.mjs 2>&1 | tail -5'));
 });
@@ -365,7 +365,7 @@ test('읽기만 하는 명령은 통과시킨다', () => {
   assert.ok(!bashDenied("grep -rn 'foo' docs/ | head"));
 });
 
-test('회귀: shell이 확장할 부분이 남은 경로는 판정하지 않는다', () => {
+test('회귀: shell이 확장할 부분이 남은 경로는 건너뛴다', () => {
   /* 임시 디렉터리를 가리키는 변수가 든 경로를 hook이 프로젝트 안의 소스 파일로 판정한 적이 있습니다. */
   assert.ok(!bashDenied('cat > $SCRATCH/probe.mjs <<EOF\n내용\nEOF'));
   assert.ok(!bashDenied('echo x > ~/notes.md'));
@@ -416,7 +416,7 @@ test('기록 파일이 없어도 최종 응답 필드의 오류를 검사한다'
   assert.match(out.reason, /known-typo/);
 });
 
-test('최신 최종 응답이 있으면 오래된 기록을 재검사하지 않는다', () => {
+test('최종 응답 필드가 있으면 오래된 기록 파일은 검사하지 않는다', () => {
   assert.equal(runHook('stop.mjs', { transcript_path: transcriptWith('결과가 보여집니다.'),
     last_assistant_message: '결과가 보입니다.', stop_hook_active: false }), null);
 });
@@ -455,7 +455,7 @@ test('규칙을 어긴 답변이면 재작성을 요구한다', () => {
   assert.ok(out.reason.includes('--explain'), '어디서 규칙을 볼지 알려 주어야 합니다');
 });
 
-test('깨끗한 답변에는 재작성을 요구하지 않는다', () => {
+test('규칙을 지킨 답변에는 재작성을 요구하지 않는다', () => {
   const path = transcriptWith('요청한 대로 워크플로를 정리했습니다.');
   assert.equal(runHook('stop.mjs', { transcript_path: path, stop_hook_active: false }), null);
 });
@@ -487,7 +487,7 @@ test('commit-msg hook은 규칙을 어긴 메시지면 커밋을 멈춘다', () 
   assert.ok(r.stderr.includes('워크플로'), '무엇으로 고칠지 말해야 합니다');
 });
 
-test('commit-msg hook은 깨끗한 메시지를 통과시킨다', () => {
+test('commit-msg hook은 규칙을 지킨 메시지를 통과시킨다', () => {
   assert.equal(runCommitMsg('fix: 워크플로를 정리했습니다\n').status, 0);
 });
 
@@ -496,7 +496,7 @@ test('메시지 파일 없이 호출되면 통과시킨다', () => {
   assert.equal(r.status, 0);
 });
 
-test('설치는 대상 프로젝트의 기존 hook을 지우지 않는다', () => {
+test('설치할 때 원래 있던 hook을 지우지 않는다', () => {
   const mine = { hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo 남의 hook' }] }] }, env: { FOO: 'bar' } };
   const { settings, added } = mergeHookSettings(mine);
   assert.equal(added.length, 2);

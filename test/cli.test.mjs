@@ -63,13 +63,13 @@ test('아무 인자도 없으면 사용법 오류다', () => {
   assert.equal(r.status, 2);
 });
 
-test('--stdin이 표준 입력으로 받은 글의 위반을 잡는다', () => {
+test('--stdin을 주면 표준 입력으로 받은 글에서 위반을 잡는다', () => {
   const r = run(['--stdin', '--target', 'chat'], { stdin: REGISTER_VIOLATION });
   assert.equal(r.status, 1);
   assert.match(r.stdout, /wrong-register/);
 });
 
-test('--stdin이 깨끗한 글을 통과시킨다', () => {
+test('--stdin으로 받은 글에 위반이 없으면 통과시킨다', () => {
   const r = run(['--stdin', '--target', 'chat'], { stdin: CLEAN });
   assert.equal(r.status, 0);
   assert.match(r.stdout, /통과/);
@@ -81,7 +81,7 @@ test('--stdin은 shell이 해석하는 글자를 그대로 받는다', () => {
   assert.equal(r.status, 0, `통과해야 합니다. 출력: ${r.stdout}${r.stderr}`);
 });
 
-test('--stdin이 여러 줄 입력의 둘째 줄 위반도 잡는다', () => {
+test('--stdin으로 여러 줄을 받으면 둘째 줄의 위반도 잡는다', () => {
   const r = run(['--stdin', '--target', 'chat'], { stdin: `${CLEAN}\n${REGISTER_VIOLATION}\n` });
   assert.equal(r.status, 1);
   assert.match(r.stdout, /2줄/, '둘째 줄에서 걸려야 합니다');
@@ -91,14 +91,14 @@ test('--stdin이 여러 줄 입력의 둘째 줄 위반도 잡는다', () => {
 
 test('회귀: 규칙 문서를 못 읽으면 --text가 통과로 끝나지 않는다', () => {
   const r = run(['--text', REGISTER_VIOLATION], { rules: missingRulesPath() });
-  assert.notEqual(r.status, 0, '기본 최소 규칙으로만 검사하고 통과라고 보고하면 거짓입니다');
-  assert.match(r.stdout, /이 결과는 통과가 아닙니다/);
+  assert.notEqual(r.status, 0, '일부 규칙으로만 검사하고 통과라고 보고하면 거짓입니다');
+  assert.match(r.stdout, /통과로 보지 않습니다/);
 });
 
 test('회귀: 규칙 문서를 못 읽으면 --file이 통과로 끝나지 않는다', () => {
   const r = run(['--file', 'README.md'], { rules: missingRulesPath() });
   assert.notEqual(r.status, 0);
-  assert.match(r.stdout, /이 결과는 통과가 아닙니다/);
+  assert.match(r.stdout, /통과로 보지 않습니다/);
 });
 
 test('회귀: 규칙 문서를 못 읽으면 --stdin이 통과로 끝나지 않는다', () => {
@@ -109,7 +109,7 @@ test('회귀: 규칙 문서를 못 읽으면 --stdin이 통과로 끝나지 않�
 test('규칙 문서를 못 읽으면 --all이 통과로 끝나지 않는다', () => {
   const r = run(['--all'], { rules: missingRulesPath() });
   assert.notEqual(r.status, 0);
-  assert.match(r.stdout, /이 결과는 통과가 아닙니다/);
+  assert.match(r.stdout, /통과로 보지 않습니다/);
 });
 
 test('규칙 문서를 못 읽으면 --self-check가 통과로 끝나지 않는다', () => {
@@ -136,10 +136,10 @@ test('회귀: 프로젝트 밖에 있는 규칙 문서를 읽으면 그 경로�
   assert.ok(r.stdout.includes(`프로젝트 규칙을 읽은 곳: ${path}`), r.stdout);
 });
 
-test('규칙 문서를 읽었으면 "통과가 아닙니다" 경고를 붙이지 않는다', () => {
+test('규칙 문서를 읽었으면 "통과로 보지 않습니다" 경고를 붙이지 않는다', () => {
   const r = run(['--text', CLEAN]);
   assert.equal(r.status, 0);
-  assert.doesNotMatch(r.stdout, /통과가 아닙니다/, '정상일 때 경고가 붙으면 사람이 경고를 무시하게 됩니다');
+  assert.doesNotMatch(r.stdout, /통과로 보지 않습니다/, '정상일 때 경고가 붙으면 사람이 경고를 무시하게 됩니다');
 });
 
 test('규칙 블록이 없는 문서를 읽으면 통과로 끝나지 않는다', () => {

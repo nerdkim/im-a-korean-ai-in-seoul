@@ -20,7 +20,7 @@ const natural = [
 ];
 for (const text of natural) test(`문맥으로만 판단할 수 있는 표현은 경고만 하고 차단하지 않는다: ${text}`, () => {
   const findings = checkText(text, rules);
-  assert.ok(findings.some(v => v.severity === 'warning'), '검토 후보는 남깁니다');
+  assert.ok(findings.some(v => v.severity === 'warning'), '경고는 남깁니다');
   assert.equal(blockingViolations(findings).length, 0);
 });
 
@@ -48,7 +48,7 @@ test('산문의 middle dot과 em-dash는 차단하고 대체 표현과 문자 �
   }
 });
 
-test('hook이 검토 후보로 알릴 규칙은 모두 경고 규칙이고 규칙 이름 표에 있다', () => {
+test('hook이 Claude에게 알릴 규칙은 모두 경고 규칙이고 규칙 이름 표에 있다', () => {
   /* 오류 규칙을 넣으면 쓰기가 막혀 알릴 기회가 없고, 이름을 틀리면 조용히 꺼집니다. */
   const reported = new Set([...readFileSync(rulesPath, 'utf8').matchAll(/^\| `([a-z-]+)` \|/gm)].map(m => m[1]));
   assert.ok(rules.reviewRules.length > 0);
@@ -58,7 +58,7 @@ test('hook이 검토 후보로 알릴 규칙은 모두 경고 규칙이고 규�
   }
 });
 
-test('기본 규칙은 `_workspace/` 아래의 작업 산출물을 검사하지 않는다', () => {
+test('기본 규칙은 `_workspace/` 아래의 작업 파일을 검사하지 않는다', () => {
   for (const path of ['_workspace/run/note.md', 'docs/_workspace/draft.md']) {
     assert.equal(targetForPath(path, rules), null, path);
   }

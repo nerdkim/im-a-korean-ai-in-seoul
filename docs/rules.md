@@ -4,14 +4,14 @@
 작성 지침은 이 저장소의 `output-styles/korean-style.md`에 있고, 설치한 프로젝트에서는 `.claude/output-styles/korean-style.md`에 있습니다.
 지침은 세션을 시작할 때 system prompt에 들어가고, hook은 실행될 때마다 이 문서를 새로 읽습니다. 그래서 모델이 두 파일을 직접 읽을 필요는 없습니다.
 
-## 판정
+## 오류와 경고
 
 - 오류는 hook에서 차단합니다. 오류로 분류한 규칙은 어투와 표기처럼 프로젝트가 정한 정책입니다.
-- 기본값에서는 산문에 쓴 middle dot(U+00B7), em-dash(U+2014) 등 `banned-char`에 든 문자를 오류로 막습니다. 나열은 쉼표나 조사로 잇고 부연은 괄호나 별도 문장으로 씁니다.
+- 기본 규칙에서는 산문에 쓴 middle dot(U+00B7), em-dash(U+2014) 등 `banned-char`에 든 문자를 오류로 막습니다. 나열은 쉼표나 조사로 잇고 부연은 괄호나 별도 문장으로 씁니다.
 - `advisory-rules`에 든 규칙에 걸리면 경고로만 보고합니다. CLI는 경고를 보여 주고, hook은 경고 때문에 쓰기를 막거나 재작성을 요구하지 않습니다.
-- `review-rules`에 든 규칙의 경고는 PreToolUse hook이 쓰기를 막지 않고 Claude에게 검토 후보로 알립니다. 이번에 바꾼 문단에서 새로 생긴 경고만 알리며, 알림에는 어색하면 고치고 문맥에 맞으면 그대로 두라는 안내가 붙습니다.
+- `review-rules`에 든 규칙의 경고는 PreToolUse hook이 쓰기를 막지 않고 Claude에게 알립니다. 이번에 바꾼 문단에서 새로 생긴 경고만 알리며, 알림에는 어색하면 고치고 문맥에 맞으면 그대로 두라는 안내가 붙습니다.
 - CLI는 오류가 있으면 1, 사용법이 틀리면 2를 반환합니다. 경고만 있으면 0이며 `--strict`에서는 1입니다.
-- CLI는 규칙을 읽지 못하면 실패합니다. hook은 규칙을 읽지 못해도 멈추지 않고 기본 최소 규칙으로 검사합니다. 규칙을 읽지 못하는 문제는 `doctor`와 `gate`로 확인합니다.
+- CLI는 규칙을 읽지 못하면 실패합니다. hook은 규칙을 읽지 못해도 멈추지 않습니다. 이때 검사하는 것은 금지 문자, 금지 호칭, 영어로만 쓴 답변뿐입니다. 규칙을 읽지 못하는 문제는 `doctor`와 `gate`로 확인합니다.
 
 ## 일부 규칙을 경고로 바꾸고 영어 제한을 푼 근거
 
@@ -22,7 +22,7 @@
 경로, 소유, 시제, 비유를 나타내는 정상적인 문장에도 같은 구절이 들어가므로 두 규칙을 경고로 바꿨습니다.
 
 쉼표 수, 문장 길이, 굵은 글씨 수, 명사형 종결이나 `~의` 같은 표현의 빈도는 문법이 아니라 문체의 경향을 보여 주는 값입니다.
-임계값은 전에 측정해 정한 값을 그대로 두고 경고에만 씁니다. 영어 용어 수는 기본값에서 제한하지 않습니다.
+임계값은 전에 측정해 정한 값을 그대로 두고 경고에만 씁니다. 기본 규칙에서는 영어 용어 수를 제한하지 않습니다.
 이 도구 저장소의 `test/quality.test.mjs`가 이 분류를 정상 문장과 실제 오류로 함께 검증합니다.
 
 긴 문장 경고는 글을 읽기 쉽게 하려고 둔 것입니다. 경고를 없애려고 한 가지 뜻을 담은 문장을 쪼개지 않습니다.
@@ -92,7 +92,7 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | 키  | 뜻 |
 | ---  | --- |
 | `advisory-rules` | 차단하지 않고 경고로만 보고할 규칙 이름입니다. |
-| `review-rules` | 경고 규칙 가운데 hook이 Claude에게 검토 후보로 알릴 규칙입니다. 이번에 바꾼 문단에서 새로 생긴 위반만 알립니다. |
+| `review-rules` | 경고 규칙 가운데 hook이 Claude에게 알릴 규칙입니다. 이번에 바꾼 문단에서 새로 생긴 위반만 알립니다. |
 | `register`  | 이 프로젝트가 쓰는 어투입니다. |
 | `banned-address`  | 읽는 사람을 부를 때 쓰면 안 되는 말입니다. |
 | `imperative-endings`  | 사람에게 명령이 되는 어미입니다. |
@@ -119,7 +119,7 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | `max-suffix-jeok-per-1k`  | 접미사 `~적`의 빈도 한도입니다. |
 | `max-particle-ui-per-1k`  | 관형격 조사 `~의`의 빈도 한도입니다. |
 | `plural-quantifiers`  | 뒤따르는 명사에 `~들`을 붙이면 안 되는 수량 표현입니다. |
-| `density-rule-floor`  | 밀도 규칙이 판정을 시작하는 최소 횟수입니다. |
+| `density-rule-floor`  | 밀도 규칙을 적용하는 최소 횟수입니다. |
 | `density-margin`  | 밀도 규칙이 한도에 더하는 여유입니다. |
 | `translationese-patterns`  | 영어식 구절과 대신 쓸 표현입니다. |
 | `literal-verbs`  | 영어 동사를 직역한 동사입니다. |
@@ -167,11 +167,11 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | `suffix-jeok-density` | 접미사 `~적`의 빈도입니다. |
 | `particle-ui-density` | 조사 `~의`의 빈도입니다. |
 | `redundant-plural` | 수량 표현 뒤 복수 접미사입니다. |
-| `bound-english` | 한 문장에서 조사가 붙은 영어 낱말 수입니다. 기본값에서는 제한하지 않습니다. |
+| `bound-english` | 한 문장에서 조사가 붙은 영어 낱말 수입니다. 기본 규칙에서는 제한하지 않습니다. |
 | `repeated-gloss` | 같은 영어 용어의 반복 설명입니다. |
 | `bold-density` | 문단이나 항목 안의 강조 수입니다. |
 | `contrast-density` | `A가 아니라 B`, `~라기보다`, `rather than` 같은 대조 구문의 빈도입니다. `뿐만 아니라`처럼 내용을 덧붙이는 표현과 `다름이 아니라`는 세지 않습니다. `아니라는`, `아니라면` 같은 활용형도 세지 않습니다. |
-| `inclusive-term` | 팀에서 검토할 용어입니다. |
+| `inclusive-term` | 차별 소지가 있는 용어입니다. |
 | `hybrid-negation` | 한국어 부정 접두사와 영어를 붙인 표현입니다. |
 | `unexplained-term` | 설명이 필요한 것으로 등록한 용어입니다. |
 | `transliteration` | 팀이 쓰지 않기로 한 음차 표기입니다. |

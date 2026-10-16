@@ -45,10 +45,10 @@ export function densityViolations(text, rules) {
       if (words.length <= rules.maxBoundEnglishPerSentence) continue;
       out.push({
         rule: 'bound-english',
-        detail: `한 한국어 문장에 조사나 경동사가 붙은 서로 다른 영어 낱말이 ${words.length}개입니다(한도 ${rules.maxBoundEnglishPerSentence}개): ${words
+        detail: `한국어 문장 하나에 조사나 경동사가 붙은 서로 다른 영어 낱말이 ${words.length}개입니다(한도 ${rules.maxBoundEnglishPerSentence}개): ${words
           .slice(0, 6)
           .map((w) => JSON.stringify(w))
-          .join(', ')}. 문장을 나누십시오. 용어를 한국어로 옮기는 것은 답이 아닙니다.`,
+          .join(', ')}. 문장을 나누십시오. 용어를 한국어로 바꾸지는 마십시오.`,
         line: lineOf(text, sentence.index),
       });
     }

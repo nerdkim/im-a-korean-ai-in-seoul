@@ -45,7 +45,7 @@ export function onlyFenced(text, exemptInfo = []) {
     .join('\n');
 }
 
-/* 장식 줄인지 봅니다. 글자나 숫자 없이 부호만 늘어놓은 줄입니다. */
+/* 글자나 숫자 없이 부호만 늘어놓은 줄인지 봅니다. */
 function isDecorationLine(trimmed) {
   return trimmed.length >= 3 && !/[\p{L}\p{N}]/u.test(trimmed);
 }
@@ -98,7 +98,7 @@ export function isKoreanProse(sentence, finalEndings, minRatio) {
   return endsWithAny(sentence, finalEndings);
 }
 
-/* 한 문장으로 판정할 조각들입니다. */
+/* 각각 한 문장으로 볼 조각들입니다. */
 export function sentencesOf(text) {
   const out = [];
   const push = (piece, at) => {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* git이 부르는 commit-msg hook입니다. */
+/* git이 실행하는 commit-msg hook입니다. */
 import { readFileSync } from 'node:fs';
 import { isEntryPoint, projectRoot, rulesDocPath } from '../lib/paths.mjs';
 import { loadRules } from '../lib/rules.mjs';
@@ -19,7 +19,7 @@ export function messageBody(raw) {
 
 function main() {
   const path = process.argv[2];
-  /* 메시지 파일 없이 불렸으면 git이 부른 것이 아닙니다. */
+  /* 인자로 메시지 파일을 받지 못했으면 git이 실행한 것이 아닙니다. */
   if (path === undefined) process.exit(0);
 
   let raw;

@@ -61,7 +61,7 @@ export function isDocPath(relPath) {
   return /\.(?:md|mdx|markdown)$/i.test(relPath);
 }
 
-/* 파일 하나에 어떤 종류를 적용할지 결정합니다. */
+/* 경로를 보고 파일의 종류를 정합니다. 검사하지 않는 파일이면 null입니다. */
 export function targetForPath(relPath, rules) {
   if (matchesAny(relPath, rules.skipGlobs)) return null;
   if (rules.docGlobs.length > 0 && matchesAny(relPath, rules.docGlobs)) return 'doc';

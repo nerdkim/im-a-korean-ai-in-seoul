@@ -87,7 +87,7 @@ function run() {
   if (violations.length === 0) process.exit(0);
 
   block(
-    `내용은 그대로 두고 아래 표현을 고쳐 답변을 한 번 다시 작성하십시오. 교정 설명은 붙이지 마십시오.\n` +
+    `내용은 그대로 두고 아래 표현을 고쳐 답변을 한 번 다시 작성하십시오. 무엇을 고쳤는지는 설명하지 마십시오.\n` +
     violations.slice(0, 3).map(v => `[${v.rule}] ${v.line}줄: ${v.detail}`).join('\n') +
     `\n규칙: ${RULES_DOC} (설명: check-korean.mjs --explain <규칙 이름>)`,
   );

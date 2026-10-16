@@ -90,7 +90,7 @@ export function vocabularyViolations(text, rules, target) {
     if (m === null) continue;
     out.push({
       rule: 'inclusive-term',
-      detail: `팀에서 검토할 용어입니다: ${JSON.stringify(m[0].slice(m[1].length))} → ${JSON.stringify(right)}.`,
+      detail: `차별 소지가 있는 용어입니다: ${JSON.stringify(m[0].slice(m[1].length))} → ${JSON.stringify(right)}.`,
       line: lineOf(text, m.index + m[1].length),
     });
   }

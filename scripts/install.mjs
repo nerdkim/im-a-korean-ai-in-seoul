@@ -41,9 +41,12 @@ const OUTPUT_STYLE_DIR_POSIX = '.claude/output-styles';
 const OUTPUT_STYLE_NAME = 'korean-style';
 
 /* .gitignore에서 이 도구가 넣은 줄을 알아보는 표시입니다. */
-const GITIGNORE_MARKER = '# korean-style 설치 산출물입니다. rules.md만 이 프로젝트의 것입니다';
+const GITIGNORE_MARKER = '# korean-style이 설치한 파일입니다. 직접 고치는 파일은 rules.md뿐입니다';
 
-/* 대상 저장소의 .gitignore에 더할 줄입니다. */
+/* 0.2.0까지 쓰던 표시입니다. 다시 설치하면 새 표시로 바꿉니다. */
+const OLD_GITIGNORE_MARKERS = ['# korean-style 설치 산출물입니다. rules.md만 이 프로젝트의 것입니다'];
+
+/* 설치할 저장소의 .gitignore에 더할 줄입니다. */
 export const GITIGNORE_LINES = [
   GITIGNORE_MARKER,
   `${INSTALLED_DIR}/*`,
@@ -53,7 +56,7 @@ export const GITIGNORE_LINES = [
   `${OUTPUT_STYLE_DIR_POSIX}/${OUTPUT_STYLE_NAME}.md`,
 ];
 
-/* 대상 프로젝트가 이 도구를 부를 때 쓰는 경로입니다. */
+/* 설치한 프로젝트의 hook 명령에 넣는 이 도구의 경로입니다. */
 const HOOK_BASE = `$CLAUDE_PROJECT_DIR/${INSTALLED_DIR}/scripts/hooks`;
 
 /* settings.json에서 이 도구의 hook 명령을 알아보는 표시입니다. */
@@ -112,7 +115,7 @@ export function mergeHookSettings(existing, hooks = HOOKS) {
   return { settings: out, added };
 }
 
-/* 대상이 고른 output-style이 없을 때만 이 도구의 것을 기본값으로 둡니다. */
+/* 프로젝트 설정에서 고른 output-style이 없을 때만 이 도구의 output-style을 기본값으로 둡니다. */
 export function mergeOutputStyle(settings, name = OUTPUT_STYLE_NAME) {
   const out = settings === null || typeof settings !== 'object' ? {} : { ...settings };
   const current = out.outputStyle;
@@ -122,10 +125,12 @@ export function mergeOutputStyle(settings, name = OUTPUT_STYLE_NAME) {
 }
 
 export function mergeGitignore(existing, lines = GITIGNORE_LINES) {
-  const before = typeof existing === 'string' ? existing : '';
+  const original = typeof existing === 'string' ? existing : '';
+  const before = original.split('\n').map((line) => (OLD_GITIGNORE_MARKERS.includes(line) ? GITIGNORE_MARKER : line)).join('\n');
   if (before.includes(GITIGNORE_MARKER)) {
     const missing = lines.filter(line => !before.split('\n').includes(line));
-    return { text: missing.length ? `${before.trimEnd()}\n${missing.join('\n')}\n` : before, added: missing.length > 0 };
+    const text = missing.length ? `${before.trimEnd()}\n${missing.join('\n')}\n` : before;
+    return { text, added: text !== original };
   }
   if (before.includes(INSTALLED_DIR)) return { text: before, added: false };
   const head = before.length === 0 || before.endsWith('\n') ? before : `${before}\n`;
@@ -148,19 +153,19 @@ function selfCheck() {
   const twice = mergeHookSettings(once);
   report(twice.added.length === 0 && twice.settings.hooks.PreToolUse.length === 1, '두 번 설치해도 항목이 하나다');
 
-  /* 대상 프로젝트에 다른 hook이 이미 있으면 그 hook이 남아야 합니다. */
+  /* 설치할 프로젝트에 다른 hook이 이미 있으면 그 hook이 남아야 합니다. */
   const mine = { hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo 남의 hook' }] }] } };
   const merged = mergeHookSettings(mine).settings;
   report(
     merged.hooks.Stop.length === 2 && merged.hooks.Stop[0].hooks[0].command === 'echo 남의 hook',
-    '대상 프로젝트의 기존 hook을 지우지 않는다',
+    '프로젝트에 있던 hook을 지우지 않는다',
   );
 
   /* 설정의 다른 부분도 남아야 합니다. */
   const withEnv = mergeHookSettings({ env: { FOO: 'bar' } }).settings;
   report(withEnv.env?.FOO === 'bar', 'hook 밖의 설정을 지우지 않는다');
 
-  /* 어투 치환이 그 줄만 바꾸는지 확인합니다. */
+  /* 어투를 바꿀 때 `register:` 줄만 바뀌는지 확인합니다. */
   const swapped = 'register: 다나까체\nbanned-address: 당신\n'.replace(RULES_REGISTER_LINE, 'register: 해요체');
   report(swapped === 'register: 해요체\nbanned-address: 당신\n', '어투 줄만 바꾼다');
 
@@ -172,7 +177,7 @@ function selfCheck() {
     '어투 조각은 register 표시 사이에만 들어간다',
   );
 
-  /* 달러 기호가 치환 패턴으로 읽히면 디스크에 남는 글이 달라집니다. */
+  /* 달러 기호가 치환 패턴으로 읽히면 파일에 쓰는 내용이 달라집니다. */
   report(skillWithRegister(body, '값은 $1 입니다.').includes('$1'), '조각의 달러 기호를 치환 패턴으로 읽지 않는다');
 
   /* 어투 이름 셋마다 조각 파일이 있어야 합니다. */
@@ -193,12 +198,19 @@ function selfCheck() {
   /* 디렉터리 자체를 빼면 git이 그 안을 보지 않아서 부정 패턴이 적용되지 않습니다. */
   report(!new RegExp(`^\\${INSTALLED_DIR}/$`, 'm').test(ignoreOnce.text), '디렉터리 자체가 아니라 그 안의 파일을 Git에서 제외한다');
 
-  /* 남의 줄을 지우면 설치가 피해를 줍니다. */
+  /* 설치하면서 남의 줄을 지우면 사용자에게 피해를 줍니다. */
   const keepMine = mergeGitignore('node_modules/\ndist/\n');
-  report(keepMine.text.startsWith('node_modules/\ndist/\n'), '대상의 기존 gitignore 줄을 지우지 않는다');
+  report(keepMine.text.startsWith('node_modules/\ndist/\n'), '프로젝트에 있던 gitignore 줄을 지우지 않는다');
 
   /* 이 도구의 경로가 이미 적힌 파일은 손대지 않습니다. */
   report(mergeGitignore(`${INSTALLED_DIR}/\n`).added === false, '이 도구의 경로가 이미 적힌 gitignore는 손대지 않는다');
+
+  /* 예전 표시는 새 표시로 바꾸고, 표시 줄은 하나만 남아야 합니다. */
+  const legacy = mergeGitignore(`${OLD_GITIGNORE_MARKERS[0]}\n${INSTALLED_DIR}/*\n`);
+  report(
+    legacy.added && legacy.text.split('\n').filter((line) => line.startsWith('# korean-style')).length === 1 && legacy.text.includes(GITIGNORE_MARKER),
+    '예전 표시 줄을 새 문구로 바꾼다',
+  );
 
   process.stdout.write(failed === 0 ? '자체 검사 통과\n' : `자체 검사 실패: ${failed}건\n`);
   return failed === 0;
@@ -230,7 +242,7 @@ function main() {
   if (args.help) { console.log(usage); return; }
   if (!args.target) throw new Error(usage);
   const root = realpathSync(resolve(args.target));
-  if (!lstatSync(root).isDirectory()) throw new Error(`대상은 디렉터리여야 합니다: ${root}`);
+  if (!lstatSync(root).isDirectory()) throw new Error(`--target에는 디렉터리를 지정해야 합니다: ${root}`);
   if (root === realpathSync(SOURCE_ROOT)) throw new Error('이 도구의 저장소에는 설치하지 않습니다.');
   if (args.register !== undefined && !Object.hasOwn(REGISTER_FRAGMENTS, args.register)) {
     throw new Error('--register는 다나까체, 해요체, 혼용 중 하나여야 합니다.');
@@ -269,7 +281,7 @@ function main() {
     }
   }
   // 로컬 설정은 진단만 합니다. 다른 worktree의 settings.local.json도 바꾸지 않습니다.
-  console.log(`대상: ${root}\n규칙: ${refresh ? '최신 기본값 적용' : '프로젝트의 기존 규칙 유지'} (${register})`);
+  console.log(`설치할 프로젝트: ${root}\n규칙: ${refresh ? '최신 기본값 적용' : '프로젝트의 기존 규칙 유지'} (${register})`);
   if (!refresh) console.log('새 기본 규칙이 필요하면 --force로 재설치합니다. 이때 설치 스크립트가 기존 규칙을 백업합니다.');
   if (backup) console.log(`규칙 백업: ${backup}`);
   if (style.settings.outputStyle !== OUTPUT_STYLE_NAME) console.log('기존 output-style을 유지합니다. 작성 지침을 선택하려면 --activate를 사용합니다.');
@@ -302,9 +314,9 @@ function main() {
   writeFileSync(settingsPath, JSON.stringify(style.settings, null, 2) + '\n');
   if (ignore.added) writeFileSync(ignorePath, ignore.text);
   console.log(`설치했습니다. 새 hook: ${added.join(', ') || '없음'}`);
-  if (!hasGit) console.log('.git이 없어서 .gitignore를 수정하지 않았습니다. git init 후 다시 설치하면 필요한 항목을 추가합니다.');
+  if (!hasGit) console.log('.git이 없어서 .gitignore를 수정하지 않았습니다. git init 후 다시 설치하면 설치 스크립트가 필요한 항목을 추가합니다.');
   reportCommitHook(installCommitHook(root));
-  console.log('적용하려면 대상 프로젝트에서 Claude 세션을 새로 시작합니다. Claude는 skill 설명을 보고 필요할 때만 skill을 읽습니다.');
+  console.log('설치한 프로젝트에서 Claude 세션을 새로 시작해야 설치 내용이 적용됩니다. Claude는 skill 설명을 보고 필요할 때만 skill을 읽습니다.');
   const quoted = "'" + join(installDir, 'scripts/doctor.mjs').replaceAll("'", "'\\''") + "'";
   console.log(`점검: node ${quoted}`);
 }

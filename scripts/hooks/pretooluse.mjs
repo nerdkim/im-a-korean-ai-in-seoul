@@ -14,7 +14,7 @@ const RULES_DOC = rulesDocPath(PROJECT_ROOT);
 
 const FILE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);
 
-/* 검토 후보를 한 번에 몇 건까지 알릴지 정합니다. 많으면 정작 고칠 것이 묻힙니다. */
+/* Claude에게 한 번에 보여 주는 경고는 이 건수까지입니다. 많으면 정작 고칠 것이 묻힙니다. */
 const MAX_REVIEW_NOTES = 5;
 
 /* 편집을 적용한 뒤의 파일 내용을 돌려줍니다. */
@@ -39,7 +39,7 @@ export function resultOfEdit(toolName, toolInput, filePath) {
     const from = edit.old_string ?? '';
     const to = edit.new_string ?? '';
     if (from === '' || !text.includes(from)) return to;
-    /* 두 경로 모두 `String.replace`를 쓰지 않습니다. `String.replace`는 새 문자열의 달러 기호를 치환 패턴으로 해석하기 때문입니다. */
+    /* `replace_all`이든 아니든 `String.replace`는 쓰지 않습니다. `String.replace`는 새 문자열의 달러 기호를 치환 패턴으로 해석하기 때문입니다. */
     if (edit.replace_all === true) {
       text = text.split(from).join(to);
       continue;
@@ -80,7 +80,7 @@ function changedRange(beforeLines, afterLines) {
   return { head, beforeEnd: beforeLines.length - tail, afterEnd: afterLines.length - tail };
 }
 
-/* 범위를 둘러싼 문단만 남기고 나머지 줄은 비웁니다. 줄 번호는 파일 그대로입니다. */
+/* 범위가 걸친 문단만 남기고 나머지 줄은 비웁니다. 줄 번호는 파일 그대로입니다. */
 function paragraphsAround(lines, from, to) {
   if (from >= to) return '';
   let start = from;
@@ -91,8 +91,8 @@ function paragraphsAround(lines, from, to) {
 }
 
 /*
- * 이번 호출로 바뀐 문단에만 있는 검토 후보입니다.
- * 파일 전체에서 주석 밖의 코드와 code block을 먼저 공백으로 가린 뒤 비교하므로 편집 조각에 주석 표시나 fence가 없어도 판정이 같습니다.
+ * 이번 편집으로 바뀐 문단에서 새로 생긴 경고 가운데 review-rules에 든 규칙의 경고만 돌려줍니다.
+ * 파일 전체에서 주석 밖의 코드와 code block을 먼저 공백으로 가린 뒤 비교합니다. 그래서 편집 조각에 주석 표시나 fence가 없어도 주석 안의 글은 검사하고 code block 안의 글은 건너뜁니다.
  * 같은 규칙에 걸린 같은 표현이 바뀌기 전 문단에도 있으면 알리지 않습니다.
  */
 export function reviewNotes(before, after, rules, target, path) {
@@ -101,7 +101,7 @@ export function reviewNotes(before, after, rules, target, path) {
   const beforeLines = proseLinesOf(before, target, path);
   const afterLines = proseLinesOf(after, target, path);
   const { head, beforeEnd, afterEnd } = changedRange(beforeLines, afterLines);
-  /* 주석 밖의 코드와 code block은 이미 가렸으므로 남은 글을 문서로 검사합니다. */
+  /* 주석 밖의 코드와 code block은 이미 가렸으므로 남은 글은 문서(`doc`) 규칙으로 검사합니다. */
   const pick = (text) => checkText(text, rules, 'doc').filter((v) => v.severity === 'warning' && wanted.has(v.rule));
   const added = pick(paragraphsAround(afterLines, head, afterEnd));
   if (added.length === 0) return [];
@@ -109,14 +109,14 @@ export function reviewNotes(before, after, rules, target, path) {
   return added.filter((v) => !seen.has(`${v.rule}\n${v.detail}`));
 }
 
-/* shell에 그대로 붙여 넣을 수 있게 경로를 감쌉니다. */
+/* shell에 그대로 붙여 넣을 수 있게 필요하면 경로를 작은따옴표로 감쌉니다. */
 const shellQuote = (s) => (/^[\w./-]+$/.test(s) ? s : `'${s.replaceAll("'", "'\\''")}'`);
 
 export function formatReviewNotes(notes, where, checker = 'check-korean.mjs') {
   const shown = notes.slice(0, MAX_REVIEW_NOTES);
   const head =
-    `한국어 검토 후보 ${notes.length}건 (${where}). 쓰기는 막지 않았습니다. ` +
-    '어색한 표현이면 고치고, 문맥에 맞으면 그대로 두십시오. 검토 결과는 답변에 적지 마십시오.';
+    `한국어 검사: 이번에 쓴 문단에서 경고 ${notes.length}건 (${where}). 쓰기는 막지 않았습니다. ` +
+    '어색한 표현이면 고치고, 문맥에 맞으면 그대로 두십시오. 고쳤는지 그대로 두었는지는 답변에 적지 마십시오.';
   const body = shown.map((v) => `  [${v.rule}] ${v.line}줄: ${v.detail}`);
   const rest = notes.length > shown.length
     ? [`  나머지 ${notes.length - shown.length}건은 \`node ${shellQuote(checker)} --file ${shellQuote(where)}\` 명령으로 확인하십시오.`]
@@ -150,7 +150,7 @@ export function shellWritePaths(command, rules, projectRoot, cwd) {
   const text = stripHeredocBodies(command);
   const candidates = new Set();
 
-  /* 1) 방향 재지정입니다. */
+  /* 1) `>`, `>>` redirection입니다. */
   for (const m of text.matchAll(/(?:^|[\s;&|(])\d?>>?\s*(?!&)(['"]?)([^\s;&|()<>'"]+)\1/g)) {
     candidates.add(m[2]);
   }
@@ -160,7 +160,7 @@ export function shellWritePaths(command, rules, projectRoot, cwd) {
     candidates.add(m[3]);
   }
 
-  /* 3) 제자리 편집입니다. */
+  /* 3) `sed -i`, `perl -i`처럼 파일을 바로 고치는 명령입니다. */
   for (const m of text.matchAll(/\b(?:sed|perl)\b([^;&|]*)/g)) {
     const rest = m[1] ?? '';
     if (!/(?:^|\s)-i/.test(rest)) continue;
@@ -173,7 +173,7 @@ export function shellWritePaths(command, rules, projectRoot, cwd) {
   const out = [];
   for (const raw of candidates) {
     if (raw.length === 0) continue;
-    /* shell이 확장할 문자가 남아 있으면 판정하지 않습니다. */
+    /* shell이 확장할 문자가 남아 있으면 건너뜁니다. */
     if (/[$`~*?]/.test(raw)) continue;
     const rel = toProjectRelative(resolve(cwd ?? projectRoot, raw), projectRoot);
     if (rel === null) continue;
@@ -196,7 +196,7 @@ function deny(reason) {
   process.exit(0);
 }
 
-/* 막지 않고 Claude에게만 알립니다. 권한 결정을 내리지 않으므로 사용자 승인 절차는 그대로입니다. */
+/* 도구 호출을 막지 않고 Claude에게 내용을 전하기만 합니다. `permissionDecision`을 넣지 않으므로 사용자 승인 절차는 그대로입니다. */
 function note(context) {
   process.stdout.write(
     JSON.stringify({
@@ -255,9 +255,9 @@ function run() {
     if (writes.length > 0) {
       deny(
         `shell 명령으로 검사 대상 파일에 쓰려 했습니다: ${writes.join(', ')}\n\n` +
-          'shell 명령으로 쓰는 내용은 문체 검사를 받지 않습니다. 명령이 무엇을 쓸지 이 hook이 미리 알 수 없기 때문입니다.\n' +
+          'shell 명령이 무엇을 쓸지 이 hook이 미리 알 수 없으므로 그 내용의 문체를 검사하지 못합니다.\n' +
           'Write 또는 Edit 도구로 같은 일을 하십시오. 두 도구로 쓰는 내용은 쓰기 직전에 검사합니다.\n' +
-          `검사 대상이 아닌 경로에 쓰는 것은 막지 않습니다. 무엇이 대상인지는 확장자와 규칙 문서(${RULES_DOC})의 경로 패턴으로 정합니다.`,
+          `검사하지 않는 경로에는 shell 명령으로 써도 됩니다. 어떤 파일을 검사할지는 확장자와 규칙 문서(${RULES_DOC})의 경로 패턴으로 정합니다.`,
       );
     }
     process.exit(0);
@@ -268,7 +268,7 @@ function run() {
   const filePath = ti.file_path ?? ti.notebook_path ?? '';
   if (filePath.length === 0) process.exit(0);
 
-  /* 프로젝트 밖의 파일은 판정하지 않습니다. */
+  /* 프로젝트 밖의 파일은 검사하지 않습니다. */
   const rel = toProjectRelative(filePath, PROJECT_ROOT);
   if (rel === null) process.exit(0);
 
@@ -279,7 +279,7 @@ function run() {
   const violations = blockingViolations(checkText(after, rules, target, { path: rel }));
   if (violations.length > 0) deny(formatViolations(violations, rules, `${rel} (${target})`));
 
-  /* 오류가 없으면 이번에 바뀐 문단의 경고만 검토 후보로 알립니다. 노트북 셀은 바뀌기 전 내용과 비교하지 않습니다. */
+  /* 오류가 없으면 이번에 바뀐 문단에서 review-rules에 든 규칙의 경고만 Claude에게 알립니다. 노트북 셀은 바뀌기 전 내용과 비교하지 않습니다. */
   const before = toolName === 'NotebookEdit' ? '' : currentText(filePath);
   const notes = reviewNotes(before, after, rules, target, rel);
   if (notes.length > 0) {

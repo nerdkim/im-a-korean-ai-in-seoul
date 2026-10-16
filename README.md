@@ -7,9 +7,9 @@
 - **skill:** 문체를 진단하는 `korean-style`과 문장을 다듬거나 번역하는 `korean-rewrite`를 함께 설치합니다.
 - **커밋 메시지 검사:** Git의 `commit-msg` hook으로 커밋 메시지를 검사합니다.
 
-기술 용어를 영어로 써도 검사기는 막지 않습니다. 막는 것은 어투와 표기처럼 프로젝트가 정한 규칙을 어긴 경우입니다.
-산문에 쓴 middle dot, em-dash, en-dash, emoji, 한자, 일본어 가나, 전각 괄호도 기본값에서 막습니다.
-영어식 표현과 긴 문장은 막지 않고 경고로만 보고합니다. 이 경고는 CLI로 검사할 때 보이고, 파일에 새로 쓴 부분에 있으면 hook이 Claude에게도 알립니다.
+기술 용어를 영어로 써도 검사기는 막지 않습니다. 어투와 표기처럼 프로젝트가 정한 규칙을 어겼을 때 막습니다.
+기본 규칙에서는 산문에 쓴 middle dot, em-dash, en-dash, emoji, 한자, 일본어 가나, 전각 괄호도 막습니다.
+영어식 표현과 긴 문장은 막지 않고 경고만 합니다. 경고는 CLI로 검사할 때 보입니다. Claude가 파일을 쓸 때 새로 쓴 문단에 경고가 있으면 hook이 Claude에게 알려 줍니다.
 
 ## 요구 사항
 
@@ -99,8 +99,8 @@ node /tmp/im-a-korean-ai-in-seoul/scripts/install.mjs --target "$PWD" --activate
 | Claude Code가 답변을 마칠 때 | 이번 turn의 최종 답변 | 재작성을 한 번만 요청합니다 |
 | Git이 커밋할 때(`commit-msg` hook) | 커밋 메시지 | 커밋을 멈춥니다 |
 
-파일 쓰기에 오류는 없고 영어식 표현 같은 경고만 있으면 쓰기를 막지 않습니다. 다만 `review-rules`에 든 규칙의 경고가 이번에 바꾼 문단에서 새로 생겼다면 hook이 Claude에게 검토 후보로 알립니다. Claude는 답을 마치기 전에 그 표현을 다시 보고 어색하면 고칩니다.
-Claude가 shell 명령으로 검사 대상 파일에 직접 쓰면 그 내용은 검사를 거치지 않습니다. 그래서 hook은 이런 명령을 알아보면 막고 Write나 Edit 도구로 다시 쓰라고 안내합니다.
+파일 쓰기에 오류는 없고 영어식 표현 같은 경고만 있으면 쓰기를 막지 않습니다. 다만 `review-rules`에 든 규칙의 경고가 이번에 바꾼 문단에서 새로 생겼다면 hook이 그 경고를 Claude에게 알립니다. Claude는 답을 마치기 전에 그 표현을 다시 보고 어색하면 고칩니다.
+Claude가 shell 명령으로 검사 대상 파일에 직접 쓰면 그 내용은 검사를 거치지 않습니다. 그래서 hook은 이런 명령을 감지하면 막고 Write나 Edit 도구로 다시 쓰라고 안내합니다.
 Stop hook은 답변이 화면에 표시된 뒤에 검사하므로 이미 표시된 답변은 되돌리지 못합니다. hook 실행 중에 예외가 발생하면 작업을 막지 않고 통과시킵니다.
 
 ### skill
@@ -128,7 +128,7 @@ node .korean-style/scripts/check-korean.mjs --explain translationese
 ## 동작 원리
 
 이 도구는 모델이 글을 쓰기 전과 쓴 뒤에 각각 개입합니다. 작성 지침은 따를 원칙을 미리 알려 주고, 검사기는 쓴 결과를 프로젝트 규칙과 대조합니다.
-검사기는 규칙 문서에 적힌 목록과 한도로 판정하는 Node.js 프로그램입니다. 모델을 호출하거나 네트워크에 접속하지 않으므로 같은 글과 같은 규칙에는 항상 같은 결과를 냅니다.
+검사기는 규칙 문서에 적힌 목록과 한도에 따라 글을 검사하는 Node.js 프로그램입니다. 모델을 호출하거나 네트워크에 접속하지 않으므로 같은 글과 같은 규칙에는 항상 같은 결과를 냅니다.
 
 ```mermaid
 flowchart LR
@@ -145,14 +145,14 @@ flowchart LR
 ### 작성 지침이 적용되는 방식
 
 Claude Code는 `outputStyle`로 고른 파일을 세션을 시작할 때 system prompt에 넣습니다. 그래서 모델은 답변할 때마다 파일을 다시 읽지 않고도 지침을 따릅니다.
-지침의 frontmatter에 있는 `keep-coding-instructions: true`는 Claude Code의 기본 코딩 지침을 함께 유지합니다.
+지침의 frontmatter에 `keep-coding-instructions: true`가 있어서 Claude Code의 기본 코딩 지침도 함께 적용됩니다.
 설치 스크립트는 지침에서 `register:begin` 표시와 `register:end` 표시 사이를 고른 어투의 문구로 바꿉니다. 어투별 문구는 `skill/korean-style/register/`에 있습니다.
 어투는 `--register`로 고르고, 생략하면 기존 규칙의 어투를 씁니다. 처음 설치할 때 생략하면 다나까체입니다. `korean-style` skill에도 같은 문구를 넣습니다.
 
 ### 검사 순서
 
 모든 검사는 `scripts/lib/check.mjs`의 `checkText`를 거칩니다. hook 세 개와 CLI는 글마다 `chat`, `doc`, `comment`, `commit` 가운데 한 종류를 정해 이 함수에 넘깁니다.
-종류에 따라 적용하는 규칙이 다릅니다. `checkText`는 받은 글을 다음 순서로 판정합니다.
+종류에 따라 적용하는 규칙이 다릅니다. `checkText`는 받은 글을 다음 순서로 처리합니다.
 
 1. **정규화:** 자모가 분리된 채 들어온 한글을 완성형 음절로 합칩니다(NFC).
 2. **주석 추출:** 종류가 `comment`이면 확장자별 주석 문법(`//`, `/* */`, `#`, `--`, Python docstring)으로 주석만 남기고 문자열 리터럴은 지웁니다. 한글이 든 줄만 남긴 뒤 `doc`으로 검사합니다.
@@ -185,10 +185,10 @@ Claude Code는 `outputStyle`로 고른 파일을 세션을 시작할 때 system 
 
 `banned-transliteration`, `banned-translation`, `required-spelling`, `needs-gloss`는 기본값이 비어 있고 `max-bound-english-per-sentence`는 0입니다. 팀이 목록을 채우거나 한도를 0보다 크게 정하면 검사기가 그때부터 검사합니다.
 어투, 명령, 호칭, 칭찬, 오타 규칙은 따옴표 안을 보지 않으므로 인용한 문장은 이 규칙들에 걸리지 않습니다.
-문장 단위 규칙은 문단, 목록 항목, 표 칸을 따로 나눈 뒤 마침표, 물음표, 느낌표 뒤에서 문장을 자릅니다. 제목 줄과 부호만 늘어놓은 장식 줄은 문장으로 세지 않습니다.
+문장 단위 규칙은 문단, 목록 항목, 표 칸을 따로 나눈 뒤 마침표, 물음표, 느낌표 뒤에서 문장을 자릅니다. 제목 줄과 부호만 늘어놓은 줄은 문장으로 세지 않습니다.
 쉼표 수, 쉼표 구간 길이, 긴 문장 규칙은 한글 비율이 `sentence-min-hangul-ratio` 이상이고 종결어미나 물음표, 느낌표로 끝나는 조각만 한국어 문장으로 셉니다.
-두 쉼표 규칙은 따옴표와 괄호 안, 숫자 사이의 쉼표를 세지 않습니다. 짧은 항목을 쉼표로 늘어놓은 나열은 판정에서 뺍니다.
-빈도 규칙은 한글 1000자당 횟수로 판정하고, 대조 구문만 공백을 뺀 전체 글자 수를 기준으로 삼습니다. 횟수가 `density-rule-floor`보다 적으면 판정하지 않고, 밀도가 `한도 × (1 + density-margin ÷ √횟수)`를 넘을 때만 보고합니다.
+두 쉼표 규칙은 따옴표와 괄호 안, 숫자 사이의 쉼표를 세지 않습니다. 짧은 항목을 쉼표로 늘어놓은 문장은 두 규칙에 걸리지 않습니다.
+빈도 규칙은 한글 1000자당 횟수로 밀도를 재고, 대조 구문만 공백을 뺀 전체 글자 수를 기준으로 삼습니다. 횟수가 `density-rule-floor`보다 적으면 보고하지 않고, 밀도가 `한도 × (1 + density-margin ÷ √횟수)`를 넘을 때만 보고합니다.
 횟수가 적을수록 여유가 커지므로 적게 나온 표현은 밀도가 한도를 크게 넘어야 걸립니다.
 오류와 경고를 나눈 근거는 [검사 규칙](docs/rules.md)에 있습니다.
 
@@ -205,12 +205,12 @@ Claude Code는 도구를 실행하기 직전에 도구 이름과 입력을 JSON�
 | `Bash` | `git commit` 명령의 `-m`과 `--message=` 값 | `commit` |
 
 `Edit`와 `MultiEdit`이면 hook은 현재 파일에 바꿀 내용을 적용한 결과를 만들어 파일 전체를 검사합니다. 그래서 이번에 고치지 않은 부분의 오류도 함께 보고합니다.
-파일을 읽지 못하거나 바꿀 문자열을 찾지 못하면 새 문자열만 검사합니다. `.ipynb`는 기본값에서 검사 대상이 아니므로 `doc-globs`에 넣어야 검사합니다.
+파일을 읽지 못하거나 바꿀 문자열을 찾지 못하면 새 문자열만 검사합니다. `.ipynb`는 기본 규칙에서 검사 대상이 아니므로 `doc-globs`에 넣어야 검사합니다.
 `Bash` 명령이 `>`, `>>`, `tee`, `sed -i`, `perl -i`로 검사 대상 파일에 쓰려 하면 hook은 쓸 내용을 미리 알 수 없으므로 명령을 막고 Write나 Edit 도구로 다시 쓰라고 안내합니다.
 오류가 있으면 hook은 `permissionDecision: deny`와 위반 목록을 돌려줍니다. Claude는 이 목록을 도구 실행 결과로 받아 문장을 고친 뒤 다시 시도합니다.
 
-파일 쓰기에 오류가 없으면 hook은 바뀌기 전 파일과 바뀐 뒤 파일에서 산문만 남깁니다. 주석 밖의 코드와 code block을 공백으로 가리므로 편집 조각에 주석 표시나 fence가 없어도 판정이 같습니다.
-그다음 앞뒤로 같은 줄을 빼고 바뀐 줄이 든 문단만 양쪽에서 검사해 비교합니다. NotebookEdit 도구로 셀을 고칠 때는 바뀌기 전 셀과 비교하지 않으므로 원래 있던 후보도 알립니다.
+파일 쓰기에 오류가 없으면 hook은 바뀌기 전 파일과 바뀐 뒤 파일에서 산문만 남깁니다. 주석 밖의 코드와 code block을 파일 전체에서 공백으로 가리므로, 고친 부분에 주석 표시나 fence가 없어도 주석 안의 글은 검사하고 code block 안의 글은 건너뜁니다.
+그다음 앞뒤로 같은 줄을 빼고 바뀐 줄이 든 문단만 양쪽에서 검사해 비교합니다. NotebookEdit 도구로 셀을 고칠 때는 바뀌기 전 셀과 비교하지 않으므로 원래 있던 경고도 알립니다.
 `review-rules`에 든 규칙의 경고가 바뀐 뒤 문단에만 있으면 `additionalContext`로 최대 다섯 건을 돌려줍니다. 줄 번호는 파일 기준이고, NotebookEdit 도구로 고친 셀에서는 셀 안의 줄 번호입니다. 어색하면 고치고 문맥에 맞으면 그대로 두라는 안내도 함께 붙습니다.
 이때 hook은 권한 결정을 내리지 않으므로 사용자 승인 절차는 그대로이고, Claude는 이 목록을 도구 결과와 함께 받습니다.
 
@@ -225,9 +225,9 @@ Claude Code가 답변을 마치면 `stop.mjs`가 마지막 답변(`last_assistan
 
 ### 규칙 문서를 읽는 방식
 
-검사기는 `.korean-style/rules.md`에서 `korean-style-rules` code block만 설정으로 읽습니다. 블록 밖의 설명은 판정에 쓰지 않고 `--explain`이 보여 줄 때만 읽습니다.
+검사기는 `.korean-style/rules.md`의 `korean-style-rules` code block에서만 설정을 읽습니다. 블록 밖의 설명은 검사에 쓰지 않고 `--explain`으로 보여 줄 때만 읽습니다.
 블록의 각 줄은 `키: 값` 형식이고 `#`으로 시작하는 줄은 주석입니다. 목록은 쉼표로 나누고, 치환 후보는 `원문=후보`로, 도구 필드는 `도구.필드`로 적습니다.
-규칙 문서를 열지 못하거나 블록이 없으면 CLI는 실패합니다. hook은 금지 글자와 호칭, 영어 답변만 보는 기본 최소 규칙으로 검사를 이어 갑니다.
+규칙 문서를 열지 못하거나 블록이 없으면 CLI는 실패합니다. hook은 멈추지 않고 검사를 이어 가지만, 이때 검사하는 것은 금지 문자, 금지 호칭, 영어로만 쓴 답변뿐입니다.
 
 ### 재설치할 때 직접 고친 규칙을 보존하는 방식
 
@@ -261,7 +261,7 @@ Git 없이 설치해도 Claude Code hook은 동작합니다. 나중에 `git init
 
 1. `.korean-style/`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`를 지웁니다.
 2. `.claude/settings.json`에서 명령에 `.korean-style/scripts/hooks/`가 들어간 hook 항목과 `"outputStyle": "korean-style"`을 지웁니다.
-3. `.gitignore`에서 `# korean-style 설치 산출물입니다`로 시작하는 줄과 이 도구가 추가한 다음 여섯 줄을 지웁니다: `.korean-style/*`, `!.korean-style/rules.md`, `!.korean-style/defaults.sha256`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`.
+3. `.gitignore`에서 `# korean-style`로 시작하는 줄과 이 도구가 추가한 다음 여섯 줄을 지웁니다: `.korean-style/*`, `!.korean-style/rules.md`, `!.korean-style/defaults.sha256`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`.
 4. `git rev-parse --git-path hooks/commit-msg`가 가리키는 파일에 `korean-style commit hook`이 들어 있는 줄이 있으면 그 파일을 지웁니다. 기존 hook에 검사기 호출을 직접 추가했다면 그 줄도 지웁니다.
 
 ## 문제 해결
@@ -270,7 +270,7 @@ Git 없이 설치해도 Claude Code hook은 동작합니다. 나중에 `git init
 
 - **스타일이나 hook이 적용되지 않을 때:** `.claude/settings.local.json`의 `outputStyle`과 `disableAllHooks`를 확인합니다. worktree에서는 주 checkout의 로컬 설정도 확인합니다. 적용 순서는 Claude Code의 [설정 우선순위](https://code.claude.com/docs/en/settings#settings-precedence)를 따릅니다.
 - **조직 정책, 세션 옵션, 사용자 전역 설정을 확인할 때:** `doctor`는 프로젝트와 로컬 설정 파일만 읽습니다. Claude Code의 `/status`에서 실제 설정 출처를 확인합니다.
-- **주의 항목:** 다른 커밋 hook을 쓰거나 커밋해야 할 파일이 Git에서 제외되어 있으면 `doctor`가 주의로 보고합니다.
+- **주의 항목:** 다른 커밋 hook을 쓰거나 커밋해야 할 파일이 Git에서 제외되어 있으면 `doctor`가 주의 항목으로 표시합니다.
 - **설치가 멈출 때:** 손상된 설정 파일을 고치고, 같은 이름의 기존 파일이나 설치 경로의 symlink를 옮기거나 지운 뒤 다시 설치합니다.
 
 ## 다른 코딩 agent

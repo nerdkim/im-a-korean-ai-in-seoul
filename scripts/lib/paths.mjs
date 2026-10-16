@@ -3,7 +3,7 @@ import { existsSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/* 설치된 프로젝트가 이 도구를 두는 디렉터리입니다. */
+/* 이 도구를 설치하면 프로젝트 안에 생기는 디렉터리입니다. */
 export const INSTALLED_DIR = '.korean-style';
 
 /* 프로젝트 루트를 찾습니다. */

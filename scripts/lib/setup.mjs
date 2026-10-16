@@ -34,7 +34,7 @@ export function commitHookPath(root) {
   return path ? resolve(root, path) : null;
 }
 
-// 공유 hook이라도 커밋하는 checkout의 검사기를 씁니다.
+// hook 하나를 여러 checkout에서 같이 써도 커밋이 일어나는 checkout의 검사기를 실행합니다.
 const HOOK_MARKER = '// korean-style commit hook';
 const COMMIT_LAUNCHER = `#!/usr/bin/env node
 ${HOOK_MARKER}

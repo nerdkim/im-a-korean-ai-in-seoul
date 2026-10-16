@@ -122,7 +122,7 @@ function main() {
         results.push(row);
         writeFileSync(join(out, 'results.json'), JSON.stringify({ cli: cli.stdout.trim(), date: new Date().toISOString(),
           casesHash: createHash('sha256').update(JSON.stringify(cases)).digest('hex'), hashes, effort, batch: !individual, hooks: withHooks, results }, null, 2) + '\n');
-        console.log(`${file}: ${row.seconds.toFixed(1)}초, 입력 토큰 ${row.inputTokens}, 출력 토큰 ${row.outputTokens}, 제약 통과 ${answers.filter(a => !a.missing.length && !a.forbidden.length && !a.overLength && !a.wrongSentenceCount && !a.metaComment).length}/${group.length}`);
+        console.log(`${file}: ${row.seconds.toFixed(1)}초, 입력 토큰 ${row.inputTokens}, 출력 토큰 ${row.outputTokens}, 제약을 지킨 답변 ${answers.filter(a => !a.missing.length && !a.forbidden.length && !a.overLength && !a.wrongSentenceCount && !a.metaComment).length}/${group.length}`);
       }
     }
   } finally { rmSync(scratch, { recursive: true, force: true }); }

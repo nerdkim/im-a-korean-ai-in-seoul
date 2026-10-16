@@ -16,7 +16,7 @@ import { densityViolations } from './rules/density.mjs';
 /* 텍스트 하나를 검사해 위반 목록을 돌려줍니다. */
 export function checkText(input, rules, target = 'chat', options = {}) {
   if (typeof input !== 'string' || input.trim().length === 0) return [];
-  if (!TARGETS.includes(target)) throw new Error(`알 수 없는 검사 대상입니다: ${target}`);
+  if (!TARGETS.includes(target)) throw new Error(`알 수 없는 검사 종류입니다: ${target}`);
 
   /* 한글 자모를 완성형 음절로 합칩니다. */
   const rawText = input.normalize('NFC');
@@ -28,7 +28,7 @@ export function checkText(input, rules, target = 'chat', options = {}) {
     if (typeof options.path !== 'string') return [];
     const comments = koreanCommentsOf(rawText, options.path);
     if (comments.trim().length === 0) return [];
-    /* 주석을 뽑아낸 텍스트를 `doc`으로 다시 봅니다. */
+    /* 뽑아낸 주석은 문서와 같은 규칙(`doc`)으로 다시 검사합니다. */
     return checkText(comments, rules, 'doc', { inFence: false });
   }
 
@@ -62,7 +62,7 @@ export function checkText(input, rules, target = 'chat', options = {}) {
 
 export const blockingViolations = violations => violations.filter(v => v.severity !== 'warning');
 
-/* 도구 호출 하나에서 검사할 필드의 문자열과 그 경로를 모읍니다. */
+/* 도구 호출 하나에서 검사할 필드 값을 경로와 함께 모읍니다. */
 export function toolFieldTexts(toolName, input, rules, which = 'chatToolFields') {
   const wanted = rules[which].get(toolName);
   if (wanted === undefined || wanted.size === 0) return [];
@@ -86,7 +86,7 @@ export function toolFieldTexts(toolName, input, rules, which = 'chatToolFields')
   return out;
 }
 
-/* 도구 호출의 각 필드를 산문으로 검사합니다. */
+/* 도구 호출의 필드 값을 하나씩 검사합니다. */
 export function checkToolCall(toolName, input, rules, target = 'chat') {
   const which = target === 'chat' ? 'chatToolFields' : 'agentToolFields';
   const problems = [];
@@ -99,7 +99,7 @@ export function checkToolCall(toolName, input, rules, target = 'chat') {
 /* 보고 맨 아래에 붙이는 규칙 출처입니다. */
 function sourceNote(rules) {
   if (rules.source === null) {
-    return `  규칙 설정을 찾지 못했습니다.\n  경고: ${rules.reason} 기본 최소 규칙(문자, 호칭, 영어 답변)만 적용했습니다.`;
+    return `  규칙 설정을 찾지 못했습니다.\n  경고: ${rules.reason} 검사한 것은 금지 문자, 금지 호칭, 영어로만 쓴 답변뿐입니다.`;
   }
   return `  규칙 문서: ${rules.source}`;
 }
@@ -114,7 +114,7 @@ export function formatViolations(violations, rules, where) {
 }
 
 export function formatToolViolations(problems, rules) {
-  const head = `한국어 문체 위반 ${problems.length}건 (이 도구 호출에 쓴 산문)`;
+  const head = `한국어 문체 위반 ${problems.length}건 (이 도구에 넘긴 글)`;
   const body = problems.map((p) => `  [${p.rule}] ${p.where}: ${p.detail}`);
   return [head, ...body, sourceNote(rules)].join('\n');
 }

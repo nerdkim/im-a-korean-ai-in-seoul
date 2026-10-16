@@ -154,7 +154,7 @@ test('닫히지 않은 따옴표가 있어도 그 뒤의 주석을 뽑는다', (
 
 test('주석 표시는 어절로 세지 않는다', () => {
   const extracted = koreanCommentsOf('// 확인했습니다 그리고 정리했습니다\n', 'a.mjs');
-  assert.ok(!extracted.includes('//'), '빗금 둘이 남으면 어절로 세어집니다');
+  assert.ok(!extracted.includes('//'), '빗금 둘이 남으면 어절 수에 들어갑니다');
   assert.ok(extracted.includes('확인했습니다'));
 });
 
@@ -207,7 +207,7 @@ test('stripCode는 길이를 바꾸지 않는다', () => {
 });
 
 test('줄바꿈으로 나뉜 문장을 한 문장으로 잇는다', () => {
-  /* 줄마다 따로 판정하면 한 문장을 여러 줄로 나눠 쓰기만 해도 문장 단위 규칙에 걸리지 않습니다. */
+  /* 줄마다 따로 검사하면 한 문장을 여러 줄로 나눠 쓰기만 해도 문장 단위 규칙에 걸리지 않습니다. */
   const wrapped = '이 문장은 첫 줄에서 시작해서\n다음 줄로 이어집니다.';
   const got = sentencesOf(wrapped);
   assert.equal(got.length, 1, `한 문장이어야 하는데 ${got.length}개입니다`);
@@ -234,7 +234,7 @@ test('어절은 공백으로 센다', () => {
 });
 
 test('도구 입력의 산문을 필드 이름으로 찾는다', () => {
-  /* 필드의 전체 경로를 규칙에 적으면 harness가 입력을 한 단계 더 감싸는 순간 그 규칙은 아무것도 잡지 못합니다. 그런데도 겉으로는 강제되는 것처럼 보입니다. */
+  /* 필드의 전체 경로를 규칙에 적으면 harness가 입력을 한 단계 더 감싸는 순간 그 규칙은 아무것도 잡지 못합니다. 그런데도 겉으로는 규칙이 계속 적용되는 것처럼 보입니다. */
   const r = rulesOf(['chat-tool-fields: AskUserQuestion.question, AskUserQuestion.label', 'register: 다나까체']);
   const input = { questions: [{ question: '확인했어요?', options: [{ label: '당신 선택' }, { label: '괜찮습니다' }] }] };
   const found = toolFieldTexts('AskUserQuestion', input, r);
@@ -277,7 +277,7 @@ test('회귀: 자모가 분리된(NFD) 한글도 완성형과 똑같이 검사�
   const decomposed = checkText(sentence.normalize('NFD'), r, 'doc');
 
   assert.ok(composed.length >= 3, `완성형에서 위반이 셋 이상 나와야 합니다: ${names(composed)}`);
-  assert.deepEqual(names(decomposed), names(composed), '자모가 분리된(NFD) 글이 완성형과 다르게 판정되었습니다');
+  assert.deepEqual(names(decomposed), names(composed), '자모가 분리된(NFD) 글의 검사 결과가 완성형과 다르게 나왔습니다');
 });
 
 test('회귀: 자모가 분리된(NFD) 한글을 한국어가 없는 글로 판정하지 않는다', () => {
@@ -320,7 +320,7 @@ test('glob의 **는 경로 조각 0개와도 일치한다', () => {
   assert.ok(!globToRegExp('docs/*.md').test('docs/x/a.md'));
 });
 
-test('skip-globs에 든 경로는 다른 판정보다 먼저 건너뛴다', () => {
+test('skip-globs에 든 경로는 문서인지 소스 파일인지 따지기 전에 건너뛴다', () => {
   const r = rulesOf(['skip-globs: docs/archive.md']);
   assert.equal(targetForPath('docs/archive.md', r), null);
   assert.equal(targetForPath('docs/other.md', r), 'doc');
@@ -329,7 +329,7 @@ test('skip-globs에 든 경로는 다른 판정보다 먼저 건너뛴다', () =
 });
 
 test('두 번 파싱해도 목록 항목이 늘어나지 않는다', () => {
-  /* 기본값을 참조로 복사하면 같은 배열에 다시 밀어 넣어 위반 하나가 두 번 보고됩니다. */
+  /* 기본값을 참조로 복사하면 다시 파싱할 때 같은 배열에 항목을 또 넣으므로 위반 하나를 두 번 보고합니다. */
   const block = 'banned-address: 당신\nconjunctive-adverbs: 그러나';
   const a = parseRuleBlock(block);
   const b = parseRuleBlock(block);
@@ -347,10 +347,10 @@ test('오른쪽이 빈 매핑은 교정안을 만들어 내지 않는다', () =>
   assert.equal(r.translationesePatterns.get('를 통해'), '');
   const v = checkText('로그를 통해 확인했습니다.', r, 'doc');
   assert.equal(v.length, 1);
-  assert.ok(!v[0].detail.includes('검토할 수 있습니다'), '대안을 지어내지 않아야 합니다');
+  assert.ok(!v[0].detail.includes('고칠 수도 있습니다'), '대안을 지어내지 않아야 합니다');
 });
 
-test('숫자 0은 규칙을 끈다', () => {
+test('값을 0으로 두면 그 규칙이 꺼진다', () => {
   const off = rulesOf(['max-comma-per-sentence: 0']);
   const many = '하나를 했고, 둘을 했고, 셋을 했고, 넷을 했습니다.';
   assert.equal(checkText(many, off, 'doc').filter((v) => v.rule === 'comma-per-sentence').length, 0);
@@ -368,10 +368,10 @@ test('빈 텍스트는 통과한다', () => {
 
 /* ---------------------------------------------------------------------------  대조 구문  --------------------------------------------------------------------------- */
 
-/* `docs/rules.md`와 같은 한도입니다. 네 번부터 판정합니다. */
+/* `docs/rules.md`와 같은 한도입니다. 네 번 이상 나와야 밀도를 따집니다. */
 const contrastRules = () => rulesOf(['max-contrast-per-1k: ko=0.8, en=0.5', 'density-rule-floor: 4', 'density-margin: 2']);
 
-/* 최소 횟수를 1로, 여유를 0으로 두어 한 번만 나와도 판정합니다. 표현 하나를 세는지만 봅니다. */
+/* 최소 횟수를 1로, 여유를 0으로 두어 한 번만 나와도 밀도를 따지게 합니다. 표현 하나를 세는지만 봅니다. */
 const contrastOnce = () => rulesOf(['max-contrast-per-1k: ko=0.8, en=0.5', 'density-rule-floor: 1', 'density-margin: 0']);
 
 test('`docs/rules.md` 한도에서는 짧은 글에 `A가 아니라 B`가 네 번 나오면 걸린다', () => {

@@ -25,8 +25,8 @@ function alternation(left) {
 
 function advise(right) {
   return right.length > 0
-    ? ` ${JSON.stringify(right)}도 검토할 수 있습니다. 문맥에 맞으면 유지합니다.`
-    : ' 문맥에 맞으면 유지합니다.';
+    ? ` ${JSON.stringify(right)}처럼 고칠 수도 있습니다. 문맥에 맞으면 그대로 두어도 됩니다.`
+    : ' 문맥에 맞으면 그대로 두어도 됩니다.';
 }
 
 export function translationeseViolations(text, rules) {

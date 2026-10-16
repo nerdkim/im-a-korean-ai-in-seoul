@@ -7,7 +7,7 @@ export const RULE_FENCE = 'korean-style-rules';
 /* 값이 여러 개인 키입니다. */
 const LIST_KEYS = {
   'advisory-rules': 'advisoryRules',
-  /* 이 경고 규칙에 걸린 표현이 파일에서 바꾼 문단에 새로 생기면 hook이 Claude에게 알립니다. */
+  /* Claude가 파일을 쓰거나 고칠 때 바뀐 문단에서 이 경고 규칙에 걸리는 표현이 새로 생기면 hook이 Claude에게 알립니다. */
   'review-rules': 'reviewRules',
   'banned-char': 'bannedChar',
   'banned-address': 'bannedAddress',
@@ -29,7 +29,7 @@ const LIST_KEYS = {
   'skip-globs': 'skipGlobs',
   'sweep-skip-dirs': 'sweepSkipDirs',
   'plural-quantifiers': 'pluralQuantifiers',
-  /* 직역 동사 규칙이 건드리지 않을 영어 목적어입니다. */
+  /* 직역 동사 규칙에서 예외로 두는 영어 목적어입니다. */
   'literal-verb-exempt': 'literalVerbExempt',
 };
 
@@ -67,7 +67,7 @@ const NUMBER_KEYS = {
   'max-suffix-jeok-per-1k': 'maxSuffixJeokPer1k',
   'max-particle-ui-per-1k': 'maxParticleUiPer1k',
   'density-rule-floor': 'densityRuleFloor',
-  /* 밀도 규칙이 한도에 더해 허용하는 여유입니다. */
+  /* 밀도 규칙의 한도에 더하는 여유입니다. */
   'density-margin': 'densityMargin',
 };
 
@@ -146,7 +146,7 @@ const FALLBACK = {
   koreanRequiredMinChars: 40,
   maxCommaPerSentence: 0,
   maxCommaSegmentWords: 0,
-  /* 나열 항목 하나에 허용하는 최대 어절 수입니다. */
+  /* 쉼표로 나눈 구간이 이 어절 수 이하여야 나열 항목으로 봅니다. */
   enumerationWordMax: 3,
   /* 문장 단위 규칙 세 개가 한국어 문장으로 인정하는 최소 한글 비율입니다. */
   sentenceMinHangulRatio: 0,

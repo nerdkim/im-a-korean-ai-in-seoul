@@ -13,10 +13,10 @@ const TOOL = toolRoot();
 
 /* `--self-check`가 없어도 되는 진입점과 그 이유입니다. */
 const SELF_CHECK_EXEMPT = {
-  'gate.mjs': '이 파일 자신입니다. gate를 검사하는 단계를 gate가 실행하면 결과가 자기 참조가 됩니다.',
+  'gate.mjs': 'gate 자신입니다. gate를 검사하는 단계를 gate가 실행하면 자기가 자기를 검사하는 셈이 됩니다.',
 };
 
-/* hook은 Claude Code가 stdin으로 주는 JSON이나 Git이 넘겨 주는 메시지 파일을 받으므로 명령줄 자체 검사를 두지 않습니다. */
+/* hook은 Claude Code가 stdin으로 주는 JSON이나 Git이 넘겨 주는 메시지 파일을 받으므로 명령줄 자체 검사가 없습니다. */
 const HOOK_DIR = 'hooks';
 
 /* 실행할 테스트 파일입니다. */
@@ -59,7 +59,7 @@ function run(label, args) {
   return code === 0;
 }
 
-/* 자체 검사 계약을 확인합니다. */
+/* 진입점마다 `--self-check`가 있는지 확인합니다. */
 function selfCheckContract(scripts) {
   const missing = [];
   const exempt = [];
@@ -79,7 +79,7 @@ function selfCheckContract(scripts) {
     }
     if (!readFileSync(s.abs, 'utf-8').includes('--self-check')) missing.push(s.rel);
   }
-  process.stdout.write('\n=== 자체 검사 계약 ===\n');
+  process.stdout.write('\n=== 자체 검사 옵션 ===\n');
   process.stdout.write(`자체 검사가 없는 진입점: ${missing.length}개\n`);
   for (const rel of missing) process.stdout.write(`  없음: ${rel}\n`);
   process.stdout.write(`면제: ${exempt.length}개\n`);
@@ -91,7 +91,7 @@ function main() {
   const only = process.argv.includes('--self-check-only');
   const results = [];
 
-  results.push(['자체 검사 계약', selfCheckContract(listScripts())]);
+  results.push(['자체 검사 옵션', selfCheckContract(listScripts())]);
   results.push(['검사기 자체 검사', run('검사기 자체 검사', [script('check-korean.mjs'), '--self-check'])]);
   /* 설치 스크립트는 설치된 프로젝트로 복사되지 않습니다. */
   if (existsSync(script('install.mjs'))) {

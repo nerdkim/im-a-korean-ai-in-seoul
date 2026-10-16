@@ -17,7 +17,7 @@ export function rules() {
   return loadRules(rulesDocPath(PROJECT_ROOT));
 }
 
-/* 밀도 여유 케이스가 쓰는 채움 문장입니다. */
+/* 밀도 여유를 확인하는 케이스에서 글 길이를 늘리려고 끼워 넣는 문장입니다. */
 const FILLER = '상태를 다시 확인했습니다. ';
 
 /* 연결어미 뒤 쉼표가 네 번 나오는 글을 만듭니다. */
@@ -29,10 +29,10 @@ const connectiveCommas = (gap) =>
 /* 자체 검사 케이스입니다. */
 export const SELF_CHECK_CASES = [
 
-  ['깨끗한 한국어 답변', '작업을 마쳤습니다. 결과를 정리해 드리겠습니다.', false, 'chat'],
+  ['위반이 없는 한국어 답변', '작업을 마쳤습니다. 결과를 정리해 드리겠습니다.', false, 'chat'],
   ['해요체가 섞였다', '확인했어요. 곧 알려 드릴게요.', true, 'chat'],
   ['요청형 명령', '값을 직접 입력해 주세요.', true, 'chat'],
-  ['같은 요청을 옳은 어투로', '값을 직접 입력해 주시기 바랍니다.', false, 'chat'],
+  ['같은 요청을 맞는 어투로 쓰면 통과', '값을 직접 입력해 주시기 바랍니다.', false, 'chat'],
   ['굳어진 인사말은 예외', '안녕하세요. 확인해 보겠습니다.', false, 'chat'],
   /* 맨 명령형과 요청형을 가르는 두 케이스입니다. */
   ['맨 명령형은 위반', '결과를 확인하십시오.', true, 'chat'],
@@ -45,7 +45,7 @@ export const SELF_CHECK_CASES = [
   ['문서 안의 명령형은 통과', '작업 전 이 절을 먼저 참조하십시오.', false, 'doc'],
   ['문서 안의 해요체는 위반', '값을 직접 입력해 주세요.', true, 'doc'],
   ['영어로 쓴 답변', 'The refactoring finished and every gate passed on the first run today.', true, 'chat'],
-  ['짧은 영어 조각은 통과', 'ok', false, 'chat'],
+  ['짧은 영어 답변은 통과', 'ok', false, 'chat'],
 
   /* 금지 문자 케이스입니다. */
   ['가운뎃점으로 묶은 나열은 위반', '분류·시크릿 게이트·워커 셋입니다.', true, 'chat'],
@@ -99,13 +99,13 @@ export const SELF_CHECK_CASES = [
     false,
     'doc',
   ],
-  ['짧은 쉼표 구간은 통과', '값을 확인했고, 결과를 적어 두었습니다.', false, 'doc'],
+  ['쉼표 앞 구간이 짧으면 통과', '값을 확인했고, 결과를 적어 두었습니다.', false, 'doc'],
   /* 연결어미와 끝 음절이 같은 명사입니다. */
   ['끝 음절이 연결어미와 같은 명사 나열은 통과', '화면, 측면, 단면, 표면 넷을 비교했습니다.', false, 'doc'],
   /* 백틱 구간을 가리면 접속부사와 쉼표 사이에 공백이 생깁니다. */
-  ['백틱 구간을 가려서 생긴 접속부사 뒤 쉼표는 통과', '그래서 `가`, `나` 두 낱말을 지웠습니다.', false, 'doc'],
+  ['백틱 구간을 가린 탓에 접속부사 뒤에 쉼표가 온 것처럼 보여도 통과', '그래서 `가`, `나` 두 낱말을 지웠습니다.', false, 'doc'],
 
-  /* --- 한국어 산문 문장으로 볼 범위 ---  세 규칙이 먼저 거치는 판단입니다. */
+  /* --- 한국어 산문 문장으로 볼 범위 ---  세 규칙은 검사하기 전에 한국어 산문 문장인지부터 따집니다. */
   [
     '영어 문장은 한국어 쉼표 규칙으로 재지 않는다',
     'The scheduler stores the rendered plan document in the durable queue, and then waits for approval.',
@@ -119,7 +119,7 @@ export const SELF_CHECK_CASES = [
     'doc',
   ],
   [
-    '장식 줄은 문장이 아니다',
+    '부호만 늘어놓은 줄은 문장이 아니다',
     '============================================================\n3절 요약\n============================================================',
     false,
     'doc',
@@ -142,7 +142,7 @@ export const SELF_CHECK_CASES = [
 
   /* --- 밀도 여유 ---  두 케이스 모두 연결어미 뒤 쉼표가 네 번 나옵니다. */
   ['짧은 글에서는 적은 횟수도 잡는다', connectiveCommas(3), true, 'doc'],
-  ['긴 글에서는 같은 네 번을 위반으로 보지 않는다', connectiveCommas(12), false, 'doc'],
+  ['긴 글에서는 똑같이 네 번 나와도 위반으로 보지 않는다', connectiveCommas(12), false, 'doc'],
 
   /* 대조 구문 밀도입니다. `뿐만 아니라`처럼 내용을 덧붙이는 표현은 세지 않습니다. */
   [
@@ -185,7 +185,7 @@ export const SELF_CHECK_CASES = [
   ['`있다`에 `-어서`가 붙은 것은 통과', '그 파일은 목록에 있어서 검사받지 않습니다.', false, 'doc'],
   /* 목록에서 뺀 항목입니다. */
   ['에 대해는 영어식 표현 목록에 없다', 'iam:CreateRole에 대해 implicitDeny를 돌려줍니다.', false, 'doc'],
-  ['진행 표현 중이었습니다는 정상 한국어', '35분째 조사 중이었습니다.', false, 'doc'],
+  ['진행 표현 `중이었습니다`는 통과', '35분째 조사 중이었습니다.', false, 'doc'],
   /* 'have + 명사'를 그대로 옮긴 직역입니다. */
   ['을 가지고 있다', '봇은 stage 환경에 쓰기 권한을 가지고 있습니다.', true, 'doc'],
   ['를 가지고 있다', '그 저장소는 tracked 파일만 보는 검사를 가지고 있습니다.', true, 'doc'],
@@ -220,8 +220,8 @@ export const SELF_CHECK_CASES = [
   /* make a decision을 직역한 표현입니다. */
   ['결정을 만들다', '우리는 이 문제를 다루기 위한 결정을 만들었습니다.', true, 'doc'],
   ['결정하다로 쓰면 통과', '우리는 이 문제를 어떻게 다룰지 결정했습니다.', false, 'doc'],
-  /* 면제 낱말이 목적어와 동사 사이에 부사어로 낀 경우입니다. */
-  ['사이에 낀 면제 낱말도 본다', 'VPN을 plan으로 세웠습니다.', false, 'doc'],
+  /* `literal-verb-exempt`에 든 낱말이 목적어와 동사 사이에 부사어로 낀 경우입니다. */
+  ['목적어와 동사 사이에 낀 예외 낱말도 본다', 'VPN을 plan으로 세웠습니다.', false, 'doc'],
   ['가설을 세우다는 통과', '원인을 설명하는 가설을 세웠습니다.', false, 'doc'],
 
   ['외래어 표기가 틀렸다', '워크플로우를 다시 확인했습니다.', true, 'doc'],
@@ -230,7 +230,7 @@ export const SELF_CHECK_CASES = [
   ['대체 용어는 통과', 'Allowlist에 주소를 넣었습니다.', false, 'doc'],
   /* 식별자 안은 산문이 아닙니다. */
   ['식별자 안의 낱말은 산문이 아니다', 'ADMIN_IP_WHITELIST 값을 바꿨습니다.', false, 'doc'],
-  /* 인용한 오타는 쓴 오타가 아닙니다. */
+  /* 인용한 오타는 직접 낸 오타가 아닙니다. */
   ['낱말이 아닌 철자', '작업이 됬습니다.', true, 'doc'],
   ['따옴표 안에 인용한 오타는 통과', '봇이 "작업이 됬습니다"라고 적었습니다.', false, 'doc'],
   ['한글 부정 접두사에 영어 어간', '이 경로는 비blocking 으로 동작합니다.', true, 'chat'],
@@ -238,7 +238,7 @@ export const SELF_CHECK_CASES = [
 
   /* --- 한 문장에 든 영어 낱말 ---  문장을 나누라고 조언하는 규칙이므로 문장에만 적용합니다. */
   [
-    '영어 용어 수는 기본값에서 제한하지 않는다',
+    '기본 설정에서는 영어 용어 수를 제한하지 않는다',
     'plan을 stage에서 apply로 넘기고 worker가 state를 lock으로 잡습니다.',
     false,
     'doc',
@@ -266,8 +266,8 @@ export const SELF_CHECK_CASES = [
   ['해요체에서 해요체는 통과', '확인했어요. 곧 알려 드릴게요.', false, 'chat', '해요체'],
   ['해요체에서 다나까체는 위반', '확인했습니다. 곧 알려 드리겠습니다.', true, 'chat', '해요체'],
   ['해요체에서도 아니다는 통과', '그것은 아니에요.', false, 'chat', '해요체'],
-  ['혼용은 다나까체를 통과시킨다', '확인했습니다.', false, 'chat', '혼용'],
-  ['혼용은 해요체도 통과시킨다', '확인했어요.', false, 'chat', '혼용'],
+  ['혼용에서 다나까체는 통과', '확인했습니다.', false, 'chat', '혼용'],
+  ['혼용에서 해요체도 통과', '확인했어요.', false, 'chat', '혼용'],
   ['혼용에서도 맨 명령형은 위반', '값을 직접 입력하십시오.', true, 'chat', '혼용'],
 ];
 
@@ -276,7 +276,7 @@ function runSelfCheck(r) {
   const reference = loadRules(join(tool, 'docs', basename(tool) === '.korean-style' ? 'defaults.md' : 'rules.md'));
   let failed = 0;
   for (const [label, input, expect, target, register = '다나까체'] of SELF_CHECK_CASES) {
-    /* 자체 검사 케이스는 프로젝트 규칙 대신 함께 배포한 기본 규칙으로 판정합니다. */
+    /* 자체 검사 케이스는 프로젝트 규칙 대신 도구와 함께 배포한 기본 규칙으로 검사합니다. */
     const rules = withRegister(reference, register);
     let got;
     try {
@@ -287,7 +287,7 @@ function runSelfCheck(r) {
     const ok = got === expect;
     if (!ok) failed += 1;
     process.stdout.write(
-      `${ok ? '  ok  ' : '  실패'} [${target}/${register}] ${label} (기대 ${expect ? '위반' : '통과'}, 결과 ${got === true ? '위반' : got === false ? '통과' : got})\n`,
+      `${ok ? '  ok  ' : '  실패'} [${target}/${register}] ${label} (기대: ${expect ? '위반' : '통과'}, 결과: ${got === true ? '위반' : got === false ? '통과' : got})\n`,
     );
     if (!ok && typeof got === 'boolean') {
       process.stdout.write(`        입력: ${JSON.stringify(input)}\n`);
@@ -298,7 +298,7 @@ function runSelfCheck(r) {
   const where = r.source === null ? `기본값 (${r.reason})` : toProjectRelative(r.source, PROJECT_ROOT) ?? r.source;
   process.stdout.write(`검사기 기본 규칙: ${reference.source ?? '읽기 실패'}\n프로젝트 규칙을 읽은 곳: ${where}\n`);
   if (r.source === null) {
-    process.stdout.write('규칙 문서를 읽지 못했으므로 이 실행을 실패로 봅니다. 통과라고 보고하면 거짓이 되기 때문입니다.\n');
+    process.stdout.write('규칙 문서를 읽지 못했으므로 이번 실행을 실패로 봅니다. 통과라고 보고하면 거짓이 되기 때문입니다.\n');
   }
   const passed = failed === 0 && r.source !== null && reference.source !== null;
   if (passed) process.stdout.write('자체 검사 통과\n');
@@ -334,7 +334,7 @@ const passLabel = (r) => (r.source === null ? '위반 없음' : '통과');
 /* 통과로 보고해도 되는지를 종료 코드로 돌려줍니다. */
 function exitCodeForPass(r) {
   if (r.source !== null) return 0;
-  process.stdout.write(`경고: ${r.reason} 기본 최소 규칙(문자, 호칭, 영어 답변)만 적용했으므로 이 결과는 통과가 아닙니다.\n`);
+  process.stdout.write(`경고: ${r.reason} 검사한 것은 금지 문자, 금지 호칭, 영어로만 쓴 답변뿐이므로 통과로 보지 않습니다.\n`);
   return 1;
 }
 
