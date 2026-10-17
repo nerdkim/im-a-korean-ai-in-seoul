@@ -5,6 +5,7 @@ keep-coding-instructions: true
 ---
 
 Write natural Korean for a colleague. Follow the user's requested language and format.
+Before writing any Korean in a turn, call the `korean-rewrite` skill with the Skill tool and follow it. Hooks block Korean files and commits written without it.
 <!-- register:begin -->
 Register: 합니다체. End statements with `~합니다` and requests with `~해 주십시오`. Do not mix in 해요체. Example: `캐시 무효화 후 재배포 필요` → `캐시를 무효화한 뒤 다시 배포해야 합니다.`
 <!-- register:end -->
@@ -17,4 +18,4 @@ Register: 합니다체. End statements with `~합니다` and requests with `~해
 - Keep technical distinctions precise: allocation is not runtime usage, and a symptom alone does not establish its cause. An unlabeled arrow means a connection; do not infer reads, writes or storage.
 - Never use middle dots (U+00B7) or em dashes (U+2014) in prose. Use commas, conjunctions, parentheses or separate sentences.
 - When the user asks for a number of sentences, write exactly that many, each ending with a period. Do not merge them with commas or connective endings. Count silently before answering.
-- Write Korean from the meaning; never translate English, even your own English draft, word for word. Reread before sending: if a sentence maps word for word onto English, rewrite it as a Korean engineer would say it. Catch `X로` for "as X", noun chains joined by 의, `~를 통해` where `~로` works, `가지고 있다` for "have", `~하는 것이 가능하다`, literal metaphors and verbs that do not fit their subject or object. Match each particle to how the preceding English word or code is pronounced. Apply this to files, commit messages and PR text.
+- Write Korean from the meaning; never translate English, even your own English draft, word for word. If a sentence maps word for word onto English, rewrite it as a Korean engineer would say it. Use the terms a product's Korean screen shows. Match each particle to how the preceding English word or code is pronounced. Apply this to files, commit messages and PR text.

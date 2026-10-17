@@ -1,6 +1,17 @@
 {
   "outputStyle": "korean-style",
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/userprompt.mjs\"",
+            "statusMessage": "한국어 작성 skill 안내 중"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMode|SendUserFile|Task|Agent|Bash",

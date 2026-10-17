@@ -11,7 +11,15 @@
 - `advisory-rules`에 든 규칙에 걸리면 경고로만 보고합니다. CLI는 경고를 보여 주고, hook은 경고 때문에 쓰기를 막거나 재작성을 요구하지 않습니다.
 - `review-rules`에 든 규칙의 경고는 PreToolUse hook이 쓰기를 막지 않고 Claude에게 알립니다. 이번에 바꾼 문단에서 새로 생긴 경고만 알리며, 알림에는 어색하면 고치고 문맥에 맞으면 그대로 두라는 안내가 붙습니다.
 - CLI는 오류가 있으면 1, 사용법이 틀리면 2를 반환합니다. 경고만 있으면 0이며 `--strict`를 붙이면 1입니다.
-- CLI는 규칙을 읽지 못하면 실패합니다. hook은 규칙을 읽지 못해도 멈추지 않습니다. 이때 검사하는 것은 금지 문자, 금지 호칭, 영어로만 쓴 답변뿐입니다. 규칙을 읽지 못하는 문제는 `doctor`와 `gate`로 확인합니다.
+- CLI는 규칙을 읽지 못하면 실패합니다. hook은 규칙을 읽지 못해도 멈추지 않습니다. 이때 검사하는 것은 금지 문자, 금지 호칭, 영어로만 쓴 답변뿐입니다. hook은 기본값대로 `korean-rewrite` skill도 요구합니다. 규칙을 읽지 못하는 문제는 `doctor`와 `gate`로 확인합니다.
+
+## 한국어를 쓰기 전에 부르는 skill
+
+- Claude는 한국어를 쓰는 turn마다 `writing-skill`에 적은 skill을 먼저 불러야 합니다. 사용자가 프롬프트를 보낼 때마다 UserPromptSubmit hook이 이 skill을 부르라고 Claude에게 알립니다.
+- 그 turn에서 skill을 부르지 않은 채 한글이 `writing-skill-min-hangul`개 이상 들어간 파일을 쓰거나 커밋하려 하면 PreToolUse hook이 막습니다. skill을 부르지 않은 채 한국어 답변을 마치면 Stop hook이 skill을 부르고 답변을 다시 쓰라고 요청합니다.
+- subagent가 파일을 쓸 때는 hook이 그 subagent의 기록에서 skill을 불렀는지 봅니다.
+- 같은 turn에서 두 번 막았는데도 Claude가 skill을 부르지 않으면 hook은 Skill 도구를 쓸 수 없는 환경으로 보고 더 막지 않습니다.
+- `writing-skill:`처럼 값을 비우거나 그 skill이 `.claude/skills/`에 없으면 skill을 요구하지 않습니다. 직접 고친 예전 규칙처럼 두 키가 아예 없으면 기본값인 `korean-rewrite`와 20을 씁니다.
 
 ## 일부 규칙을 경고로 바꾸고 영어 용어 수 제한을 푼 근거
 
@@ -42,6 +50,8 @@ imperative-endings: 하십시오, 하시오, 해라, 하라, 해줘, 해봐, 하
 imperative-exempt: 안녕하세요, 아니다, 감사합니다, 죄송합니다
 flattery-openers: 좋은 질문입니다, 좋은 질문이네요, 좋은 질문이십니다, 좋은 지적입니다, 좋은 지적이네요, 좋은 지적이십니다, 훌륭한 질문입니다, 훌륭한 지적입니다, 정확한 지적입니다, 예리한 질문입니다, 아주 중요한 질문입니다
 korean-required-min-chars: 40
+writing-skill: korean-rewrite
+writing-skill-min-hangul: 20
 banned-char: middot, em-dash, en-dash, emoji, hanja, kana, fullwidth-paren
 allowed-emoji-shortcode:
 sentence-min-hangul-ratio: 0.3
@@ -99,6 +109,8 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | `imperative-exempt`  | 명령 어미나 다른 어투의 어미로 끝나지만 위반으로 보지 않는 표현입니다. |
 | `flattery-openers`  | 답부터 하지 않고 질문이나 지적을 칭찬하는 문장입니다. |
 | `korean-required-min-chars`  | 코드와 공백을 뺀 글자 수가 이 값 이상인데 한글이 없으면 영어로 쓴 것으로 봅니다. |
+| `writing-skill`  | 한국어를 쓰는 turn마다 Claude가 먼저 불러야 하는 skill입니다. 값을 비우면 hook이 skill을 요구하지 않고, 키가 없으면 `korean-rewrite`를 씁니다. |
+| `writing-skill-min-hangul`  | 답변이나 파일, 커밋 메시지에 한글이 이 수 이상 들어가면 hook이 skill을 요구합니다. |
 | `banned-char`  | `scripts/lib/rules/chars.mjs`의 글자 종류 가운데 켜 둘 것입니다. |
 | `allowed-emoji-shortcode`  | 사용자가 이름을 지정해 허용한 shortcode입니다. |
 | `sentence-min-hangul-ratio`  | 문장을 한국어 산문으로 보려면 한글이 차지해야 하는 최소 비율입니다. |

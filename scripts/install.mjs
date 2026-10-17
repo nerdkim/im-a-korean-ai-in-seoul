@@ -66,12 +66,19 @@ const HOOK_BASE = `$CLAUDE_PROJECT_DIR/${INSTALLED_DIR}/scripts/hooks`;
 const MARKER = `${INSTALLED_DIR}/scripts/hooks/`;
 
 const HOOKS = {
+  UserPromptSubmit: {
+    script: 'userprompt.mjs',
+    command: `node "${HOOK_BASE}/userprompt.mjs"`,
+    statusMessage: '한국어 작성 skill 안내 중',
+  },
   PreToolUse: {
+    script: 'pretooluse.mjs',
     matcher: 'Write|Edit|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMode|SendUserFile|Task|Agent|Bash',
     command: `node "${HOOK_BASE}/pretooluse.mjs"`,
     statusMessage: '한국어 문체 검사 중',
   },
   Stop: {
+    script: 'stop.mjs',
     command: `node "${HOOK_BASE}/stop.mjs"`,
     statusMessage: '최종 답변 문체 검사 중',
   },
@@ -104,7 +111,7 @@ export function mergeHookSettings(existing, hooks = HOOKS) {
     const list = (out.hooks[event] ?? []).flatMap(entry => {
       const kept = entry.hooks.filter(h => {
         const owned = h.type === 'command' && typeof h.command === 'string' &&
-          h.command.includes(`${MARKER}${event === 'Stop' ? 'stop' : 'pretooluse'}.mjs`);
+          h.command.includes(`${MARKER}${spec.script}`);
         if (owned) found = true;
         return !owned;
       });
@@ -148,8 +155,8 @@ function selfCheck() {
     process.stdout.write(`${ok ? '  ok  ' : '  실패'} ${label}\n`);
   };
 
-  report(mergeHookSettings({}).added.length === 2, '빈 설정에 hook 둘을 더한다');
-  report(mergeHookSettings(null).added.length === 2, '설정 파일이 없어도 hook 둘을 더한다');
+  report(mergeHookSettings({}).added.length === 3, '빈 설정에 hook 셋을 더한다');
+  report(mergeHookSettings(null).added.length === 3, '설정 파일이 없어도 hook 셋을 더한다');
 
   /* 두 번 합쳐도 항목은 하나여야 합니다. */
   const once = mergeHookSettings({}).settings;
@@ -321,7 +328,7 @@ function main() {
   console.log(`설치했습니다. 새 hook: ${added.join(', ') || '없음'}`);
   if (!hasGit) console.log('.git이 없어서 .gitignore를 수정하지 않았습니다. git init 후 다시 설치하면 설치 스크립트가 필요한 항목을 추가합니다.');
   reportCommitHook(installCommitHook(root));
-  console.log('설치한 프로젝트에서 Claude 세션을 새로 시작해야 설치 내용이 적용됩니다. Claude는 skill 설명을 보고 필요할 때만 skill을 읽습니다.');
+  console.log('설치한 프로젝트에서 Claude 세션을 새로 시작해야 설치 내용이 적용됩니다. 그때부터 Claude는 한국어를 쓰는 turn마다 korean-rewrite skill을 먼저 부릅니다.');
   const quoted = "'" + join(installDir, 'scripts/doctor.mjs').replaceAll("'", "'\\''") + "'";
   console.log(`점검: node ${quoted}`);
 }

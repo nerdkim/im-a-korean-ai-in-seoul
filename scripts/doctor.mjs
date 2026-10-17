@@ -56,7 +56,7 @@ for (const path of [settingsPath, ...localSettingsPaths(root)]) {
 }
 const effective = Object.assign({}, ...sources.map(s => s.settings));
 if (effective.disableAllHooks === true) bad('disableAllHooks로 hook이 꺼져 있습니다');
-for (const [event, name] of [['PreToolUse', 'pretooluse'], ['Stop', 'stop']]) {
+for (const [event, name] of [['UserPromptSubmit', 'userprompt'], ['PreToolUse', 'pretooluse'], ['Stop', 'stop']]) {
   const command = `node "$CLAUDE_PROJECT_DIR/${installed ? '.korean-style/' : ''}scripts/hooks/${name}.mjs"`;
   const entries = sources.flatMap(s => s.settings.hooks?.[event] ?? []).filter(e => e.hooks.some(h =>
     h.type === 'command' && h.command === command && h.async !== true));
@@ -79,7 +79,7 @@ const stylePath = join(root, '.claude/output-styles/korean-style.md');
 if (!existsSync(stylePath)) bad('output-style 파일이 없습니다');
 else ok('output-style 파일이 있습니다');
 if (effective.outputStyle === 'korean-style') ok('outputStyle이 korean-style로 설정되어 있습니다');
-else bad(`outputStyle이 ${effective.outputStyle ?? '(없음)'}입니다. --activate로 재설치하거나 로컬 설정에서 korean-style을 선택합니다.`);
+else bad(`outputStyle이 ${effective.outputStyle ?? '(없음)'}입니다. --activate로 재설치하거나 로컬 설정에서 korean-style을 선택하면 됩니다.`);
 for (const name of ['korean-style', 'korean-rewrite']) {
   if (existsSync(join(root, '.claude/skills', name, 'SKILL.md'))) ok(`${name} skill이 있습니다`);
   else bad(`${name} skill이 없습니다`);

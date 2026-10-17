@@ -499,7 +499,7 @@ test('메시지 파일 없이 호출되면 통과시킨다', () => {
 test('설치할 때 원래 있던 hook을 지우지 않는다', () => {
   const mine = { hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo 남의 hook' }] }] }, env: { FOO: 'bar' } };
   const { settings, added } = mergeHookSettings(mine);
-  assert.equal(added.length, 2);
+  assert.deepEqual(added, ['UserPromptSubmit', 'PreToolUse', 'Stop']);
   assert.equal(settings.hooks.Stop.length, 2);
   assert.equal(settings.hooks.Stop[0].hooks[0].command, 'echo 남의 hook');
   assert.equal(settings.env.FOO, 'bar');
@@ -509,6 +509,7 @@ test('설치를 두 번 해도 이벤트마다 hook 항목이 하나다', () => 
   const once = mergeHookSettings({}).settings;
   const twice = mergeHookSettings(once);
   assert.equal(twice.added.length, 0);
+  assert.equal(twice.settings.hooks.UserPromptSubmit.length, 1);
   assert.equal(twice.settings.hooks.PreToolUse.length, 1);
   assert.equal(twice.settings.hooks.Stop.length, 1);
 });

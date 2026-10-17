@@ -44,7 +44,7 @@ function looksLikeEnumeration(segments, maxWords, rules) {
   }
   /* 절이 하나라도 있으면 나열이 아닙니다. */
   if (middle.some((s) => isClause(s, rules))) return false;
-  /* 어절이 0인 구간도 나열 항목으로 셉니다. */
+  /* 어절이 하나도 없는 구간도 나열 항목으로 셉니다. */
   return middle.every((s) => s.words <= maxWords);
 }
 

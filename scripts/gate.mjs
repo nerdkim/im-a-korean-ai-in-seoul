@@ -107,7 +107,7 @@ function main() {
     const tests = testFiles();
     if (tests === null) {
       /* 건너뛰었다는 사실을 반드시 출력합니다. */
-      process.stdout.write('\n=== 테스트 ===\n설치된 프로젝트에는 test/가 없으므로 건너뜁니다. 도구 저장소에서 실행하십시오.\n');
+      process.stdout.write('\n=== 테스트 ===\n설치된 프로젝트에는 test/가 없으므로 건너뜁니다. 이 도구의 저장소에서 실행하십시오.\n');
     } else {
       results.push(['테스트', run('테스트', ['--test', ...tests])]);
     }
@@ -119,7 +119,7 @@ function main() {
     if (!ok) bad += 1;
     process.stdout.write(`  ${ok ? '통과' : '실패'}  ${label}\n`);
   }
-  process.stdout.write(bad === 0 ? '\ngate 통과\n' : `\ngate 실패: ${bad}개 단계\n`);
+  process.stdout.write(bad === 0 ? '\ngate 통과\n' : `\ngate 실패: 단계 ${bad}개\n`);
   process.exit(bad === 0 ? 0 : 1);
 }
 

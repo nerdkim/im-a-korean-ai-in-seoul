@@ -4,10 +4,11 @@ import { readFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { isEntryPoint, projectRoot, rulesDocPath, toolRoot } from '../lib/paths.mjs';
 import { loadRules } from '../lib/rules.mjs';
-import { checkText, checkToolCall, formatToolViolations, formatViolations, blockingViolations } from '../lib/check.mjs';
+import { checkText, checkToolCall, formatToolViolations, formatViolations, blockingViolations, toolFieldTexts } from '../lib/check.mjs';
 import { koreanCommentsOf } from '../lib/comments.mjs';
 import { targetForPath, toProjectRelative } from '../lib/targets.mjs';
 import { stripCode } from '../lib/text.mjs';
+import { needsSkill, skillRequest } from '../lib/skill.mjs';
 
 const PROJECT_ROOT = projectRoot();
 const RULES_DOC = rulesDocPath(PROJECT_ROOT);
@@ -48,6 +49,14 @@ export function resultOfEdit(toolName, toolInput, filePath) {
     text = text.slice(0, at) + to + text.slice(at + from.length);
   }
   return text;
+}
+
+/* 이번 도구 호출로 파일에 새로 쓰는 글입니다. */
+export function writtenText(toolName, toolInput) {
+  if (toolName === 'Write') return toolInput.content ?? '';
+  if (toolName === 'NotebookEdit') return toolInput.new_source ?? '';
+  if (toolName === 'MultiEdit' && Array.isArray(toolInput.edits)) return toolInput.edits.map((edit) => edit.new_string ?? '').join('\n');
+  return toolInput.new_string ?? '';
 }
 
 /* 지금 디스크에 있는 파일 내용입니다. 새 파일이면 빈 문자열입니다. */
@@ -228,8 +237,15 @@ function run() {
   const ti = input.tool_input ?? {};
   const rules = loadRules(RULES_DOC);
 
+  /* 한국어를 쓰기 전에 Claude가 이번 turn에서 규칙 문서에 적은 skill을 불렀는지 봅니다. */
+  const requireSkill = (text, retry) => {
+    const context = { text, rules, projectRoot: PROJECT_ROOT, transcriptPath: input.transcript_path, agentId: input.agent_id };
+    if (needsSkill(context)) deny(skillRequest(rules.writingSkill, retry));
+  };
+
   /* 1) 사람이 읽을 산문을 담는 도구입니다. */
   if (rules.chatToolFields.has(toolName)) {
+    requireSkill(toolFieldTexts(toolName, ti, rules).map((field) => field.text).join('\n'), '다시 시도하십시오.');
     const problems = blockingViolations(checkToolCall(toolName, ti, rules));
     if (problems.length === 0) process.exit(0);
     deny(formatToolViolations(problems, rules));
@@ -244,6 +260,7 @@ function run() {
 
   /* 3) 커밋 메시지입니다. */
   if (toolName === 'Bash') {
+    requireSkill(commitMessagesIn(ti.command).join('\n'), '다시 커밋하십시오.');
     const problems = [];
     for (const message of commitMessagesIn(ti.command)) {
       problems.push(...blockingViolations(checkText(message, rules, 'commit')));
@@ -274,6 +291,7 @@ function run() {
 
   const target = targetForPath(rel, rules);
   if (target === null) process.exit(0);
+  requireSkill(writtenText(toolName, ti), '다시 쓰십시오.');
 
   const after = resultOfEdit(toolName, ti, filePath);
   const violations = blockingViolations(checkText(after, rules, target, { path: rel }));

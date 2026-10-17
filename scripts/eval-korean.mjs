@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* 실제 모델의 답변을 비교하는 스크립트입니다. 유료 API를 쓰므로 --run을 줄 때만 실행합니다. Claude Code의 도구와 skill은 끄고 hook은 --with-hooks를 줄 때만 켭니다. */
+/* 실제 모델의 답변을 비교하는 스크립트입니다. 유료 API를 쓰므로 --run을 줄 때만 실행합니다. --with-hooks를 주면 설치한 프로젝트에서 hook과 skill이 실제로 동작합니다. 주지 않으면 도구와 skill을 모두 끕니다. */
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -98,16 +98,22 @@ function main() {
         const prompt = individual ? group[0].prompt : batchPrompt;
         const started = Date.now();
         const liveHooks = withHooks && profile === 'installed';
-        const call = spawnSync('claude', ['-p', '--model', model, '--effort', effort, '--output-format', liveHooks ? 'stream-json' : 'json',
-          ...(liveHooks ? ['--verbose', '--include-hook-events'] : []),
-          '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', 'project',
-          '--settings', JSON.stringify({ disableAllHooks: !liveHooks }), '--disable-slash-commands', '--no-session-persistence'],
-        { cwd, input: prompt, encoding: 'utf8', timeout: 120_000, maxBuffer: 4 * 1024 * 1024 });
+        /* --with-hooks를 주면 모든 프로필의 프로젝트에서 skill과 검사기를 쓸 수 있게 합니다. skill이 설치된 프로젝트에서만 Claude가 실제로 skill을 부릅니다. */
+        const tools = withHooks
+          ? ['--tools', 'Skill,Read,Bash', '--allowedTools', 'Bash(node .korean-style/scripts/check-korean.mjs:*)']
+          : ['--tools', '', '--disable-slash-commands'];
+        const call = spawnSync('claude', ['-p', '--model', model, '--effort', effort, '--output-format', withHooks ? 'stream-json' : 'json',
+          ...(withHooks ? ['--verbose', '--include-hook-events'] : []), ...tools,
+          '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', 'project',
+          '--settings', JSON.stringify({ disableAllHooks: !liveHooks }), '--no-session-persistence'],
+        { cwd, input: prompt, encoding: 'utf8', timeout: 300_000, maxBuffer: 16 * 1024 * 1024 });
         const file = `${profile}-${model}-${run}${individual ? '-' + group[0].id : ''}`.replace(/[^\w.-]/g, '_');
-        writeFileSync(join(out, `${file}.${liveHooks ? 'jsonl' : 'json'}`), call.stdout || '{}');
+        writeFileSync(join(out, `${file}.${withHooks ? 'jsonl' : 'json'}`), call.stdout || '{}');
         if (call.error || call.status !== 0) throw new Error(`${file}: ${call.error?.message || call.stderr || call.stdout}`);
-        const events = liveHooks ? call.stdout.trim().split('\n').filter(Boolean).map(line => JSON.parse(line)) : [];
-        const response = liveHooks ? events.findLast(e => e.type === 'result') : JSON.parse(call.stdout);
+        const events = withHooks ? call.stdout.trim().split('\n').filter(Boolean).map(line => JSON.parse(line)) : [];
+        const response = withHooks ? events.findLast(e => e.type === 'result') : JSON.parse(call.stdout);
+        const skills = events.flatMap(e => e.type === 'assistant' ? (e.message?.content ?? []) : [])
+          .filter(part => part.type === 'tool_use' && part.name === 'Skill').map(part => part.input?.skill ?? part.input?.command);
         if (!response) throw new Error(`${file}: 결과가 없습니다`);
         if (response.is_error || typeof response.result !== 'string') throw new Error(`${file}: ${JSON.stringify(response)}`);
         const parsed = individual ? [{ id: group[0].id, text: response.result.trim() }] : answersOf(response.result, cases);
@@ -118,7 +124,7 @@ function main() {
           seconds: (Date.now() - started) / 1000, apiMs: response.duration_api_ms,
           inputTokens: (usage.input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0),
           outputTokens: usage.output_tokens, costUsd: response.total_cost_usd, turns: response.num_turns,
-          hooks: liveHooks, hookResponses: events.filter(e => e.subtype === 'hook_response').map(e => ({ event: e.hook_event, output: e.stdout, exitCode: e.exit_code })), answers };
+          hooks: liveHooks, skills, hookResponses: events.filter(e => e.subtype === 'hook_response').map(e => ({ event: e.hook_event, output: e.stdout, exitCode: e.exit_code })), answers };
         results.push(row);
         writeFileSync(join(out, 'results.json'), JSON.stringify({ cli: cli.stdout.trim(), date: new Date().toISOString(),
           casesHash: createHash('sha256').update(JSON.stringify(cases)).digest('hex'), hashes, effort, batch: !individual, hooks: withHooks, results }, null, 2) + '\n');

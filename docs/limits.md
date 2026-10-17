@@ -1,5 +1,9 @@
 # 제약
 
+- hook은 Claude가 한국어를 쓰는 turn에서 `korean-rewrite` skill을 불렀는지는 확인하지만, skill을 부른 뒤 쓴 글이 절차를 모두 따랐는지는 보지 않습니다. 그래서 남은 문제는 검사기가 잡는 오류와 경고로만 드러납니다.
+- Claude가 skill을 부르지 않은 채 한국어 답변을 마치면 Stop hook은 그 답변이 화면에 나온 뒤에 skill을 부르고 다시 쓰라고 요청합니다. 그래서 첫 답변과 다시 쓴 답변이 함께 보입니다.
+- subagent 프롬프트와 한글이 `writing-skill-min-hangul`개보다 적은 글에는 skill을 요구하지 않습니다. 같은 turn에서 두 번 막았는데도 Claude가 skill을 부르지 않으면 hook은 더 막지 않습니다.
+- skill과 hook은 Claude Code에서만 동작합니다. Codex나 Gemini CLI가 쓰는 글에는 커밋 메시지 검사만 적용됩니다.
 - 영어식 표현, 쉼표, 길이와 빈도 규칙은 경고로만 보고합니다. 경고가 나온 표현도 문맥에 맞으면 그대로 두어도 됩니다. CLI에 `--strict`를 붙이면 경고도 실패로 처리합니다.
 - hook은 Write, Edit, MultiEdit, NotebookEdit 도구로 바꾼 문단에서 `review-rules`에 든 규칙의 경고만 Claude에게 알립니다. 같은 규칙에 걸린 같은 표현이 바뀌기 전 문단에도 있으면 알리지 않으므로, 이미 있던 표현을 그 문단에 한 번 더 써도 알리지 않습니다. NotebookEdit 도구로 셀을 고칠 때는 바뀌기 전 셀과 비교하지 않으므로 원래 있던 경고도 알립니다. 알린 표현을 고칠지는 Claude가 문맥을 보고 정합니다.
 - 어투와 표기 규칙 위반을 오류로 분류한 것은 프로젝트 정책입니다. 인용과 고유명사에 예외가 필요하면 규칙을 조정합니다.

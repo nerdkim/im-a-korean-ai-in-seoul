@@ -4,7 +4,7 @@ This repository installs a Korean writing guide and a style checker into other p
 Claude Code, Codex and Gemini CLI share this file: `AGENTS.md` and `GEMINI.md` are symlinks to `CLAUDE.md`. Edit `CLAUDE.md` only and keep the symlinks.
 
 - The goal is natural Korean that preserves meaning. Do not treat style preferences as grammar errors.
-- The writing guide lives only in `output-styles/korean-style.md`. Claude Code loads it as the output style, so do not reread it there. Other agents read it before writing Korean.
+- The writing rules live in the `korean-rewrite` skill (`skill/korean-rewrite/SKILL.md`); `output-styles/korean-style.md` holds the register and the basics. In Claude Code, call the skill before writing Korean in every turn; the hooks block Korean files and commits written without it. Other agents read the skill file before writing Korean.
 - The Claude Code hooks check writes and answers automatically. Other agents do not run them, so check Korean text with `node scripts/check-korean.mjs --file <path>` or `--stdin` before finishing. The commit-msg Git hook runs for every agent once installed with `npm run doctor -- --install-commit-hook`.
 - `docs/rules.md` defines the checker rules and which of them block. Do not hide policy values in code.
 - Report ambiguous expressions as warnings. Hooks block only errors and ask for a rewrite at most once.

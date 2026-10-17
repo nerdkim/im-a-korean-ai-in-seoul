@@ -1,7 +1,7 @@
 /* 규칙을 읽어 옵니다. */
 import { readFileSync } from 'node:fs';
 
-/* 규칙 블록 fence의 info string입니다. */
+/* 규칙 블록을 감싸는 fence의 info string입니다. */
 export const RULE_FENCE = 'korean-style-rules';
 
 /* 값이 여러 개인 키입니다. */
@@ -69,6 +69,8 @@ const NUMBER_KEYS = {
   'density-rule-floor': 'densityRuleFloor',
   /* 밀도 규칙의 한도에 더하는 여유입니다. */
   'density-margin': 'densityMargin',
+  /* 한글이 이 수 이상 들어간 글을 쓰기 전에 Claude가 `writing-skill`에 적은 skill을 불러야 합니다. */
+  'writing-skill-min-hangul': 'writingSkillMinHangul',
 };
 
 /* 언어마다 숫자를 따로 두는 키입니다. */
@@ -79,6 +81,8 @@ const KEYED_NUMBER_KEYS = {
 /* 값이 문자열 하나인 키입니다. */
 const STRING_KEYS = {
   register: 'register',
+  /* 한국어를 쓰는 turn마다 불러야 하는 skill입니다. 비워 두면 요구하지 않습니다. */
+  'writing-skill': 'writingSkill',
 };
 
 /* 도구 입력 필드를 지정하는 키입니다. */
@@ -164,6 +168,9 @@ const FALLBACK = {
   densityRuleFloor: 4,
   /* 여유의 기본값은 일부러 0으로 둡니다. */
   densityMargin: 0,
+  /* 키가 없는 예전 규칙에서도 작성 skill을 요구합니다. 끄려면 규칙 문서에서 값을 비웁니다. */
+  writingSkill: 'korean-rewrite',
+  writingSkillMinHangul: 20,
 };
 
 /* 목록과 표를 새로 만들어 돌려줍니다. */
@@ -234,7 +241,8 @@ export function parseRuleBlock(body) {
       .filter((v) => v.length > 0);
 
     if (STRING_KEYS[key] !== undefined) {
-      if (values[0] !== undefined) rules[STRING_KEYS[key]] = values[0];
+      /* `writing-skill:`처럼 값을 비우면 skill을 요구하지 않습니다. */
+      if (values[0] !== undefined || key === 'writing-skill') rules[STRING_KEYS[key]] = values[0] ?? '';
       continue;
     }
     if (LIST_KEYS[key] !== undefined) {

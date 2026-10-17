@@ -158,7 +158,7 @@ test('주석 표시는 어절로 세지 않는다', () => {
   assert.ok(extracted.includes('확인했습니다'));
 });
 
-test('줄 번호가 유지된다', () => {
+test('주석만 뽑아 검사해도 원래 줄 번호를 보고한다', () => {
   const src = ['const a = 1;', 'const b = 2;', '// 워크플로우를 확인합니다.'].join('\n');
   const r = rulesOf(['loanword-spelling: 워크플로우=워크플로']);
   const v = checkText(src, r, 'comment', { path: 'a.mjs' });

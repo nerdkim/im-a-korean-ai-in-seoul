@@ -363,7 +363,7 @@ test('register 값에 따라 설치된 검사기의 결과가 실제로 달라�
 });
 
 test('output-style 본문이 이 저장소의 규칙 검사를 통과한다', () => {
-  /* output-style은 글을 쓰기 전에 모델에게 따를 원칙을 알려 주고 검사기는 쓴 글에 금지 목록의 표현이 있으면 막습니다. */
+  /* output-style은 글을 쓰기 전에 모델에게 따를 원칙을 알려 줍니다. 검사기는 쓴 글에 금지 목록의 표현이 있으면 막습니다. */
   const rules = loadRules(rulesDocPath(ROOT));
   assert.notEqual(rules.source, null, '규칙 문서를 읽지 못했습니다');
 
@@ -479,7 +479,7 @@ test('settings.json이 가리키는 hook 파일이 실제로 있다', () => {
   const commands = Object.values(settings.hooks).flatMap((list) =>
     list.flatMap((entry) => entry.hooks.map((h) => h.command)),
   );
-  assert.equal(commands.length, 2);
+  assert.equal(commands.length, 3);
 
   for (const command of commands) {
     const quoted = command.match(/"([^"]+)"/);
@@ -538,7 +538,7 @@ test('설치할 때 복사한 파일은 git이 실제로 빼고 규칙 문서와
 
   const ignored = (rel) => spawnSync('git', ['check-ignore', '-q', rel], { cwd: target }).status === 0;
 
-  assert.ok(ignored(join(INSTALLED_DIR, 'scripts', 'check-korean.mjs')), '검사 엔진이 커밋 대상입니다');
+  assert.ok(ignored(join(INSTALLED_DIR, 'scripts', 'check-korean.mjs')), '검사기가 커밋 대상입니다');
   assert.ok(ignored(join(INSTALLED_DIR, 'docs', 'limits.md')), '제약 문서가 커밋 대상입니다');
   assert.ok(ignored(SKILL_REL), 'skill이 커밋 대상입니다');
 
@@ -676,7 +676,7 @@ test('설치된 hook이 규칙을 어긴 글은 쓰지 못하게 막는다', () 
     cwd: target,
   });
 
-  assert.notEqual(out, null, 'hook이 아무것도 내지 않았습니다');
+  assert.notEqual(out, null, 'hook이 아무것도 출력하지 않았습니다');
   assert.equal(out.hookSpecificOutput.permissionDecision, 'deny');
   assert.match(out.hookSpecificOutput.permissionDecisionReason, /double-passive/);
 });
@@ -706,7 +706,7 @@ test('설치된 hook은 새로 쓴 글에 영어식 표현으로 보이는 곳�
     cwd: target,
   });
 
-  assert.notEqual(out, null, 'hook이 아무것도 내지 않았습니다');
+  assert.notEqual(out, null, 'hook이 아무것도 출력하지 않았습니다');
   assert.equal(out.hookSpecificOutput.permissionDecision, undefined);
   assert.match(out.hookSpecificOutput.additionalContext, /\[translationese\] 3줄/);
 });
