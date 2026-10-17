@@ -95,6 +95,7 @@ doc-globs:
 source-globs:
 skip-globs: node_modules/**, dist/**, build/**, coverage/**, vendor/**, .venv/**, **/*.min.js, **/*.generated.*, skill/korean-style/register/*.md, **/_workspace/**
 sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pycache__, target
+quote-marker: korean-style-quote
 ```
 
 ## 키 설명
@@ -153,6 +154,7 @@ sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pyc
 | `doc-globs`, `source-globs`  | 확장자보다 먼저 적용해 검사 종류를 정하는 경로 패턴입니다. |
 | `skip-globs`  | 검사하지 않을 경로입니다. |
 | `sweep-skip-dirs`  | 전체 검사에서 들어가지 않을 디렉터리 이름입니다. |
+| `quote-marker`  | 인용 구간을 나타내는 이름입니다. 문서에서 `<!-- 이 값 -->` 줄과 `<!-- /이 값 -->` 줄 사이에 넣은 글은 다른 글을 그대로 옮긴 인용으로 보고 검사하지 않습니다. 답변과 커밋 메시지에서는 이 구간도 검사합니다. 값을 비우면 인용 표시가 있어도 그 사이를 검사합니다. 키가 없으면 `korean-style-quote`를 씁니다. |
 
 ## 보고에 나오는 규칙 이름
 

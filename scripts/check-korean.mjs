@@ -259,6 +259,8 @@ export const SELF_CHECK_CASES = [
 
   ['fence 안에도 낱말 규칙을 적용한다', '아래를 확인합니다.\n```\n워크플로우 확인\n```', true, 'doc'],
   ['fence 안의 명령어는 통과', '아래를 실행합니다.\n```\nterragrunt force-unlock 1234\n```', false, 'doc'],
+  ['문서의 인용 구간은 통과', '받은 답변입니다.\n<!-- korean-style-quote -->\n> 확인해 보세요.\n<!-- /korean-style-quote -->', false, 'doc'],
+  ['답변에서는 인용 구간 안도 위반', '받은 답변입니다.\n<!-- korean-style-quote -->\n> 확인해 보세요.\n<!-- /korean-style-quote -->', true, 'chat'],
 
   ['빈 텍스트는 통과', '', false, 'chat'],
 

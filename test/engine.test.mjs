@@ -209,6 +209,42 @@ test('fence 안을 다시 검사할 때 규칙 블록은 빠진다', () => {
   assert.equal(checkText(doc, r, 'doc').length, 0);
 });
 
+/* 다른 사람이나 모델이 쓴 글을 인용 표시 사이에 옮겨 적은 문서입니다. 인용한 글에는 가운뎃점과 다른 어투가 그대로 들어 있습니다. */
+const QUOTE_RULES = ['register: 다나까체', 'banned-char: middot', 'quote-marker: korean-style-quote'];
+const QUOTED_ANSWER = (close = '<!-- /korean-style-quote -->') =>
+  ['아래는 받은 답변입니다.', '', '<!-- korean-style-quote -->', '> 결제 API·DB를 확인해 보세요.', close, '', '설명을 마칩니다.'].join('\n');
+
+test('문서에서 인용 표시 사이에 옮겨 적은 글은 검사하지 않는다', () => {
+  const r = rulesOf(QUOTE_RULES);
+  assert.equal(checkText(QUOTED_ANSWER(), r, 'doc').length, 0, '인용 구간은 검사하지 않아야 합니다');
+  const outside = `${QUOTED_ANSWER()}\n이 줄은 인용 밖이에요.`;
+  assert.deepEqual(names(checkText(outside, r, 'doc')), ['wrong-register'], '인용 구간 밖은 계속 검사해야 합니다');
+});
+
+test('답변과 커밋 메시지에서는 인용 표시 사이도 검사한다', () => {
+  /* 답변이나 커밋 메시지를 인용 표시로 감싸서 검사를 피하지 못하게 합니다. */
+  const r = rulesOf(QUOTE_RULES);
+  for (const target of ['chat', 'commit']) {
+    assert.ok(names(checkText(QUOTED_ANSWER(), r, target)).includes('banned-char'), `${target} 검사에서도 가운뎃점을 잡아야 합니다`);
+  }
+});
+
+test('닫는 인용 표시가 없으면 여는 표시 뒤도 검사한다', () => {
+  const r = rulesOf(QUOTE_RULES);
+  assert.ok(names(checkText(QUOTED_ANSWER(''), r, 'doc')).includes('banned-char'));
+});
+
+test('`quote-marker` 키가 없는 예전 규칙에서도 기본 인용 표시를 따른다', () => {
+  /* 직접 고친 예전 규칙에는 이 키가 없습니다. 문서에 넣은 인용 표시는 그래도 지켜야 합니다. */
+  const r = rulesOf(['register: 다나까체', 'banned-char: middot']);
+  assert.equal(checkText(QUOTED_ANSWER(), r, 'doc').length, 0);
+});
+
+test('`quote-marker`가 비어 있으면 인용 표시가 있어도 검사한다', () => {
+  const r = rulesOf(['register: 다나까체', 'banned-char: middot', 'quote-marker:']);
+  assert.ok(names(checkText(QUOTED_ANSWER(), r, 'doc')).includes('banned-char'));
+});
+
 test('onlyFenced는 fence 안쪽만 남기고 fence 표시와 바깥은 공백으로 바꾼다', () => {
   const doc = '밖입니다.\n```\n안입니다.\n```\n';
   const inner = onlyFenced(doc, []);
@@ -221,6 +257,39 @@ test('onlyFenced는 fence 안쪽만 남기고 fence 표시와 바깥은 공백�
 test('stripCode는 길이를 바꾸지 않는다', () => {
   const doc = '앞 `코드` 뒤\n```\n안\n```\n';
   assert.equal(stripCode(doc).length, doc.length);
+});
+
+/* 백틱 네 개로 연 block 안에 백틱 세 개로 감싼 예제 code가 들어 있는 문서입니다. */
+const NESTED_FENCE = ['밖입니다.', '````markdown', '주석을 달았어요.', '```js', 'const a = 1;', '```', '안쪽 끝입니다.', '````', '다시 밖입니다.'].join('\n');
+
+test('백틱 네 개로 연 block은 그 안의 백틱 세 개 줄에서 닫히지 않는다', () => {
+  const stripped = stripCode(NESTED_FENCE);
+  assert.ok(stripped.includes('밖입니다') && stripped.includes('다시 밖입니다'));
+  for (const inside of ['주석을 달았어요', 'const a', '안쪽 끝입니다']) assert.ok(!stripped.includes(inside), `${inside} 줄은 code block 안입니다`);
+  const inner = onlyFenced(NESTED_FENCE, []);
+  assert.ok(inner.includes('주석을 달았어요') && inner.includes('안쪽 끝입니다'));
+  assert.ok(!inner.includes('다시 밖입니다'));
+  /* 바깥 block 전체를 code block으로 보므로 그 안의 다른 어투는 code block 규칙으로 잡습니다. */
+  assert.ok(names(checkText(NESTED_FENCE, rulesOf(['register: 다나까체']), 'doc')).includes('wrong-register'));
+});
+
+test('물결표로 연 block도 code block으로 본다', () => {
+  const doc = ['밖입니다.', '~~~', '안입니다.', '~~~', '다시 밖입니다.'].join('\n');
+  assert.ok(!stripCode(doc).includes('안입니다'));
+  assert.ok(onlyFenced(doc, []).includes('안입니다'));
+});
+
+test('한 줄 안에서 백틱 세 개로 감싼 code 뒤의 줄은 code block으로 보지 않는다', () => {
+  const doc = ['```npm test```로 실행합니다.', '다음 줄은 산문입니다.'].join('\n');
+  const stripped = stripCode(doc);
+  assert.ok(!stripped.includes('npm test'));
+  assert.ok(stripped.includes('로 실행합니다') && stripped.includes('다음 줄은 산문입니다'));
+});
+
+test('닫지 않은 block은 글 끝까지 이어진다', () => {
+  const doc = ['밖입니다.', '```', '안입니다.', '끝까지 안입니다.'].join('\n');
+  const stripped = stripCode(doc);
+  assert.ok(stripped.includes('밖입니다') && !stripped.includes('끝까지 안입니다'));
 });
 
 test('줄바꿈으로 나뉜 문장을 한 문장으로 잇는다', () => {

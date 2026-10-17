@@ -7,7 +7,7 @@ import { loadRules } from '../lib/rules.mjs';
 import { checkText, checkToolCall, formatToolViolations, formatViolations, blockingViolations, toolFieldTexts } from '../lib/check.mjs';
 import { koreanCommentsOf } from '../lib/comments.mjs';
 import { targetForPath, toProjectRelative } from '../lib/targets.mjs';
-import { stripCode } from '../lib/text.mjs';
+import { blankQuoteRegions, stripCode } from '../lib/text.mjs';
 import { needsSkill, skillRequest } from '../lib/skill.mjs';
 
 const PROJECT_ROOT = projectRoot();
@@ -68,10 +68,11 @@ function currentText(filePath) {
   }
 }
 
-/* 검사할 산문만 남긴 글입니다. 주석 밖과 code block, inline code를 공백으로 바꾸므로 줄 수는 그대로입니다. */
-function proseLinesOf(text, target, path) {
+/* 검사할 산문만 남긴 글입니다. 소스 파일에서는 주석 밖을, 문서에서는 인용 구간을 공백으로 바꾸고, 어느 쪽이든 code block과 inline code도 공백으로 바꿉니다. 줄을 지우지 않으므로 줄 수는 그대로입니다. */
+function proseLinesOf(text, target, path, rules) {
   const normalized = text.normalize('NFC');
-  const prose = target === 'comment' ? koreanCommentsOf(normalized, path) : normalized;
+  if (target === 'comment') return stripCode(koreanCommentsOf(normalized, path)).split('\n');
+  const prose = target === 'doc' ? blankQuoteRegions(normalized, rules.quoteMarker) : normalized;
   return stripCode(prose).split('\n');
 }
 
@@ -107,8 +108,8 @@ function paragraphsAround(lines, from, to) {
 export function reviewNotes(before, after, rules, target, path) {
   const wanted = new Set(rules.reviewRules ?? []);
   if (wanted.size === 0) return [];
-  const beforeLines = proseLinesOf(before, target, path);
-  const afterLines = proseLinesOf(after, target, path);
+  const beforeLines = proseLinesOf(before, target, path, rules);
+  const afterLines = proseLinesOf(after, target, path, rules);
   const { head, beforeEnd, afterEnd } = changedRange(beforeLines, afterLines);
   /* 주석 밖의 코드와 code block은 이미 가렸으므로 남은 글은 문서(`doc`) 규칙으로 검사합니다. */
   const pick = (text) => checkText(text, rules, 'doc').filter((v) => v.severity === 'warning' && wanted.has(v.rule));

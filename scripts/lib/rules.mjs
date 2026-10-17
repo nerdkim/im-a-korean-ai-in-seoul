@@ -83,6 +83,8 @@ const STRING_KEYS = {
   register: 'register',
   /* 한국어를 쓰는 turn마다 불러야 하는 skill입니다. 비워 두면 요구하지 않습니다. */
   'writing-skill': 'writingSkill',
+  /* 문서에서 `<!-- 이 값 -->` 줄과 `<!-- /이 값 -->` 줄 사이는 다른 글을 그대로 옮긴 인용으로 보고 검사하지 않습니다. */
+  'quote-marker': 'quoteMarker',
 };
 
 /* 도구 입력 필드를 지정하는 키입니다. */
@@ -146,6 +148,8 @@ const FALLBACK = {
   chatToolFields: new Map(),
   agentToolFields: new Map(),
   maxContrastPer1k: {},
+  /* 키가 없는 예전 규칙이나 읽지 못한 규칙에서도 기본 인용 표시를 씁니다. 끄려면 규칙 문서에서 값을 비웁니다. */
+  quoteMarker: 'korean-style-quote',
   /* 0으로 두면 규칙이 꺼집니다. */
   koreanRequiredMinChars: 40,
   maxCommaPerSentence: 0,
@@ -241,8 +245,8 @@ export function parseRuleBlock(body) {
       .filter((v) => v.length > 0);
 
     if (STRING_KEYS[key] !== undefined) {
-      /* `writing-skill:`처럼 값을 비우면 skill을 요구하지 않습니다. */
-      if (values[0] !== undefined || key === 'writing-skill') rules[STRING_KEYS[key]] = values[0] ?? '';
+      /* `writing-skill:`처럼 값을 비우면 skill을 요구하지 않고, `quote-marker:`처럼 비우면 인용 구간을 두지 않습니다. */
+      if (values[0] !== undefined || key === 'writing-skill' || key === 'quote-marker') rules[STRING_KEYS[key]] = values[0] ?? '';
       continue;
     }
     if (LIST_KEYS[key] !== undefined) {

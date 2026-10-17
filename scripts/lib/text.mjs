@@ -22,26 +22,70 @@ function blank(s) {
   return s.replace(/[^\n]/g, ' ');
 }
 
-/* fenced block과 inline code를 공백으로 바꿉니다. */
-export function stripCode(text) {
-  return text.replace(/```[\s\S]*?```/g, blank).replace(/`[^`\n]*`/g, blank);
+/* fence를 여는 줄과 닫는 줄입니다. 백틱이나 물결표를 세 개 이상 씁니다. */
+const FENCE_OPEN = /^\s*(`{3,}|~{3,})(.*)$/;
+const FENCE_CLOSE = /^\s*(`{3,}|~{3,})\s*$/;
+
+/* 줄마다 fence 표시 줄(`fence`), fenced block 안(`code`), 그 밖(`text`) 가운데 무엇인지 정합니다.
+   CommonMark 규칙대로, 닫는 fence에는 여는 fence와 같은 글자를 같은 개수 이상 써야 합니다. 그래서 백틱 네 개로 연 block 안에 있는 백틱 세 개짜리 줄은 block을 닫지 않습니다.
+   닫지 않은 block은 글 끝까지 이어집니다. */
+function fenceLines(lines) {
+  let open = null;
+  return lines.map((line) => {
+    if (open === null) {
+      const m = FENCE_OPEN.exec(line);
+      /* 백틱 fence의 info string에는 백틱이 들어갈 수 없습니다. 들어 있으면 inline code입니다. */
+      if (m === null || (m[1][0] === '`' && m[2].includes('`'))) return { kind: 'text' };
+      open = { char: m[1][0], size: m[1].length, info: m[2].trim() };
+      return { kind: 'fence' };
+    }
+    const close = FENCE_CLOSE.exec(line);
+    if (close !== null && close[1][0] === open.char && close[1].length >= open.size) {
+      open = null;
+      return { kind: 'fence' };
+    }
+    return { kind: 'code', info: open.info };
+  });
 }
 
-/* {@link stripCode}와 달리 fenced block 안쪽만 남깁니다. info string이 exemptInfo에 든 블록은 공백으로 바꿉니다. */
+/* fenced block과 inline code를 공백으로 바꿉니다. */
+export function stripCode(text) {
+  const lines = text.split('\n');
+  const marks = fenceLines(lines);
+  return lines
+    .map((line, i) => (marks[i].kind === 'text' ? line : blank(line)))
+    .join('\n')
+    /* 한 줄 안에서 백틱 세 개로 감싼 code입니다. */
+    .replace(/```[^\n]*?```/g, blank)
+    .replace(/`[^`\n]*`/g, blank);
+}
+
+/* `<!-- marker -->` 줄과 `<!-- /marker -->` 줄 사이를 공백으로 바꿉니다. 닫는 줄이 없으면 여는 줄 뒤를 그대로 둡니다. */
+export function blankQuoteRegions(text, marker) {
+  if (!marker) return text;
+  const open = new RegExp(`^\\s*<!--\\s*${escapeRe(marker)}\\s*-->\\s*$`);
+  const close = new RegExp(`^\\s*<!--\\s*/${escapeRe(marker)}\\s*-->\\s*$`);
+  const lines = text.split('\n');
+  const quoted = new Set();
+  let start = -1;
+  lines.forEach((line, i) => {
+    if (start === -1) {
+      if (open.test(line)) start = i;
+      return;
+    }
+    if (!close.test(line)) return;
+    for (let j = start + 1; j < i; j += 1) quoted.add(j);
+    start = -1;
+  });
+  return lines.map((line, i) => (quoted.has(i) ? blank(line) : line)).join('\n');
+}
+
+/* {@link stripCode}와 달리 fenced block 안쪽만 남깁니다. info string이 exemptInfo에 든 block은 공백으로 바꿉니다. */
 export function onlyFenced(text, exemptInfo = []) {
-  let inFence = false;
-  let reading = false;
-  return text
-    .split('\n')
-    .map((line) => {
-      const open = /^\s*```(.*)$/.exec(line);
-      if (open !== null) {
-        inFence = !inFence;
-        reading = inFence && !exemptInfo.includes(open[1].trim());
-        return blank(line);
-      }
-      return inFence && reading ? line : blank(line);
-    })
+  const lines = text.split('\n');
+  const marks = fenceLines(lines);
+  return lines
+    .map((line, i) => (marks[i].kind === 'code' && !exemptInfo.includes(marks[i].info) ? line : blank(line)))
     .join('\n');
 }
 

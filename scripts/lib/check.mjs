@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fenceRules, RULE_FENCE } from './rules.mjs';
-import { onlyFenced, stripCode } from './text.mjs';
+import { blankQuoteRegions, onlyFenced, stripCode } from './text.mjs';
 import { koreanCommentsOf } from './comments.mjs';
 import { isDocPath, isSourcePath, TARGETS, targetForPath, toProjectRelative } from './targets.mjs';
 import { charViolations } from './rules/chars.mjs';
@@ -18,8 +18,9 @@ export function checkText(input, rules, target = 'chat', options = {}) {
   if (typeof input !== 'string' || input.trim().length === 0) return [];
   if (!TARGETS.includes(target)) throw new Error(`알 수 없는 검사 종류입니다: ${target}`);
 
-  /* 한글 자모를 완성형 음절로 합칩니다. */
-  const rawText = input.normalize('NFC');
+  /* 한글 자모를 완성형 음절로 합칩니다. 인용 구간은 문서에서만 건너뜁니다. 답변이나 커밋 메시지를 인용 표시로 감싸 검사를 피하지 못하게 합니다. */
+  const normalized = input.normalize('NFC');
+  const rawText = target === 'doc' ? blankQuoteRegions(normalized, rules.quoteMarker) : normalized;
 
   const inFence = options.inFence === true;
 

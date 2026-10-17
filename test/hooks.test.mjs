@@ -224,6 +224,13 @@ test('기존 code block 안에 쓴 글의 경고는 Claude에게 알리지 않�
   assert.deepEqual(rulesOf(before, after), []);
 });
 
+test('인용 구간 안에 옮겨 적은 글의 경고는 Claude에게 알리지 않는다', () => {
+  const quoted = '# 예시\n\n<!-- korean-style-quote -->\n> 예시입니다.\n<!-- /korean-style-quote -->\n';
+  assert.deepEqual(rulesOf(quoted, quoted.replace('예시입니다.', '로그를 통해 예시입니다.')), []);
+  /* 인용 구간 밖에서 같은 문장을 쓰면 알립니다. */
+  assert.deepEqual(rulesOf('# 예시\n\n예시입니다.\n', '# 예시\n\n로그를 통해 예시입니다.\n'), ['translationese']);
+});
+
 test('규칙 설정 블록의 영어식 표현 목록에 항목을 더해도 Claude에게 알리지 않는다', () => {
   /* 규칙 문서를 고치는 것은 설치한 프로젝트가 규칙을 바꾸는 정상 절차입니다. */
   const before = '# 규칙\n\n```korean-style-rules\ntranslationese-patterns: 를 통해=~해\n```\n';
