@@ -398,10 +398,10 @@ test('commit이 아닌 명령에서는 아무것도 뽑지 않는다', () => {
 });
 
 test('메시지 파일에서 git 안내 주석을 지운다', () => {
-  const raw = ['확인했습니다.', '# 이 줄은 git이 쓴 안내입니다.', '', '본문 #123 번은 남습니다.'].join('\n');
+  const raw = ['확인했습니다.', '# 이 줄은 git이 쓴 안내입니다.', '', '로그인 오류(#123)를 고쳤습니다.'].join('\n');
   const body = messageBody(raw);
   assert.ok(!body.includes('git이 쓴 안내'));
-  assert.ok(body.includes('#123'), '줄 가운데의 우물 정은 메시지의 일부입니다');
+  assert.ok(body.includes('#123'), '줄 가운데에 있는 #123은 메시지의 일부입니다');
 });
 
 function transcriptWith(text) {

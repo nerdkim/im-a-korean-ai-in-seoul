@@ -6,13 +6,14 @@ const REGISTER_ADVICE = {
   다나까체:
     '사람에게 요청할 때는 `~해 주시기 바랍니다`나 `~해 주십시오`를, 행위 명사 뒤에는 `~ 부탁드립니다`를 쓰십시오. 서술은 `~습니다`로, 의문은 `~합니까`나 `~할까요`로 끝냅니다.',
   해요체:
-    '서술과 의문을 `~해요`, `~예요`, `~할까요`로 맞추십시오. 요청은 `~해 주시면 좋겠어요`나 `~ 부탁드려요`로 씁니다.',
+    '서술과 의문을 `~해요`, `~예요`, `~할까요`로 맞추십시오. 요청은 `~해 주세요`나 `~ 부탁드려요`로 씁니다.',
   혼용: '문서 하나 안에서는 서술 어투를 하나로 맞추십시오.',
 };
 
-/* 사람에게 명령하는 대신 쓸 형태입니다. */
-const IMPERATIVE_ADVICE =
-  '뜻은 그대로 두고 정중한 요청으로 고치십시오. 예: 확인해 주십시오.';
+/* 사람에게 명령하는 대신 쓸 형태입니다. 예는 프로젝트 어투로 씁니다. */
+const REQUEST_EXAMPLE = { 다나까체: '확인해 주십시오', 해요체: '확인해 주세요' };
+const imperativeAdvice = (register) =>
+  `뜻은 그대로 두고 정중한 요청으로 고치십시오. 예: ${REQUEST_EXAMPLE[register] ?? REQUEST_EXAMPLE.다나까체}.`;
 
 export const FLATTERY_HINT =
   '이 문장을 지우고 답부터 쓰십시오. 질문이나 지적을 평가하는 문장은 정보를 주지 못하고 읽는 사람을 평가하는 셈이 됩니다.';
@@ -50,7 +51,7 @@ export function registerViolations(text, rules, target, inFence = false) {
       if (hits.length === 0) continue;
       out.push({
         rule: 'imperative-to-human',
-        detail: `사람에게 명령했습니다: ${JSON.stringify(hits[0][0])}. ${IMPERATIVE_ADVICE}`,
+        detail: `사람에게 명령했습니다: ${JSON.stringify(hits[0][0])}. ${imperativeAdvice(rules.register)}`,
         line: lineOf(text, hits[0].index),
       });
     }

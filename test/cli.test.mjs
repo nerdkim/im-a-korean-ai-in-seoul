@@ -76,7 +76,7 @@ test('--stdin으로 받은 글에 위반이 없으면 통과시킨다', () => {
 });
 
 test('--stdin은 shell이 해석하는 글자를 그대로 받는다', () => {
-  /* 입력에 달러 기호와 따옴표와 역빗금을 넣습니다. */
+  /* 입력에 `$`, 따옴표, 백슬래시를 넣습니다. */
   const r = run(['--stdin', '--target', 'doc'], { stdin: '값은 $1 이고 경로는 "a\\b" 입니다.' });
   assert.equal(r.status, 0, `통과해야 합니다. 출력: ${r.stdout}${r.stderr}`);
 });

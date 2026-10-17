@@ -101,6 +101,23 @@ test('어투를 고르면 금지 어미가 따라 바뀐다', () => {
   assert.equal(checkText('확인했어요.', mixed, 'chat').length, 0);
 });
 
+test('명령형을 고치라는 안내는 프로젝트 어투로 쓴 요청을 예로 든다', () => {
+  /* 해요체 프로젝트에 `~해 주십시오`를 권하면 Claude가 그대로 따라 써서 한 글에 두 어투가 섞입니다. */
+  const cases = [
+    { register: '해요체', imperative: '값을 확인하세요.', request: '확인해 주세요', other: '주십시오' },
+    { register: '다나까체', imperative: '값을 확인하십시오.', request: '확인해 주십시오', other: '주세요' },
+    { register: '혼용', imperative: '값을 확인하세요.', request: '확인해 주십시오', other: '주세요' },
+  ];
+  for (const { register, imperative, request, other } of cases) {
+    const r = rulesOf([`register: ${register}`, 'imperative-endings: 하세요, 하십시오']);
+    const found = checkText(imperative, r, 'chat');
+    assert.deepEqual(names(found), ['imperative-to-human'], `${register} 프로젝트에서는 imperative-to-human만 걸려야 합니다: ${JSON.stringify(names(found))}`);
+    assert.ok(found[0].detail.includes(request), `${register} 프로젝트의 안내에 예로 든 요청이 없습니다`);
+    assert.ok(!found[0].detail.includes(other), `${register} 프로젝트의 안내에 다른 어투의 요청이 들어 있습니다`);
+    assert.equal(checkText(`값을 ${request}.`, r, 'chat').length, 0, `예로 든 요청은 ${register} 검사를 통과해야 합니다`);
+  }
+});
+
 test('해요체에서 `아니다`를 다나까체로 보지 않는다', () => {
   /* `아니다`는 `~니다`로 끝나지만 기본형입니다. */
   const r = rulesOf(['register: 해요체', 'imperative-exempt: 아니다']);
@@ -136,7 +153,7 @@ test('확장자를 모르는 파일은 산문으로 읽지 않는다', () => {
   assert.equal(koreanCommentsOf('한국어 산문입니다.', 'a.unknown').trim(), '');
 });
 
-test('문자열 안의 빗금 둘은 주석의 시작이 아니다', () => {
+test('문자열 안에 있는 `//` 뒤는 주석으로 보지 않는다', () => {
   const src = 'const u = "https://example.com/워크플로우";\n';
   assert.equal(koreanCommentsOf(src, 'a.mjs').trim(), '', '문자열은 주석이 아닙니다');
 });
@@ -154,7 +171,7 @@ test('닫히지 않은 따옴표가 있어도 그 뒤의 주석을 뽑는다', (
 
 test('주석 표시는 어절로 세지 않는다', () => {
   const extracted = koreanCommentsOf('// 확인했습니다 그리고 정리했습니다\n', 'a.mjs');
-  assert.ok(!extracted.includes('//'), '빗금 둘이 남으면 어절 수에 들어갑니다');
+  assert.ok(!extracted.includes('//'), '`//` 기호가 남으면 어절 수에 들어갑니다');
   assert.ok(extracted.includes('확인했습니다'));
 });
 

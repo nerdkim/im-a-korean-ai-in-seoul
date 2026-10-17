@@ -1,16 +1,16 @@
 /* 소스 파일에서 한국어 주석만 남깁니다. */
 
-/* 한 줄 주석은 빗금 둘로, 여러 줄 주석은 빗금과 별표로 쓰는 언어들입니다. */
+/* 한 줄 주석은 `//`로, 여러 줄 주석은 `/*`로 시작하는 언어들입니다. */
 const SLASH_FAMILY = [
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts',
   '.go', '.rs', '.java', '.kt', '.kts', '.swift', '.php', '.c', '.h',
   '.cc', '.cpp', '.hpp', '.cs', '.dart', '.scala', '.vue', '.svelte',
 ];
 
-/* 한 줄 주석을 우물 정 기호로 쓰는 언어들입니다. */
+/* 한 줄 주석 기호가 `#`인 언어들입니다. */
 const HASH_FAMILY = ['.rb', '.sh', '.bash', '.zsh', '.ex', '.exs', '.yml', '.yaml', '.toml'];
 
-/* 한 줄 주석을 하이픈 둘로 쓰는 언어들입니다. */
+/* 한 줄 주석 기호가 `--`인 언어들입니다. */
 const DASH_FAMILY = ['.sql', '.lua', '.hs'];
 
 function extensionOf(relPath) {
