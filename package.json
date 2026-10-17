@@ -1,6 +1,6 @@
 {
   "name": "im-a-korean-ai-in-seoul",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "프로젝트에 한국어 작성 skill과 문체 검사 hook을 설치해 Claude Code가 쓰는 한국어를 바로잡습니다.",
   "type": "module",
   "license": "MIT",
