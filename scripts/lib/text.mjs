@@ -245,9 +245,9 @@ export function overDensity(count, size, limit, rules) {
   return density > required ? density : null;
 }
 
-/* 어미가 나타나는 위치를 모두 찾습니다. */
+/* 어미가 나타나는 위치를 모두 찾습니다. 어미를 찾을 때 앞 글자가 한글 음절인지는 따지지 않으므로 `안 해요`의 `해요`와 `API예요`의 `예요`도 찾습니다. 다만 앞 글자가 한글 음절이면 그 음절도 함께 돌려줍니다. */
 export function findAllEndings(text, ending, exemptWords = []) {
-  const re = new RegExp(`[\\uAC00-\\uD7A3]${escapeRe(ending)}(?=[\\s.!?,()\\]（"'\`\\n]|$)`, 'gu');
+  const re = new RegExp(`[\\uAC00-\\uD7A3]?${escapeRe(ending)}(?=[\\s.!?,()\\]（"'\`\\n]|$)`, 'gu');
   const out = [];
   for (const candidate of text.matchAll(re)) {
     const end = candidate.index + candidate[0].length;

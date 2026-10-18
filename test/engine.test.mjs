@@ -101,6 +101,34 @@ test('말투를 고르면 금지 어미가 따라 바뀐다', () => {
   assert.equal(checkText('확인했어요.', mixed, 'chat').length, 0);
 });
 
+test('회귀: `안 해요`나 `API예요`처럼 한글 음절 바로 뒤에 붙지 않은 어미도 잡는다', () => {
+  /* 예전 검사기는 어미 바로 앞에 한글 음절이 붙어 있어야만 어미를 찾았으므로 띄어 쓴 `해요`를 놓쳤습니다. */
+  const formal = rulesOf(['register: 합니다체']);
+  for (const text of ['설정을 바꿔야 해요.', '오늘은 배포 안 해요.', '배포를 해요.', '정말 꼭 해요?', '해요.', '이 값은 API예요.']) {
+    assert.deepEqual(names(checkText(text, formal, 'doc')), ['wrong-register'], text);
+  }
+  for (const text of ['해요체로 쓰지 않습니다.', '`해요`는 해요체 어미입니다.', '"해요"라고 쓰지 않습니다.', '해요체와 합니다체를 섞지 않습니다.']) {
+    assert.equal(checkText(text, formal, 'doc').length, 0, text);
+  }
+  /* 명령 어미도 금지 어미와 같은 함수로 찾으므로 앞말과 띄어 쓴 `하세요`, `하라`, `하십시오`도 잡습니다. */
+  const casual = rulesOf(['register: 해요체', 'imperative-endings: 하세요, 하십시오, 하라']);
+  assert.deepEqual(names(checkText('빨리 하세요.', casual, 'chat')), ['imperative-to-human']);
+  assert.deepEqual(names(checkText('그렇게 하라.', casual, 'chat')), ['imperative-to-human']);
+  assert.deepEqual(names(checkText('탭을 **새로고침**하세요.', casual, 'chat')), ['imperative-to-human'], '굵게 표시한 말 바로 뒤에 붙은 명령 어미도 잡습니다');
+  assert.equal(checkText('이렇게 하라는 뜻이에요.', casual, 'chat').length, 0, '`하라` 뒤에 글자가 이어지면 명령으로 보지 않습니다');
+  const formalAnswer = rulesOf(['register: 합니다체', 'imperative-endings: 하십시오, 하라']);
+  assert.deepEqual(names(checkText('이렇게 하십시오.', formalAnswer, 'chat')), ['imperative-to-human']);
+});
+
+test('회귀: `뭐 하세요?`처럼 물음표로 끝나는 질문은 명령으로 잡지 않는다', () => {
+  /* `뭐 하세요?`는 질문입니다. 앞말과 띄어 쓴 `하세요`를 찾게 고치면서 이런 질문까지 명령으로 잡을 뻔했습니다. */
+  const casual = rulesOf(['register: 해요체', 'imperative-endings: 하세요, 하십시오']);
+  for (const text of ['지금 뭐 하세요?', '어떻게 하세요?', '이 방식을 원하세요?']) {
+    assert.equal(checkText(text, casual, 'chat').length, 0, text);
+  }
+  assert.deepEqual(names(checkText('이렇게 하세요.', casual, 'chat')), ['imperative-to-human']);
+});
+
 test('예전 말투 이름 `다나까체`와 문법 용어 `하십시오체`는 `합니다체`로 읽는다', () => {
   /* 0.3.0까지 설치한 프로젝트의 규칙 문서에는 `register: 다나까체`가 남아 있습니다. */
   for (const name of ['다나까체', '하십시오체']) {

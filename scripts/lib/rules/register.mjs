@@ -45,8 +45,9 @@ export function registerViolations(text, rules, target, inFence = false) {
   /* 2) 사람에게 내리는 명령입니다. 사람이 직접 읽는 종류에만 걸립니다. */
   if (human) {
     for (const ending of rules.imperativeEndings) {
+      /* `뭐 하세요?`처럼 물음표로 끝나는 것은 질문이므로 명령으로 세지 않습니다. */
       const hits = findAllEndings(written, ending, exemptWords(rules)).filter(
-        (hit) => !reported.has(hit.index + hit[0].length),
+        (hit) => !reported.has(hit.index + hit[0].length) && written[hit.index + hit[0].length] !== '?',
       );
       if (hits.length === 0) continue;
       out.push({
