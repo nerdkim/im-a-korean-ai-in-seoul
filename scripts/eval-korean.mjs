@@ -72,7 +72,7 @@ export function formatSummary(summary) {
   const lines = [
     ['skill을 거친 답변', count('skill')],
     ['Stop hook이 다시 쓰게 한 답변', count('rewritten')],
-    ['검사기 오류가 나온 답변', count('errors')],
+    ['검사기가 오류를 찾은 답변', count('errors')],
     ['검사기가 해요체 어미를 찾은 답변', count('register')],
     ['emoji가 들어간 답변', count('emoji')],
     ['가운뎃점이 들어간 답변', count('middot')],
