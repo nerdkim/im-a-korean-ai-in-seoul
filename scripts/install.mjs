@@ -51,7 +51,7 @@ const OLD_GITIGNORE_MARKERS = [
   '# korean-style이 설치한 파일입니다. 이 가운데 직접 고치는 파일은 rules.md뿐입니다.',
 ];
 
-/* 설치할 저장소의 .gitignore에 더할 줄입니다. */
+/* 설치할 프로젝트의 .gitignore에 더할 줄입니다. */
 export const GITIGNORE_LINES = [
   GITIGNORE_MARKER,
   `${INSTALLED_DIR}/*`,
@@ -61,7 +61,7 @@ export const GITIGNORE_LINES = [
   `${OUTPUT_STYLE_DIR_POSIX}/${OUTPUT_STYLE_NAME}.md`,
 ];
 
-/* 설치한 프로젝트의 hook 명령에 넣는 이 도구의 경로입니다. */
+/* 설치한 프로젝트에서 hook 스크립트가 있는 디렉터리입니다. hook 명령에 이 경로를 넣습니다. */
 const HOOK_BASE = `$CLAUDE_PROJECT_DIR/${INSTALLED_DIR}/scripts/hooks`;
 
 /* settings.json에서 이 도구의 hook 명령을 알아볼 때 찾는 경로입니다. */
@@ -127,7 +127,7 @@ export function mergeHookSettings(existing, hooks = HOOKS) {
   return { settings: out, added };
 }
 
-/* Claude Code가 커밋 메시지와 PR 설명에 생성 표시를 붙이지 않게 합니다. 프로젝트가 이미 정해 둔 값은 그대로 두고 빠진 값만 빈 문자열로 채웁니다. */
+/* Claude Code가 커밋 메시지와 PR 설명에 생성 표시를 붙이지 않게 합니다. 프로젝트 설정의 `attribution`에 `commit`이나 `pr` 값이 이미 있으면 그대로 두고 없는 값만 빈 문자열로 채웁니다. */
 export function mergeAttribution(settings) {
   const out = settings === null || typeof settings !== 'object' ? {} : { ...settings };
   const current = out.attribution !== null && typeof out.attribution === 'object' && !Array.isArray(out.attribution) ? out.attribution : {};
@@ -232,7 +232,7 @@ function selfCheck() {
   /* 이 도구의 경로가 이미 적힌 파일은 손대지 않습니다. */
   report(mergeGitignore(`${INSTALLED_DIR}/\n`).added === false, '이 도구의 경로가 이미 적힌 gitignore는 손대지 않는다');
 
-  /* 예전 버전의 주석은 새 주석으로 바뀌어야 하고, 이 도구의 주석 줄은 하나만 남아야 합니다. */
+  /* 예전 버전의 주석은 새 주석으로 바뀌어야 하고 이 도구의 주석 줄은 하나만 남아야 합니다. */
   for (const old of OLD_GITIGNORE_MARKERS) {
     const legacy = mergeGitignore(`${old}\n${INSTALLED_DIR}/*\n`);
     report(
@@ -281,7 +281,7 @@ function main() {
   const rulesTarget = join(installDir, 'rules.md');
   const hashTarget = join(installDir, 'defaults.sha256');
   const before = existsSync(rulesTarget) ? readFileSync(rulesTarget, 'utf8') : null;
-  /* `--register`를 주지 않으면 규칙 문서에 적힌 이름을 글자 그대로 둡니다. 규칙 문서는 팀이 함께 쓰므로, `다나까체`를 `합니다체`로 바꾸면 아직 0.3.0 검사기를 쓰는 팀원은 말투 검사가 꺼집니다. */
+  /* `--register`를 주지 않으면 규칙 문서에 적힌 말투 이름을 글자 그대로 둡니다. 규칙 문서는 팀이 함께 쓰므로 `다나까체`를 `합니다체`로 바꾸면 아직 0.3.0을 쓰는 팀원의 검사기는 `합니다체`를 몰라 말투를 검사하지 않습니다. */
   const written = before?.match(RULES_REGISTER_LINE)?.[0].split(':')[1].trim() || undefined;
   const register = asked ?? canonicalRegister(written ?? '합니다체');
   if (!Object.hasOwn(REGISTER_FRAGMENTS, register)) throw new Error(`알 수 없는 말투입니다: ${register}`);
@@ -291,7 +291,7 @@ function main() {
   const refresh = !before || args.force || hashRules(before) === baseHash || hashRules(before) === hashRules(defaults);
   let rules = refresh ? defaults : before;
   if (asked !== undefined) {
-    if (!RULES_REGISTER_LINE.test(rules)) throw new Error('기존 규칙에 register 줄이 없습니다. 규칙을 복구하거나 --force를 사용해야 합니다.');
+    if (!RULES_REGISTER_LINE.test(rules)) throw new Error('기존 규칙 문서에 register 줄이 없습니다. register 줄을 다시 넣거나 --force를 붙여 다시 설치해야 합니다.');
     rules = rules.replace(RULES_REGISTER_LINE, `register: ${register}`);
   }
   const backup = args.force && before && before !== rules
@@ -318,7 +318,7 @@ function main() {
   console.log(`설치할 프로젝트: ${root}\n말투: ${register}\n${refresh ? '새 기본 규칙을 씁니다.' : '기존 규칙을 그대로 둡니다.'}`);
   if (!refresh) console.log('새 기본 규칙이 필요하면 --force를 붙여 다시 설치해야 합니다. 이때 설치 스크립트가 기존 규칙을 백업합니다.');
   if (backup) console.log(`규칙 백업: ${backup}`);
-  if (style.settings.outputStyle !== OUTPUT_STYLE_NAME) console.log('기존 output-style을 유지합니다. korean-style로 바꾸려면 --activate를 붙여야 합니다.');
+  if (style.settings.outputStyle !== OUTPUT_STYLE_NAME) console.log('기존 output-style을 유지합니다. korean-style로 바꾸려면 --activate를 붙여 다시 설치해야 합니다.');
   const effective = Object.assign({}, style.settings, ...local.map(x => x.settings));
   if (effective.disableAllHooks) console.log('주의: disableAllHooks가 켜져 있습니다. 이 설정을 꺼야 hook이 실행됩니다.');
   if (effective.outputStyle !== style.settings.outputStyle) console.log('주의: settings.local.json의 outputStyle이 프로젝트 설정보다 우선합니다.');

@@ -55,7 +55,7 @@ export function punctuationViolations(text, rules) {
     .filter((s) => isKoreanProse(s.text, rules.finalEndings, rules.sentenceMinHangulRatio))
     .map((s) => ({ ...s, masked: maskCommaAsides(s.text) }));
 
-  /* 1) 한 문장에 든 쉼표 개수입니다. 한도는 규칙 문서가 정합니다. */
+  /* 1) 한 문장에 든 쉼표 개수입니다. 한도는 규칙 문서의 `max-comma-per-sentence` 값입니다. */
   if (rules.maxCommaPerSentence > 0) {
     for (const sentence of sentences) {
       const segments = commaSegments(sentence.masked);

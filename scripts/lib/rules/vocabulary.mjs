@@ -12,7 +12,7 @@ export function hasGlossNear(text, index, termLength) {
   return KOREAN_DEFINING.test(win);
 }
 
-/* 찾을 표현과 대신 쓸 표현을 짝지은 규칙들을 같은 방식으로 처리합니다. 찾을 표현이 글에 있으면 대신 쓸 표현으로 바꾸라고 알립니다. */
+/* 찾을 표현과 대신 쓸 표현을 짝지은 규칙들을 같은 방식으로 글에 적용합니다. 찾을 표현이 글에 있으면 대신 쓸 표현으로 바꾸라고 알립니다. */
 function substitutionViolations(text, map, rule, describe) {
   const out = [];
   for (const [wrong, right] of map) {
@@ -34,7 +34,7 @@ export function vocabularyViolations(text, rules, target) {
       rules.loanwordSpelling,
       'loanword-spelling',
       (wrong, right) =>
-        `프로젝트가 정한 외래어 표기와 다릅니다: ${JSON.stringify(wrong)} → ${JSON.stringify(right)}.`,
+        `이 프로젝트에서 정한 외래어 표기와 다릅니다: ${JSON.stringify(wrong)} → ${JSON.stringify(right)}.`,
     ),
   );
 
@@ -61,13 +61,13 @@ export function vocabularyViolations(text, rules, target) {
       ),
     );
 
-    /* 4) 틀리지는 않았지만 이 팀이 쓰는 표기가 아닌 것입니다. */
+    /* 4) 틀리지는 않았지만 이 프로젝트에서 쓰는 표기가 아닌 것입니다. */
     out.push(
       ...substitutionViolations(
         text,
         rules.requiredSpelling,
         'required-spelling',
-        (wrong, right) => `이 프로젝트가 쓰는 표기가 아닙니다: ${JSON.stringify(wrong)} → ${JSON.stringify(right)}.`,
+        (wrong, right) => `이 프로젝트에서 쓰는 표기가 아닙니다: ${JSON.stringify(wrong)} → ${JSON.stringify(right)}.`,
       ),
     );
   }

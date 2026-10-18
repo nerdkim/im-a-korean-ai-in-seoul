@@ -3,9 +3,9 @@ import { lineOf } from '../text.mjs';
 
 /* 글자 종류입니다. */
 export const CHAR_CLASSES = {
-  middot: { label: '가운뎃점 (U+00B7)', re: /·/u },
-  'em-dash': { label: '줄표 (U+2014)', re: /—/u },
-  'en-dash': { label: 'en dash (U+2013)', re: /–/u },
+  middot: { label: '가운뎃점(U+00B7)', re: /·/u },
+  'em-dash': { label: '줄표(U+2014)', re: /—/u },
+  'en-dash': { label: 'en dash(U+2013)', re: /–/u },
   emoji: {
     label: 'emoji',
     re: new RegExp(
@@ -15,7 +15,7 @@ export const CHAR_CLASSES = {
   },
   hanja: { label: '한자', re: /[一-鿿㐀-䶿]/u },
   kana: { label: '일본어 가나', re: /[぀-ゟ゠-ヿ]/u },
-  'fullwidth-paren': { label: '전각 괄호 (U+FF08, U+FF09)', re: /[（）]/u },
+  'fullwidth-paren': { label: '전각 괄호(U+FF08, U+FF09)', re: /[（）]/u },
 };
 
 /* 콜론으로 감싼 Slack shortcode입니다. */

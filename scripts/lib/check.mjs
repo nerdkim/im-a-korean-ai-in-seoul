@@ -102,7 +102,7 @@ export function checkToolCall(toolName, input, rules, target = 'chat') {
 /* 보고 맨 아래에 붙이는 규칙 출처입니다. */
 function sourceNote(rules) {
   if (rules.source === null) {
-    return `  규칙 설정을 찾지 못했습니다. ${rules.reason}\n  그래서 금지 문자와 생성 표시만 검사했고, 답변이면 금지 호칭을 썼는지와 영어로만 썼는지도 검사했습니다.`;
+    return `  ${rules.reason}\n  그래서 금지 문자와 생성 표시만 검사했고 답변이면 금지 호칭을 썼는지와 영어로만 썼는지도 검사했습니다.`;
   }
   return `  규칙 문서: ${rules.source}`;
 }

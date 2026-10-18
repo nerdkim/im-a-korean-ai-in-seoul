@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Claude가 요청 하나에 답을 마칠 때(turn이 끝날 때) 사용자에게 한 답변을 검사합니다. */
+/* Claude가 요청 하나에 답을 마칠 때 사용자에게 한 답변을 검사합니다. */
 import { readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { isEntryPoint, projectRoot, rulesDocPath, toolRoot } from '../lib/paths.mjs';
@@ -10,7 +10,7 @@ import { checkText, blockingViolations } from '../lib/check.mjs';
 const PROJECT_ROOT = projectRoot();
 const RULES_DOC = rulesDocPath(PROJECT_ROOT);
 
-/* 이 turn에서 사용자에게 보인 답변 산문을 모두 모읍니다. */
+/* 이 요청에서 사용자에게 보인 답변 산문을 모두 모읍니다. */
 export function lastAssistantText(transcriptPath) {
   const entries = currentTurn(transcriptPath);
   if (entries === null) return null;
@@ -79,7 +79,7 @@ function run() {
       `\n규칙 문서: ${RULES_DOC}\n규칙 설명은 \`node ${checker} --explain <규칙 이름>\` 명령으로 볼 수 있습니다.`,
     );
   }
-  block(`${parts.join('\n\n')}\n내용은 그대로 두고, 무엇을 고쳤는지는 답변에 적지 마십시오.`);
+  block(`${parts.join('\n\n')}\n내용은 그대로 두고 무엇을 고쳤는지는 답변에 적지 마십시오.`);
 }
 
 /* 직접 실행할 때만 동작합니다. */

@@ -68,7 +68,7 @@ function currentText(filePath) {
   }
 }
 
-/* 검사할 산문만 남긴 글입니다. 소스 파일에서는 주석 밖을, 문서에서는 인용 구간을 공백으로 바꾸고, 어느 쪽이든 code block과 inline code도 공백으로 바꿉니다. 줄을 지우지 않으므로 줄 수는 그대로입니다. */
+/* 검사할 산문만 남긴 글입니다. 소스 파일에서는 주석 밖을, 문서에서는 인용 구간을 공백으로 바꾸고 어느 쪽이든 코드 블록과 인라인 코드도 공백으로 바꿉니다. 줄을 지우지 않으므로 줄 수는 그대로입니다. */
 function proseLinesOf(text, target, path, rules) {
   const normalized = text.normalize('NFC');
   if (target === 'comment') return stripCode(koreanCommentsOf(normalized, path)).split('\n');
@@ -101,8 +101,8 @@ function paragraphsAround(lines, from, to) {
 }
 
 /*
- * 이번 편집으로 바뀐 문단에 새로 생긴 경고를 찾아, 그 가운데 review-rules에 든 규칙의 경고만 돌려줍니다.
- * 비교하기 전에 파일 전체에서 가릴 곳을 공백으로 바꿉니다. 소스 파일이면 주석 밖의 코드를, 문서면 인용 구간을 가리고, 어느 쪽이든 코드 블록도 가립니다.
+ * 이번 편집으로 바뀐 문단에 새로 생긴 경고를 찾아 그 가운데 review-rules에 든 규칙의 경고만 돌려줍니다.
+ * 비교하기 전에 파일 전체에서 가릴 곳을 공백으로 바꿉니다. 소스 파일이면 주석 밖의 코드를, 문서면 인용 구간을 가리고 어느 쪽이든 코드 블록도 가립니다.
  * 그래서 고친 부분에 주석 표시나 코드 블록을 여닫는 줄이 없어도 주석 안의 글은 검사하고 코드 블록 안의 글은 건너뜁니다.
  * 같은 규칙에 걸린 같은 표현이 바뀌기 전 문단에도 있으면 알리지 않습니다.
  */
@@ -112,7 +112,7 @@ export function reviewNotes(before, after, rules, target, path) {
   const beforeLines = proseLinesOf(before, target, path, rules);
   const afterLines = proseLinesOf(after, target, path, rules);
   const { head, beforeEnd, afterEnd } = changedRange(beforeLines, afterLines);
-  /* 주석 밖의 코드와 code block은 이미 가렸으므로 남은 글은 문서(`doc`) 규칙으로 검사합니다. */
+  /* 주석 밖의 코드와 코드 블록은 이미 가렸으므로 남은 글은 문서(`doc`) 규칙으로 검사합니다. */
   const pick = (text) => checkText(text, rules, 'doc').filter((v) => v.severity === 'warning' && wanted.has(v.rule));
   const added = pick(paragraphsAround(afterLines, head, afterEnd));
   if (added.length === 0) return [];
@@ -127,7 +127,7 @@ export function formatReviewNotes(notes, where, checker = 'check-korean.mjs') {
   const shown = notes.slice(0, MAX_REVIEW_NOTES);
   const head =
     `한국어 검사: 이번에 ${where}에 쓴 문단에서 경고 ${notes.length}건이 나왔습니다. 파일 쓰기는 막지 않았습니다. ` +
-    '어색한 표현이면 고치고, 문맥에 맞으면 그대로 두십시오. 고쳤는지 그대로 두었는지는 답변에 적지 마십시오.';
+    '어색한 표현이면 고치고 문맥에 맞으면 그대로 두십시오. 고쳤는지 그대로 두었는지는 답변에 적지 마십시오.';
   const body = shown.map((v) => `  [${v.rule}] ${v.line}줄: ${v.detail}`);
   const rest = notes.length > shown.length
     ? [`  나머지 ${notes.length - shown.length}건은 \`node ${shellQuote(checker)} --file ${shellQuote(where)}\` 명령으로 확인하십시오.`]
@@ -138,7 +138,7 @@ export function formatReviewNotes(notes, where, checker = 'check-korean.mjs') {
 /* heredoc을 여는 표시입니다. 끝을 알리는 이름은 두 번째 캡처 그룹에 담깁니다. */
 const HEREDOC_OPEN = /<<-?[ \t]*(['"]?)([A-Za-z_]\w*)\1/y;
 
-/* `from`부터 heredoc 본문을 차례로 건너뛰고, 마지막 본문을 닫는 줄의 끝 위치를 돌려줍니다. */
+/* `from`부터 heredoc 본문을 차례로 건너뛰고 마지막 본문을 닫는 줄의 끝 위치를 돌려줍니다. */
 function skipHeredocBodies(command, from, names) {
   let at = from;
   while (names.length > 0) {
@@ -217,12 +217,12 @@ const OPTION_VALUE = String.raw`(?:"\$\(cat[ \t]+<<-?[ \t]*(['"]?)([A-Za-z_]\w*)
 /* ANSI-C 따옴표 안의 이스케이프를 풉니다. */
 const unescapeAnsiC = (s) => s.replace(/\\(.)/gs, (_, ch) => ({ n: '\n', t: '\t' })[ch] ?? ch);
 
-/* 큰따옴표로 감싼 값이나 따옴표 없이 쓴 값에서 shell이 풀었을 이스케이프를 풉니다. 백슬래시로 이은 줄은 붙이고, 글자 그대로 쓴 `\n`도 줄바꿈으로 바꿉니다. */
+/* 큰따옴표로 감싼 값이나 따옴표 없이 쓴 값에서 shell이 풀었을 이스케이프를 풉니다. 백슬래시로 이은 줄은 붙이고 글자 그대로 쓴 `\n`도 줄바꿈으로 바꿉니다. */
 const unescapeShell = (s) => s.replace(/\\\n/g, '').replace(/\\(["'\\$`])/g, '$1').replace(/\\n/g, '\n');
 
 /*
  * 명령 하나에서 옵션 값을 모두 뽑습니다. 짧은 옵션은 `-m메시지`처럼 값을 붙여 써도 읽습니다.
- * 긴 옵션은 이름 뒤에 `=`, 공백, 따옴표가 올 때만 읽습니다. 그래야 `--body-file`처럼 `--body`로 시작하는 다른 옵션을 `--body`로 잘못 읽지 않습니다.
+ * 긴 옵션은 이름 뒤에 `=`, 공백, 따옴표, `$`가 올 때만 읽습니다. 그래야 `--body-file`처럼 `--body`로 시작하는 다른 옵션을 `--body`로 잘못 읽지 않습니다.
  */
 function optionValues(segment, { short, long }) {
   const re = new RegExp(String.raw`(?:^|\s)(?:${short}|(?:${long})(?=[=\s"'$]))(?:=|[ \t]*)${OPTION_VALUE}`, 'g');
@@ -247,7 +247,7 @@ function stdinBodies(segment) {
 /* `git commit` 명령입니다. `git -C <경로> commit`처럼 git 전역 옵션을 앞에 둔 형태도 봅니다. */
 const GIT_COMMIT = /^\s*(?:\w+=\S*\s+)*git(?:\s+(?:-[Cc]\s+\S+|--[\w-]+(?:=\S+)?|-[A-Za-z]+))*\s+commit\b/;
 
-/* PR과 이슈에 글을 올리는 `gh` 명령입니다. `new`는 `create`의 별칭이고, `merge`는 병합 커밋의 제목과 본문을 받습니다. */
+/* PR과 이슈에 글을 올리는 `gh` 명령입니다. `new`는 `create`의 별칭입니다. `merge`는 병합 커밋의 제목과 본문을 받습니다. */
 const GH_POST = /^\s*(?:\w+=\S*\s+)*gh\s+(?:pr|issue)\s+(?:create|new|edit|comment|review|merge)\b/;
 
 /* `git commit` 명령에서 메시지를 모두 뽑습니다. `-am`처럼 다른 옵션과 붙여 쓴 `-m`, `--trailer` 값, 표준 입력으로 넘긴 메시지도 봅니다. */
@@ -257,7 +257,7 @@ export function commitMessagesIn(command) {
     .flatMap((segment) => [...optionValues(segment, { short: '-[A-Za-z]*m', long: '--message|--trailer' }), ...stdinBodies(segment)]);
 }
 
-/* `gh` 명령으로 PR이나 이슈에 올리는 제목, 설명, 코멘트를 모두 뽑습니다. */
+/* `gh` 명령으로 PR이나 이슈에 올리는 제목, 설명, 코멘트를 뽑습니다. `--body-file`로 넘긴 파일은 읽지 않습니다. */
 export function pullRequestTextsIn(command) {
   return commandSegments(command)
     .filter((segment) => GH_POST.test(segment))
@@ -374,7 +374,7 @@ function run() {
     deny(formatToolViolations(problems, rules));
   }
 
-  /* 3) 커밋 메시지, 그리고 PR이나 이슈에 올리는 글입니다. */
+  /* 3) `git commit`으로 남기는 커밋 메시지와 `gh`로 PR이나 이슈에 올리는 글입니다. */
   if (toolName === 'Bash') {
     const messages = commitMessagesIn(ti.command);
     const posts = pullRequestTextsIn(ti.command);

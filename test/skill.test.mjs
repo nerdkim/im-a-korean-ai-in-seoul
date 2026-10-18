@@ -1,4 +1,4 @@
-/* 한국어를 쓰는 turn마다 Claude가 korean-rewrite skill을 거치게 하는 hook 테스트입니다. */
+/* Claude가 한국어를 쓰는 요청마다 korean-rewrite skill을 부르게 하는 hook 테스트입니다. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -23,7 +23,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RULES = loadRules(join(ROOT, 'docs', 'rules.md'));
 const scratch = () => mkdtempSync(join(tmpdir(), 'korean-style-skill-'));
 
-/* 한글이 기준(20자)보다 많고 검사기 오류가 없는 문장입니다. */
+/* 한글이 기준(20자)보다 많고 검사기가 찾을 오류도 없는 문장입니다. */
 const KOREAN = '설치 스크립트를 다시 실행한 뒤 Claude Code를 다시 시작하면 새 설정이 적용됩니다.';
 
 const prompt = (text) => ({ type: 'user', message: { content: text } });
@@ -68,11 +68,11 @@ test('`writing-skill`과 `writing-skill-min-hangul`이 없는 예전 규칙에�
   assert.equal(old.writingSkillMinHangul, 20);
 });
 
-test('turn은 사용자가 직접 보낸 마지막 메시지 뒤에서 시작한다', () => {
+test('이번 요청은 사용자가 직접 보낸 마지막 메시지 뒤에서 시작한다', () => {
   const path = transcript([prompt('지난 질문입니다'), said('지난 답변입니다'), prompt('이번 질문입니다'), ...SKILL_CALL, said('이번 답변입니다')]);
   const entries = currentTurn(path);
-  assert.ok(entries.every((entry) => JSON.stringify(entry).includes('지난') === false), '지난 turn이 섞이면 안 됩니다');
-  assert.ok(usedSkill(entries, 'korean-rewrite'), 'skill 본문이 든 줄을 turn의 시작으로 보면 skill 호출을 놓칩니다');
+  assert.ok(entries.every((entry) => JSON.stringify(entry).includes('지난') === false), '지난 요청이 섞이면 안 됩니다');
+  assert.ok(usedSkill(entries, 'korean-rewrite'), 'skill 본문이 든 줄을 요청의 시작으로 보면 skill 호출을 놓칩니다');
 });
 
 test('이름이 같은 skill을 부른 경우만 인정한다', () => {
@@ -82,7 +82,7 @@ test('이름이 같은 skill을 부른 경우만 인정한다', () => {
   assert.ok(!usedSkill([said('korean-rewrite skill을 쓰겠습니다.')], 'korean-rewrite'), '말로만 언급한 것은 호출이 아닙니다');
 });
 
-test('한국어를 쓰는 turn에 skill을 부르지 않았으면 skill을 요구한다', () => {
+test('이번 요청에서 skill을 부르지 않고 한국어를 쓰면 skill을 요구한다', () => {
   assert.ok(needsSkill(context(transcript([prompt('질문입니다'), said('살펴보겠습니다.')]))));
   assert.ok(!needsSkill(context(transcript([prompt('질문입니다'), ...SKILL_CALL]))));
 });
@@ -94,31 +94,31 @@ test('한글이 기준보다 적은 글이나 영어로만 쓴 글에는 skill�
   assert.ok(!needsSkill(context(path, { text: 'The installer finished and every hook is in place.' })));
 });
 
-test('skill이 설치되지 않았거나 규칙에서 꺼져 있거나 기록을 읽을 수 없으면 skill을 요구하지 않는다', () => {
+test('skill이 설치되지 않았거나 규칙에서 꺼져 있거나 대화 기록을 읽을 수 없으면 skill을 요구하지 않는다', () => {
   const path = transcript([prompt('질문입니다')]);
   assert.ok(!needsSkill(context(path, { projectRoot: scratch() })), 'skill 파일이 없는 프로젝트입니다');
   assert.ok(!needsSkill(context(path, { rules: { ...RULES, writingSkill: '' } })));
   assert.ok(!needsSkill(context(join(scratch(), '없음.jsonl'))));
 });
 
-test('같은 turn에서 정해 둔 횟수만큼 막았으면 더 막지 않는다', () => {
+test('같은 요청에서 정해 둔 횟수만큼 막았으면 더 막지 않는다', () => {
   /* Skill 도구를 쓸 수 없는 환경에서 끝없이 막히는 일을 막습니다. */
-  /* 실제로 막을 때 쓰는 문구로 기록을 만들어야 세는 쪽과 막는 쪽이 어긋날 때 이 테스트가 실패합니다. */
+  /* hook이 실제로 막을 때 쓰는 문구로 대화 기록을 만듭니다. 막은 횟수를 셀 때 찾는 문구가 이 문구와 달라지면 이 테스트가 실패합니다. */
   const denied = Array.from({ length: MAX_SKILL_DENIALS }, () => result(skillRequest('korean-rewrite', '다시 쓰십시오.')));
   assert.ok(needsSkill(context(transcript([prompt('질문입니다'), ...denied.slice(1)]))));
   assert.ok(!needsSkill(context(transcript([prompt('질문입니다'), ...denied]))));
 });
 
-test('subagent가 쓸 때는 그 subagent의 기록에서 skill 호출을 찾는다', () => {
+test('subagent가 쓸 때는 그 subagent의 대화 기록에서 skill 호출을 찾는다', () => {
   const dir = scratch();
   const main = transcript([prompt('질문입니다'), ...SKILL_CALL], join(dir, 'session.jsonl'));
   const agentPath = agentTranscriptPath(main, 'a1b2c3');
   assert.equal(agentPath, join(dir, 'session', 'subagents', 'agent-a1b2c3.jsonl'));
   transcript([prompt('subagent에게 준 작업입니다')], agentPath);
-  assert.ok(needsSkill(context(main, { agentId: 'a1b2c3' })), '메인 세션이 부른 skill은 subagent에게 전해지지 않습니다');
+  assert.ok(needsSkill(context(main, { agentId: 'a1b2c3' })), '메인 세션에서 부른 skill은 subagent에게 전해지지 않습니다');
   transcript([prompt('subagent에게 준 작업입니다'), ...SKILL_CALL], agentPath);
   assert.ok(!needsSkill(context(main, { agentId: 'a1b2c3' })));
-  assert.equal(agentTranscriptPath(main, '../x'), null, '경로를 벗어나는 id는 쓰지 않습니다');
+  assert.equal(agentTranscriptPath(main, '../x'), null, 'subagents 디렉터리 밖을 가리킬 수 있는 id는 쓰지 않습니다');
 });
 
 test('프롬프트마다 korean-rewrite skill을 먼저 부르라고 알린다', () => {
@@ -134,7 +134,7 @@ test('`writing-skill`을 비운 규칙에서는 프롬프트에 아무것도 덧
   assert.equal(runHook('userprompt.mjs', { prompt: '질문입니다' }, { KOREAN_STYLE_RULES: rules }), null);
 });
 
-test('skill을 부르지 않고 한국어 문서를 쓰면 막고, 부른 뒤에는 막지 않는다', () => {
+test('skill을 부르지 않고 한국어 문서를 쓰면 막고 부른 뒤에는 막지 않는다', () => {
   const input = (path) => ({
     tool_name: 'Write',
     tool_input: { file_path: join(ROOT, 'docs', 'skill-test.md'), content: `${KOREAN}\n` },
@@ -170,7 +170,7 @@ test('skill을 부르지 않고 한국어 PR 설명을 올리면 막는다', () 
   assert.equal(allowed, null);
 });
 
-test('skill을 부르지 않고 마친 한국어 답변이면 skill을 부르고 다시 쓰라고 요청한다', () => {
+test('skill을 부르지 않고 마친 한국어 답변이면 skill을 부르고 다시 쓰라고 요구한다', () => {
   const path = transcript([prompt('설치 방법을 알려 주십시오'), said(KOREAN)]);
   const out = runHook('stop.mjs', { transcript_path: path, last_assistant_message: KOREAN, stop_hook_active: false });
   assert.equal(out.decision, 'block');
@@ -178,7 +178,7 @@ test('skill을 부르지 않고 마친 한국어 답변이면 skill을 부르고
   assert.ok(out.reason.includes('답변을 다시 쓰십시오'));
 });
 
-test('skill을 거친 답변이나 이미 한 번 다시 쓴 답변은 막지 않는다', () => {
+test('skill을 거친 답변이나 이미 한 번 다시 쓴 답변이면 다시 쓰라고 요구하지 않는다', () => {
   const used = transcript([prompt('설치 방법을 알려 주십시오'), ...SKILL_CALL, said(KOREAN)]);
   assert.equal(runHook('stop.mjs', { transcript_path: used, last_assistant_message: KOREAN, stop_hook_active: false }), null);
   const skipped = transcript([prompt('설치 방법을 알려 주십시오'), said(KOREAN)]);

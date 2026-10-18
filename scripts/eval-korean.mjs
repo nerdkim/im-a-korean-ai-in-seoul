@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* 실제 모델의 답변을 비교하는 스크립트입니다. 유료 API를 쓰므로 --run을 줄 때만 실행합니다. --with-hooks를 주면 설치한 프로젝트에서 hook과 skill이 실제로 동작합니다. 주지 않으면 Claude Code의 내장 도구와 skill을 모두 끕니다. */
+/* 실제 모델의 답변을 비교하는 스크립트입니다. 유료 API를 쓰므로 --run을 줄 때만 모델을 호출합니다. --with-hooks를 주면 이 도구를 설치한 프로젝트에서 hook과 skill이 실제로 동작합니다. 주지 않으면 모든 프로필의 프로젝트에서 hook과 skill, Claude Code의 내장 도구를 끕니다. */
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -16,7 +16,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /* 집계표에 쓰는 프로필 이름입니다. */
 const PROFILE_LABELS = { baseline: '이 도구가 없는 프로젝트', installed: '이 도구를 설치한 프로젝트', legacy: '예전 작성 지침을 둔 프로젝트' };
 
-/* Stop hook이 답변을 막고 다시 쓰라고 했는지 hook 출력으로 판단합니다. 출력이 JSON이 아니면 막지 않은 것으로 봅니다. */
+/* Stop hook이 답변을 다시 쓰게 했는지 hook 출력으로 판단합니다. 출력이 JSON이 아니면 다시 쓰게 하지 않은 것으로 봅니다. */
 function stopBlocked(responses) {
   return (responses ?? []).some((h) => {
     if (h?.event !== 'Stop') return false;
@@ -29,9 +29,9 @@ function stopBlocked(responses) {
 }
 
 /*
- * 저장된 답변을 프로필마다 셉니다. 사람이 읽고 판단해야 하는 항목은 세지 않고, 검사기와 기록으로 셀 수 있는 것만 셉니다.
- * emoji와 가운뎃점은 inline code만 빼고 찾으므로 코드 블록 안에 있어도 셉니다.
- * 저장된 답변은 Stop hook이 다시 쓰게 했다면 다시 쓴 글이므로, 다시 쓰게 한 답변 수도 함께 셉니다.
+ * 저장된 답변을 프로필마다 셉니다. 사람이 읽고 판단해야 하는 항목은 세지 않고 검사기와 기록으로 셀 수 있는 것만 셉니다.
+ * emoji와 가운뎃점은 인라인 코드만 빼고 찾으므로 코드 블록 안에 있어도 셉니다.
+ * 저장된 답변은 Stop hook이 다시 쓰게 했다면 다시 쓴 글이므로 다시 쓰게 한 답변 수도 함께 셉니다.
  */
 export function summarize(rows, rules) {
   /* 프로필 이름이 `__proto__` 같은 값이어도 다른 객체에 속성이 생기지 않게 프로토타입 없는 객체에 모읍니다. */
@@ -90,7 +90,7 @@ export function formatSummary(summary) {
 export function answersOf(text, cases) {
   return cases.map(({ id }) => {
     const matches = [...text.matchAll(new RegExp(`<answer id="${id}">([\\s\\S]*?)</answer>`, 'g'))];
-    if (matches.length !== 1) throw new Error(`응답이 없거나 중복되었습니다: ${id}`);
+    if (matches.length !== 1) throw new Error(`답변이 없거나 중복되었습니다: ${id}`);
     return { id, text: matches[0][1].trim() };
   });
 }
@@ -116,7 +116,7 @@ function main() {
     return args[i + 1];
   };
   if (args.includes('--self-check')) {
-    if (answersOf('<answer id="a">ok</answer>', [{ id: 'a' }])[0].text !== 'ok') throw new Error('응답을 읽지 못했습니다');
+    if (answersOf('<answer id="a">ok</answer>', [{ id: 'a' }])[0].text !== 'ok') throw new Error('답변을 읽지 못했습니다');
     console.log('eval 자체 검사를 통과했습니다. API는 호출하지 않았습니다.');
     return;
   }
@@ -191,7 +191,7 @@ function main() {
         const prompt = individual ? group[0].prompt : batchPrompt;
         const started = Date.now();
         const liveHooks = withHooks && profile === 'installed';
-        /* --with-hooks를 주면 모든 프로필의 프로젝트에서 skill과 검사기를 쓸 수 있게 합니다. skill이 설치된 프로젝트에서만 Claude가 실제로 skill을 부릅니다. */
+        /* --with-hooks를 주면 모든 프로필의 프로젝트에서 Skill, Read, Bash 도구를 켜고 검사기 명령을 허용합니다. skill과 검사기는 이 도구를 설치한 프로젝트에만 있습니다. */
         const tools = withHooks
           ? ['--tools', 'Skill,Read,Bash', '--allowedTools', 'Bash(node .korean-style/scripts/check-korean.mjs:*)']
           : ['--tools', '', '--disable-slash-commands'];
@@ -225,7 +225,7 @@ function main() {
       }
     }
   } finally { rmSync(scratch, { recursive: true, force: true }); }
-  console.log(`${out}/results.json에 저장했습니다. 응답마다 원문과 나란히 놓고 검토하십시오.`);
+  console.log(`${out}/results.json에 저장했습니다. 답변마다 요청과 나란히 놓고 검토하십시오.`);
 }
 
 if (isEntryPoint(import.meta.url)) {

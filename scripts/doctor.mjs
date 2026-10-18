@@ -57,7 +57,7 @@ for (const path of [settingsPath, ...localSettingsPaths(root)]) {
 }
 const effective = Object.assign({}, ...sources.map(s => s.settings));
 if (effective.disableAllHooks === true) bad('disableAllHooks로 hook이 꺼져 있습니다');
-/* 로컬 설정이 프로젝트 설정보다 우선하므로 마지막으로 정한 값을 봅니다. 프로젝트가 정한 공동 작성자 줄처럼 생성 표시가 아닌 값에는 경고하지 않습니다. */
+/* 설정 파일은 프로젝트 설정, 로컬 설정 순서로 읽었습니다. 로컬 설정이 우선하므로 값이 있는 파일 가운데 마지막 파일의 값을 봅니다. 프로젝트에서 정해 둔 공동 작성자 줄처럼 생성 표시가 아닌 값에는 주의를 출력하지 않습니다. */
 const attributionOf = key => sources.map(s => s.settings.attribution?.[key]).filter(v => v !== undefined).at(-1);
 for (const [key, label] of [['commit', '커밋 메시지'], ['pr', 'PR 설명']]) {
   const value = attributionOf(key);
@@ -104,7 +104,7 @@ try {
   else if (!hook.executable) bad(`commit-msg hook에 실행 권한이 없습니다: ${hook.path}`);
   else if (hook.state === 'occupied') warn('다른 commit-msg hook이 이미 있습니다. 그 hook이 한국어 검사기를 호출하는지는 직접 확인해야 합니다.');
   else ok('commit-msg hook이 연결되어 있고 실행 권한도 있습니다');
-} catch (e) { bad(`커밋 hook 점검 실패: ${e.message}`); }
+} catch (e) { bad(`commit-msg hook을 점검하지 못했습니다: ${e.message}`); }
 if (installed && existsSync(join(root, '.git'))) {
   for (const path of ['.korean-style/rules.md', '.korean-style/defaults.sha256', '.claude/settings.json']) {
     if (spawnSync('git', ['check-ignore', '-q', '--no-index', path], { cwd: root }).status === 0) {

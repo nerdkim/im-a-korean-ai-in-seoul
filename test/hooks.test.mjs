@@ -67,7 +67,7 @@ test('회귀: new_string의 달러 기호를 치환 패턴으로 읽지 않는�
   assert.ok(got.includes('$&$1'), `달러 기호가 그대로 남아야 하는데 ${JSON.stringify(got)}입니다`);
 });
 
-test('회귀: 이번 turn의 답변을 모두 모은다', () => {
+test('회귀: 이번 요청의 답변을 모두 모은다', () => {
   /* 실제로 있었던 결함을 재현합니다. */
   const path = join(scratch(), 'transcript.jsonl');
   const lines = [
@@ -79,20 +79,20 @@ test('회귀: 이번 turn의 답변을 모두 모은다', () => {
   ];
   writeFileSync(path, `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`, 'utf-8');
   const got = lastAssistantText(path);
-  assert.ok(got.includes('첫 답변입니다'), '같은 turn의 앞선 답변도 모아야 합니다');
+  assert.ok(got.includes('첫 답변입니다'), '같은 요청의 앞선 답변도 모아야 합니다');
   assert.ok(got.includes('둘째 답변입니다'));
   assert.ok(!got.includes('지난 turn'), '마지막 사용자 메시지보다 앞선 답변은 모으지 않아야 합니다');
   assert.ok(got.indexOf('첫 답변') < got.indexOf('둘째 답변'), '순서가 유지되어야 합니다');
 });
 
-test('깨진 줄 하나 때문에 기록 전체를 버리지 않는다', () => {
+test('깨진 줄 하나 때문에 대화 기록 전체를 버리지 않는다', () => {
   const path = join(scratch(), 'transcript.jsonl');
   const good = JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: '확인했습니다.' }] } });
   writeFileSync(path, `{깨진 줄\n${good}\n`, 'utf-8');
   assert.equal(lastAssistantText(path), '확인했습니다.');
 });
 
-test('기록 파일이 없으면 null을 돌려준다', () => {
+test('대화 기록 파일이 없으면 null을 돌려준다', () => {
   assert.equal(lastAssistantText(join(scratch(), '없음.jsonl')), null);
 });
 
@@ -217,7 +217,7 @@ test('문자열 리터럴만 바꾼 소스 편집에는 경고를 알리지 않�
   assert.deepEqual(rulesOf("// 주석입니다.\nconst a = '확인';\n", "// 주석입니다.\nconst a = '로그를 통해 확인';\n", 'comment', 'src/a.js'), []);
 });
 
-test('기존 code block 안에 쓴 글의 경고는 Claude에게 알리지 않는다', () => {
+test('기존 코드 블록 안에 쓴 글의 경고는 Claude에게 알리지 않는다', () => {
   const { before, after } = edited('a.md', '# 제목\n\n```\n예시입니다.\n```\n', 'Edit', {
     old_string: '예시입니다.', new_string: '로그를 통해 예시입니다.',
   });
@@ -231,14 +231,14 @@ test('인용 구간 안에 옮겨 적은 글의 경고는 Claude에게 알리지
   assert.deepEqual(rulesOf('# 예시\n\n예시입니다.\n', '# 예시\n\n로그를 통해 예시입니다.\n'), ['translationese']);
 });
 
-test('규칙 설정 블록의 영어식 표현 목록에 항목을 더해도 Claude에게 알리지 않는다', () => {
-  /* 규칙 문서를 고치는 것은 설치한 프로젝트가 규칙을 바꾸는 정상 절차입니다. */
+test('규칙 블록의 영어식 표현 목록에 항목을 더해도 Claude에게 알리지 않는다', () => {
+  /* 규칙 문서를 고치는 것은 설치한 프로젝트에서 규칙을 바꾸는 정상 절차입니다. */
   const before = '# 규칙\n\n```korean-style-rules\ntranslationese-patterns: 를 통해=~해\n```\n';
   assert.deepEqual(rulesOf(before, before.replace('=~해', '=~해, 문서를 통하여서=로'), 'doc', '.korean-style/rules.md'), []);
 });
 
 test('review-rules가 비어 있으면 경고를 알리지 않는다', () => {
-  /* 이 키가 없는 구버전 규칙으로 설치한 프로젝트입니다. */
+  /* 이 키가 없는 예전 규칙으로 설치한 프로젝트입니다. */
   assert.deepEqual(reviewNotes('', '로그를 통해 원인을 찾았습니다.', { ...RULES, reviewRules: [] }, 'doc', 'a.md'), []);
 });
 
@@ -288,7 +288,7 @@ test('사람이 읽는 도구 입력이 규칙을 어기면 거부한다', () =>
 });
 
 test('subagent에게 주는 한국어 프롬프트가 규칙을 어기면 거부한다', () => {
-  /* output-style은 subagent에 적용되지 않습니다. */
+  /* 작성 지침은 subagent에 적용되지 않습니다. */
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Task',
     tool_input: { prompt: '결과가 보여집니다. 보고해 주십시오.', subagent_type: 'code-explorer' },
@@ -366,7 +366,7 @@ test('PR과 이슈에 글을 쓰지 않는 명령에서는 아무것도 뽑지 �
   }
 });
 
-test('`create` 대신 `new`로 쓴 gh 명령에서도 글을 뽑고, 병합 커밋 메시지와 표준 입력으로 넘긴 PR 본문도 뽑는다', () => {
+test('`create` 대신 `new`로 쓴 gh 명령에서도 글을 뽑고 병합 커밋 메시지와 표준 입력으로 넘긴 PR 설명도 뽑는다', () => {
   assert.deepEqual(pullRequestTextsIn('gh pr new --title "제목입니다" --body "본문입니다"'), ['제목입니다', '본문입니다']);
   assert.deepEqual(pullRequestTextsIn('gh issue new -t "제목입니다" -b "본문입니다"'), ['제목입니다', '본문입니다']);
   assert.deepEqual(pullRequestTextsIn('gh pr merge 12 --squash --subject "병합 제목입니다" --body "병합 본문입니다"'), ['병합 제목입니다', '병합 본문입니다']);
@@ -374,7 +374,7 @@ test('`create` 대신 `new`로 쓴 gh 명령에서도 글을 뽑고, 병합 커�
   assert.deepEqual(pullRequestTextsIn("gh pr create --title \"제목입니다\" --body-file - <<'EOF'\n본문입니다.\nEOF"), ['제목입니다', '본문입니다.']);
 });
 
-test('커밋 메시지를 옵션에 붙여 쓰거나 ANSI-C 따옴표나 줄을 이은 큰따옴표로 감싸도 뽑고, trailer와 표준 입력으로 넘긴 메시지도 뽑는다', () => {
+test('커밋 메시지를 옵션에 붙여 쓰거나 ANSI-C 따옴표나 줄을 이은 큰따옴표로 감싸도 뽑고 trailer와 표준 입력으로 넘긴 메시지도 뽑는다', () => {
   assert.deepEqual(commitMessagesIn('git commit -m로그를통해원인을찾았습니다'), ['로그를통해원인을찾았습니다']);
   assert.deepEqual(commitMessagesIn('git commit -am메시지입니다'), ['메시지입니다']);
   assert.deepEqual(commitMessagesIn("git commit -m $'첫 줄입니다.\\n\\n둘째 줄입니다.'"), ['첫 줄입니다.\n\n둘째 줄입니다.']);
@@ -399,7 +399,7 @@ test('따옴표 안이나 heredoc 본문에 든 명령과 뒤에 이어진 다�
 });
 
 test('닫히지 않은 heredoc이 아주 길어도 명령을 빨리 읽는다', () => {
-  /* 정규식이 백트래킹에 빠지면 hook이 멈췄다가 예외로 끝나고, 명령은 검사 없이 통과합니다. */
+  /* 정규식이 백트래킹에 빠지면 hook이 멈췄다가 예외로 끝납니다. 그러면 명령은 검사 없이 통과합니다. */
   const command = `git commit -m "$(cat <<'EOF'${'\n'.repeat(3400)}EOF${' '.repeat(3400)}x`;
   const started = process.hrtime.bigint();
   commitMessagesIn(command);
@@ -408,7 +408,7 @@ test('닫히지 않은 heredoc이 아주 길어도 명령을 빨리 읽는다', 
   assert.ok(ms < 1000, `${ms.toFixed(0)}ms 걸렸습니다`);
 });
 
-test('PR 설명이 규칙을 어기거나 생성 표시를 담고 있으면 거부한다', () => {
+test('PR 설명에 규칙 위반이나 생성 표시가 있으면 거부한다', () => {
   const body = '## 변경 내용\n\n- 결제 클라이언트에 재시도를 추가했습니다.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)';
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Bash',
@@ -427,7 +427,7 @@ test('규칙을 지킨 PR 설명은 통과시킨다', () => {
   assert.equal(out, null);
 });
 
-/* shell 명령으로 쓰는 파일입니다. 전에는 이 hook이 `Write`와 `Edit` 계열만 파일 쓰기로 봤습니다. */
+/* shell 명령으로 파일을 쓰는 경우를 확인하는 테스트입니다. 전에는 PreToolUse hook이 `Write`와 `Edit` 계열 도구로 쓰는 것만 파일 쓰기로 봤습니다. */
 
 /* Bash 명령 하나를 hook에 넣고 거부되었는지 돌려줍니다. */
 function bashDenied(command) {
@@ -520,22 +520,22 @@ function transcriptWith(text) {
   return path;
 }
 
-test('기록 파일이 없어도 hook 입력으로 받은 마지막 답변을 검사한다', () => {
+test('대화 기록 파일이 없어도 hook 입력으로 받은 마지막 답변을 검사한다', () => {
   const out = runHook('stop.mjs', { last_assistant_message: '작업이 완료됬습니다.', stop_hook_active: false });
   assert.equal(out.decision, 'block');
   assert.match(out.reason, /known-typo/);
 });
 
-test('hook 입력에 마지막 답변이 있으면 기록 파일의 답변 대신 그 답변을 검사한다', () => {
+test('hook 입력에 마지막 답변이 있으면 대화 기록 파일의 답변 대신 그 답변을 검사한다', () => {
   assert.equal(runHook('stop.mjs', { transcript_path: transcriptWith('결과가 보여집니다.'),
     last_assistant_message: '결과가 보입니다.', stop_hook_active: false }), null);
 });
 
-test('경고만 있는 답변에는 재작성을 요구하지 않는다', () => {
+test('경고만 있는 답변이면 다시 쓰라고 요구하지 않는다', () => {
   assert.equal(runHook('stop.mjs', { last_assistant_message: 'API를 통해 확인했습니다.' }), null);
 });
 
-test('hook 입력으로 마지막 답변을 받아도 다시 쓰라는 요청은 한 번만 한다', () => {
+test('hook 입력으로 마지막 답변을 받아도 다시 쓰라고 한 번만 요구한다', () => {
   assert.equal(runHook('stop.mjs', { last_assistant_message: '작업이 완료됬습니다.', stop_hook_active: true }), null);
 });
 
@@ -556,27 +556,27 @@ test('Claude Code가 Task 대신 쓰는 Agent 도구에서도 오류를 검사�
   assert.match(out.hookSpecificOutput.permissionDecisionReason, /double-passive/);
 });
 
-test('규칙을 어긴 답변이면 재작성을 요구한다', () => {
+test('규칙을 어긴 답변이면 다시 쓰라고 요구한다', () => {
   const path = transcriptWith('당신이 요청한 대로 워크플로우를 정리했어요.');
   const out = runHook('stop.mjs', { transcript_path: path, stop_hook_active: false });
-  assert.ok(out !== null, '재작성을 요구해야 합니다');
+  assert.ok(out !== null, '다시 쓰라고 요구해야 합니다');
   assert.equal(out.decision, 'block');
   assert.ok(out.reason.includes('당신'));
   assert.ok(out.reason.includes('--explain'), '어디서 규칙을 볼지 알려 주어야 합니다');
 });
 
-test('규칙을 지킨 답변에는 재작성을 요구하지 않는다', () => {
+test('규칙을 지킨 답변이면 다시 쓰라고 요구하지 않는다', () => {
   const path = transcriptWith('요청한 대로 워크플로를 정리했습니다.');
   assert.equal(runHook('stop.mjs', { transcript_path: path, stop_hook_active: false }), null);
 });
 
 test('Stop hook이 이미 한 번 다시 쓰게 한 답변에는 또 요구하지 않는다', () => {
-  /* 이 검사가 없으면 만족할 수 없는 규칙 하나 때문에 차단과 재작성이 끝없이 되풀이됩니다. */
+  /* 이 검사가 없으면 지킬 수 없는 규칙 하나 때문에 hook이 끝없이 다시 쓰라고 요구합니다. */
   const path = transcriptWith('당신이 요청한 것입니다.');
   assert.equal(runHook('stop.mjs', { transcript_path: path, stop_hook_active: true }), null);
 });
 
-test('hook 입력에 기록 경로도 마지막 답변도 없으면 아무 일도 하지 않는다', () => {
+test('hook 입력에 대화 기록 경로도 마지막 답변도 없으면 아무 일도 하지 않는다', () => {
   assert.equal(runHook('stop.mjs', { stop_hook_active: false }), null);
 });
 

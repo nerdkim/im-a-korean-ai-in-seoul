@@ -3,7 +3,7 @@
 /*
  * 규칙 문서의 `banned-attribution`에 적은 문구가 든 줄을 찾습니다. 대소문자는 가리지 않습니다.
  * 이메일 주소처럼 `@`가 든 문구는 줄 어디에 있어도 잡습니다. 나머지 문구는 같은 줄에서 그 앞에 글자나 숫자가 없을 때만 잡습니다.
- * 그래서 `커밋 메시지에서 Generated with Claude Code 줄을 지웠습니다`처럼 생성 표시를 언급하기만 한 문장은 막지 않습니다.
+ * 그래서 `커밋 메시지에서 Generated with Claude Code 줄을 지웠습니다`처럼 생성 표시를 언급하기만 한 문장은 잡지 않습니다.
  */
 export function attributionViolations(text, rules) {
   const phrases = (rules.bannedAttribution ?? []).map((phrase) => phrase.toLowerCase());

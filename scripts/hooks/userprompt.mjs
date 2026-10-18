@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* 사용자가 프롬프트를 보낼 때마다, 한국어를 쓰기 전에 skill을 먼저 부르라고 Claude에게 알립니다. */
+/* 사용자가 프롬프트를 보낼 때마다 Claude에게 한국어를 쓰기 전에 skill을 부르라고 알립니다. 규칙 문서에 적힌 skill이 프로젝트에 없으면 알리지 않습니다. */
 import { readFileSync } from 'node:fs';
 import { isEntryPoint, projectRoot, rulesDocPath } from '../lib/paths.mjs';
 import { loadRules } from '../lib/rules.mjs';

@@ -88,9 +88,9 @@ export function installCommitHook(root, dry = false) {
 }
 
 export function reportCommitHook(result) {
-  const labels = { linked: '커밋 메시지 hook을 설치했습니다', already: '커밋 메시지 hook이 이미 설치되어 있습니다',
-    occupied: '다른 커밋 메시지 hook이 이미 있어 그대로 두었습니다. 커밋 메시지도 검사하려면 그 hook이 검사기를 실행하도록 직접 고쳐야 합니다',
-    broken: '기존 커밋 메시지 hook의 symlink가 끊겼습니다. 그 hook을 복구해야 합니다',
-    'not-git': '프로젝트 루트에 .git이 없어 커밋 메시지 hook은 설치하지 않습니다.', would: '커밋 메시지 hook을 설치할 경로입니다' };
+  const labels = { linked: 'commit-msg hook을 설치했습니다', already: 'commit-msg hook이 이미 설치되어 있습니다',
+    occupied: '다른 commit-msg hook이 이미 있어 그대로 두었습니다. 사람이 직접 하거나 다른 프로그램으로 하는 커밋도 검사하려면 그 hook이 검사기를 실행하도록 고쳐야 합니다',
+    broken: '기존 commit-msg hook의 symlink가 끊겼습니다. 그 hook을 복구해야 합니다',
+    'not-git': '프로젝트 루트에 .git이 없어 commit-msg hook은 설치하지 않습니다.', would: 'commit-msg hook을 설치할 경로입니다' };
   console.log(`${labels[result.state] ?? result.state}${result.path ? `: ${result.path}` : ''}`);
 }

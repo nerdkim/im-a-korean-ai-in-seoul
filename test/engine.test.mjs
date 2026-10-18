@@ -25,7 +25,7 @@ test('회귀: 규칙 문서를 못 읽어도 금지 문자 규칙은 남는다',
   assert.ok(missing.bannedChar.length > 0, '금지 문자 규칙은 남아야 합니다');
   const found = checkText('이것은 — 저것입니다. 항목 A·B 이며 완료했습니다 ✅', missing, 'chat');
   assert.ok(found.length >= 3, `금지 문자 위반이 세 건 이상 나와야 하는데 ${found.length}건입니다`);
-  assert.ok(formatViolations(found, missing).includes('규칙 설정을 찾지 못했습니다'), '보고에 규칙 문서를 못 읽었다는 경고가 있어야 합니다');
+  assert.ok(formatViolations(found, missing).includes(missing.reason), '보고에 규칙 문서를 못 읽었다는 경고가 있어야 합니다');
 });
 
 test('회귀: 규칙 블록이 없는 문서를 읽어도 금지 문자 규칙은 남는다', () => {
@@ -43,7 +43,7 @@ test('회귀: 이중피동은 활용형까지 걸린다', () => {
   for (const bad of ['보여지다', '보여진 값', '보여져서', '보여졌다', '보여집니다', '보여짐', '보여질']) {
     assert.ok(checkText(`결과가 화면에 ${bad}.`, r, 'doc').length > 0, `이중피동으로 걸려야 합니다: ${bad}`);
   }
-  /* 어간 뒤에 `지다`의 활용형이 오지 않으면 정상 한국어입니다. */
+  /* 어간 뒤에 `지다`의 활용형이 오지 않으면 이중피동이 아닙니다. */
   for (const good of ['보여 주십시오', '보여 줍니다', '되어 있습니다', '되어야 합니다']) {
     assert.equal(checkText(`결과를 ${good}.`, r, 'doc').length, 0, `통과해야 합니다: ${good}`);
   }
@@ -97,7 +97,7 @@ test('말투를 고르면 금지 어미가 따라 바뀐다', () => {
   assert.ok(checkText('확인했습니다.', casual, 'chat').length > 0, '해요체에서 합니다체는 걸립니다');
   assert.equal(checkText('확인했어요.', casual, 'chat').length, 0);
 
-  assert.equal(checkText('확인했습니다.', mixed, 'chat').length, 0, '혼용은 둘 다 허용합니다');
+  assert.equal(checkText('확인했습니다.', mixed, 'chat').length, 0, '혼용에서는 두 말투가 모두 통과합니다');
   assert.equal(checkText('확인했어요.', mixed, 'chat').length, 0);
 });
 
@@ -114,7 +114,7 @@ test('예전 말투 이름 `다나까체`와 문법 용어 `하십시오체`는 
   assert.equal(canonicalRegister('알수없는말투'), '알수없는말투', '모르는 이름은 바꾸지 않습니다');
 });
 
-test('명령형을 고치라는 안내는 프로젝트 말투로 쓴 요청을 예로 든다', () => {
+test('명령형을 고치라고 안내할 때는 프로젝트 말투로 쓴 요청을 예로 든다', () => {
   /* 해요체 프로젝트에 `~해 주십시오`를 권하면 Claude가 그대로 따라 써서 한 글에 두 말투가 섞입니다. */
   const cases = [
     { register: '해요체', imperative: '값을 확인하세요.', request: '확인해 주세요', other: '주십시오' },
@@ -202,7 +202,7 @@ test('`banned-attribution`이 비어 있으면 생성 표시를 막지 않는다
 });
 
 test('소스 파일은 주석만 검사한다', () => {
-  /* 코드까지 검사하던 것이 이 도구의 가장 큰 오검출 원인이었습니다. */
+  /* 검사기가 코드까지 검사하던 때는 코드에서 오검출이 가장 많이 나왔습니다. */
   const r = rulesOf(['register: 합니다체', 'max-comma-per-sentence: 2', 'loanword-spelling: 워크플로우=워크플로']);
   const source = [
     "const CASES = ['워크플로우', '확인했어요', '당신', '보여집니다', '항목'];",
@@ -257,7 +257,7 @@ test('onlyComments는 길이를 바꾸지 않는다', () => {
   assert.equal(onlyComments(src, commentSyntaxOf('a.mjs')).length, src.length);
 });
 
-/* ---------------------------------------------------------------------------  fence  --------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------  코드 블록  --------------------------------------------------------------------------- */
 
 test('코드 블록 안에는 낱말 규칙을 적용하고 문장 규칙은 적용하지 않는다', () => {
   const r = rulesOf([
@@ -271,7 +271,7 @@ test('코드 블록 안에는 낱말 규칙을 적용하고 문장 규칙은 적
   assert.equal(checkText(command, r, 'doc').length, 0);
 });
 
-test('코드 블록 안을 따로 검사할 때 규칙 설정 블록은 뺀다', () => {
+test('코드 블록 안을 따로 검사할 때 규칙 블록은 뺀다', () => {
   /* 규칙 블록에는 금지할 낱말이 그대로 적혀 있습니다. */
   const r = rulesOf(['loanword-spelling: 워크플로우=워크플로']);
   const doc = ['문서입니다.', '```' + RULE_FENCE, 'loanword-spelling: 워크플로우=워크플로', '```'].join('\n');
@@ -328,13 +328,13 @@ test('stripCode는 길이를 바꾸지 않는다', () => {
   assert.equal(stripCode(doc).length, doc.length);
 });
 
-/* 백틱 네 개로 연 block 안에 백틱 세 개로 감싼 예제 code가 들어 있는 문서입니다. */
+/* 백틱 네 개로 연 코드 블록 안에 백틱 세 개로 감싼 예제 코드가 들어 있는 문서입니다. */
 const NESTED_FENCE = ['밖입니다.', '````markdown', '주석을 달았어요.', '```js', 'const a = 1;', '```', '안쪽 끝입니다.', '````', '다시 밖입니다.'].join('\n');
 
-test('백틱 네 개로 연 block은 그 안의 백틱 세 개 줄에서 닫히지 않는다', () => {
+test('백틱 네 개로 연 코드 블록은 그 안의 백틱 세 개 줄에서 닫히지 않는다', () => {
   const stripped = stripCode(NESTED_FENCE);
   assert.ok(stripped.includes('밖입니다') && stripped.includes('다시 밖입니다'));
-  for (const inside of ['주석을 달았어요', 'const a', '안쪽 끝입니다']) assert.ok(!stripped.includes(inside), `${inside} 줄은 code block 안입니다`);
+  for (const inside of ['주석을 달았어요', 'const a', '안쪽 끝입니다']) assert.ok(!stripped.includes(inside), `${inside} 줄은 코드 블록 안입니다`);
   const inner = onlyFenced(NESTED_FENCE, []);
   assert.ok(inner.includes('주석을 달았어요') && inner.includes('안쪽 끝입니다'));
   assert.ok(!inner.includes('다시 밖입니다'));
@@ -355,7 +355,7 @@ test('한 줄 안에서 백틱 세 개로 감싼 코드 뒤의 줄은 코드 블
   assert.ok(stripped.includes('로 실행합니다') && stripped.includes('다음 줄은 산문입니다'));
 });
 
-test('닫지 않은 block은 글 끝까지 이어진다', () => {
+test('닫지 않은 코드 블록은 글 끝까지 이어진다', () => {
   const doc = ['밖입니다.', '```', '안입니다.', '끝까지 안입니다.'].join('\n');
   const stripped = stripCode(doc);
   assert.ok(stripped.includes('밖입니다') && !stripped.includes('끝까지 안입니다'));
@@ -389,7 +389,7 @@ test('어절은 공백으로 나눠 센다', () => {
 });
 
 test('도구 입력의 산문을 필드 이름으로 찾는다', () => {
-  /* 필드의 전체 경로를 규칙에 적으면 harness가 입력을 한 단계 더 감싸는 순간 그 규칙은 아무것도 잡지 못합니다. 그런데도 겉으로는 규칙이 계속 적용되는 것처럼 보입니다. */
+  /* 필드의 전체 경로를 규칙에 적으면 Claude Code가 도구 입력을 한 단계 더 감싸기만 해도 그 규칙은 아무것도 잡지 못합니다. 그런데도 겉으로는 규칙이 계속 적용되는 것처럼 보입니다. */
   const r = rulesOf(['chat-tool-fields: AskUserQuestion.question, AskUserQuestion.label', 'register: 합니다체']);
   const input = { questions: [{ question: '확인했어요?', options: [{ label: '당신 선택' }, { label: '괜찮습니다' }] }] };
   const found = toolFieldTexts('AskUserQuestion', input, r);
@@ -442,7 +442,7 @@ test('회귀: 자모가 분리된(NFD) 한글을 한국어가 없는 글로 보�
 });
 
 test('subagent 프롬프트의 영어식 표현과 이중피동을 잡는다', () => {
-  /* output-style은 subagent에 적용되지 않으므로 프롬프트만이라도 여기서 검사합니다. */
+  /* 작성 지침은 subagent에 적용되지 않으므로 프롬프트만이라도 여기서 검사합니다. */
   const r = rulesOf([
     'agent-tool-fields: Task.prompt',
     'translationese-patterns: 에 의하여=~로',
@@ -502,7 +502,7 @@ test('대신 쓸 표현을 적지 않은 항목에는 고칠 안을 지어내지
   assert.equal(r.translationesePatterns.get('를 통해'), '');
   const v = checkText('로그를 통해 확인했습니다.', r, 'doc');
   assert.equal(v.length, 1);
-  assert.ok(!v[0].detail.includes('고칠 수도 있습니다'), '대안을 지어내지 않아야 합니다');
+  assert.ok(!v[0].detail.includes('고칠 수도 있습니다'), '고칠 안을 지어내지 않아야 합니다');
 });
 
 test('값을 0으로 두면 그 규칙이 꺼진다', () => {

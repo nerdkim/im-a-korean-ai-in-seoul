@@ -1,4 +1,4 @@
-/* 명령줄 진입점 테스트입니다. */
+/* 검사기를 명령줄에서 실행하는 테스트입니다. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -34,7 +34,7 @@ const REGISTER_VIOLATION = '확인했어요. 곧 알려 드릴게요.';
 /* 아무 규칙에도 걸리지 않는 문장입니다. */
 const CLEAN = '작업을 마쳤습니다. 결과를 정리해 드리겠습니다.';
 
-test('경고만 있으면 보고만 하고, --strict를 주었을 때만 실패한다', () => {
+test('경고만 있으면 보고만 하고 --strict를 주었을 때만 실패한다', () => {
   const normal = run(['--text', 'API를 통해 확인합니다.']);
   assert.equal(normal.status, 0);
   assert.match(normal.stdout, /경고 1건/);
@@ -75,7 +75,7 @@ test('--stdin으로 받은 글에 위반이 없으면 통과시킨다', () => {
   assert.match(r.stdout, /통과/);
 });
 
-test('--stdin은 shell 특수 문자도 그대로 받는다', () => {
+test('--stdin으로 받은 글은 shell 특수 문자가 들어 있어도 그대로 검사한다', () => {
   /* 입력에 `$`, 따옴표, 백슬래시를 넣습니다. */
   const r = run(['--stdin', '--target', 'doc'], { stdin: '값은 $1 이고 경로는 "a\\b" 입니다.' });
   assert.equal(r.status, 0, `통과해야 합니다. 출력: ${r.stdout}${r.stderr}`);
@@ -137,7 +137,7 @@ test('회귀: 프로젝트 밖에 있는 규칙 문서를 읽으면 그 경로�
 });
 
 test('프로젝트 규칙 문서에 없는 규칙의 설명은 도구와 함께 배포한 기본 규칙 문서에서 찾는다', () => {
-  /* 직접 고친 예전 규칙 문서에는 새로 생긴 규칙의 설명이 없지만, Stop hook은 그 규칙으로 답변을 막고 `--explain` 명령을 안내합니다. */
+  /* 직접 고친 예전 규칙 문서에는 새로 생긴 규칙의 설명이 없습니다. 그래도 Stop hook은 그 규칙에 걸린 답변을 다시 쓰게 하고 `--explain` 명령을 안내합니다. */
   const path = join(mkdtempSync(join(tmpdir(), 'korean-style-cli-')), 'rules.md');
   writeFileSync(path, '```korean-style-rules\nregister: 다나까체\n```\n', 'utf-8');
   const r = run(['--explain', 'ai-attribution'], { rules: path });

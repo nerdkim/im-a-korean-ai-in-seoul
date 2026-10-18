@@ -83,7 +83,7 @@ export function registerViolations(text, rules, target, inFence = false) {
     }
   }
 
-  /* 5) 한국어로 써야 할 글을 영어로 썼는지 봅니다. fence 안에서는 걸지 않습니다. */
+  /* 5) 한국어로 써야 할 글을 영어로 썼는지 봅니다. 코드 블록 안에서는 걸지 않습니다. */
   if (human && !inFence && rules.koreanRequiredMinChars > 0) {
     const prose = text.replace(/\s+/g, '');
     if (prose.length >= rules.koreanRequiredMinChars && !HANGUL_SYLLABLE.test(text)) {

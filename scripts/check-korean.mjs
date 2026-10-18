@@ -52,7 +52,7 @@ export const SELF_CHECK_CASES = [
   ['조사로 이은 나열은 통과', '분류와 시크릿 게이트, 워커 셋입니다.', false, 'chat'],
   ['줄표', '이것은 — 저것입니다.', true, 'chat'],
   ['emoji', '완료했습니다 ✅', true, 'chat'],
-  /* 화살표는 그림 문자가 아니라 수식 기호입니다. */
+  /* 검사기는 U+2190부터 U+21FF까지의 화살표를 emoji로 세지 않습니다. ↔는 유니코드에서 수식 기호이면서 그림 문자로도 분류되지만 이 범위에 들어 있어 통과합니다. */
   ['화살표는 emoji가 아니다', '요청 ↔ 응답 관계를 그렸습니다.', false, 'doc'],
   ['Slack shortcode', '완료했습니다 :white_check_mark: 확인 부탁드립니다.', true, 'chat'],
   ['한자', '改名 처리했습니다.', true, 'chat'],
@@ -105,7 +105,7 @@ export const SELF_CHECK_CASES = [
   /* 백틱 구간을 가리면 접속부사와 쉼표 사이에 공백이 생깁니다. */
   ['백틱 구간을 가린 탓에 접속부사 뒤에 쉼표가 온 것처럼 보여도 통과', '그래서 `가`, `나` 두 낱말을 지웠습니다.', false, 'doc'],
 
-  /* --- 한국어 산문 문장으로 볼 범위 ---  `comma-per-sentence`, `comma-segment-length`, `sentence-too-long` 세 규칙은 검사하기 전에 한국어 산문 문장인지부터 따집니다. */
+  /* --- 한국어 산문 문장으로 볼 범위 ---  검사기는 `comma-per-sentence`, `comma-segment-length`, `sentence-too-long` 세 규칙을 적용하기 전에 한국어 산문 문장인지부터 따집니다. */
   [
     '영어 문장은 한국어 쉼표 규칙으로 재지 않는다',
     'The scheduler stores the rendered plan document in the durable queue, and then waits for approval.',
@@ -269,7 +269,7 @@ export const SELF_CHECK_CASES = [
   ['커밋 메시지의 Claude 공동 작성자 줄은 위반', '변경을 정리했습니다.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>', true, 'commit'],
   ['사용자가 정한 공동 작성자 줄은 통과', '변경을 정리했습니다.\n\nCo-Authored-By: mikdren <bot-sidekick@nerd.kim>', false, 'commit'],
 
-  /* --- 말투를 바꿔 실행하는 예제 ---  말투마다 걸려야 하는 문장과 걸리면 안 되는 문장을 하나 이상씩 둡니다. */
+  /* --- 말투를 바꿔 실행하는 케이스 ---  말투마다 걸려야 하는 문장과 걸리면 안 되는 문장을 하나 이상씩 둡니다. */
   ['해요체로 정하면 해요체 문장은 통과', '확인했어요. 곧 알려 드릴게요.', false, 'chat', '해요체'],
   ['해요체로 정하면 합니다체 문장은 위반', '확인했습니다. 곧 알려 드리겠습니다.', true, 'chat', '해요체'],
   ['해요체로 정하면 `아니에요`도 통과', '그것은 아니에요.', false, 'chat', '해요체'],
@@ -331,7 +331,7 @@ function linesNaming(path, name) {
     .filter(({ line }) => line.includes(`\`${name}\``) || line.includes(`| ${name} |`));
 }
 
-/* 규칙 하나가 무엇을 잡는지 규칙 문서에서 찾아 보여 줍니다. 직접 고친 예전 규칙 문서에 설명이 없으면 기본 규칙 문서에서 찾습니다. */
+/* 규칙 하나가 무엇을 잡는지 규칙 문서에서 찾아 보여 줍니다. 프로젝트 규칙 문서에 설명이 없으면 기본 규칙 문서에서 찾습니다. 직접 고친 예전 규칙 문서에는 새 규칙의 설명이 없을 수 있습니다. */
 function explain(name) {
   const own = linesNaming(rulesDocPath(PROJECT_ROOT), name);
   if (own === null) {

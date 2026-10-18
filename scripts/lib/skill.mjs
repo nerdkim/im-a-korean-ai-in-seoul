@@ -1,11 +1,11 @@
-/* Claude가 요청(turn)에 답하면서 한국어를 쓸 때마다 규칙 문서에 적힌 skill을 불렀는지 확인합니다. */
+/* Claude가 요청에 답하면서 한국어를 쓸 때마다 규칙 문서에 적힌 skill을 불렀는지 확인합니다. */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-/* skill을 부르지 않아 hook이 막을 때 넣는 문구입니다. 같은 turn에서 몇 번 막았는지 셀 때도 씁니다. */
+/* skill을 부르지 않아 hook이 막을 때 넣는 문구입니다. 같은 요청에서 몇 번 막았는지 셀 때도 씁니다. */
 export const SKILL_MISSING = 'skill을 부르지 않았습니다';
 
-/* hook이 같은 turn에서 이만큼 막았는데도 Claude가 skill을 부르지 않으면, hook은 Skill 도구를 쓸 수 없는 환경으로 보고 더 막지 않습니다. */
+/* hook이 같은 요청에서 이만큼 막았는데도 Claude가 skill을 부르지 않으면 hook은 Skill 도구를 쓸 수 없는 환경으로 보고 더 막지 않습니다. */
 export const MAX_SKILL_DENIALS = 2;
 
 /* 글에 든 한글 음절 수입니다. */
@@ -25,7 +25,7 @@ function isUserPrompt(entry) {
   return !(Array.isArray(content) && content.length > 0 && content.every((part) => part?.type === 'tool_result'));
 }
 
-/* transcript에서 이번 turn의 항목을 순서대로 돌려줍니다. 파일을 읽지 못하면 null을 돌려줍니다. */
+/* transcript에서 이번 요청의 항목을 순서대로 돌려줍니다. 파일을 읽지 못하면 null을 돌려줍니다. */
 export function currentTurn(transcriptPath) {
   let raw;
   try {
@@ -57,7 +57,7 @@ export function agentTranscriptPath(transcriptPath, agentId) {
   return join(transcriptPath.slice(0, -'.jsonl'.length), 'subagents', `agent-${agentId}.jsonl`);
 }
 
-/* 이번 turn에서 이 이름의 skill을 불렀는지 봅니다. */
+/* 이번 요청에서 이 이름의 skill을 불렀는지 봅니다. */
 export function usedSkill(entries, name) {
   for (const entry of entries) {
     if (entry?.type !== 'assistant') continue;
@@ -72,7 +72,7 @@ export function usedSkill(entries, name) {
   return false;
 }
 
-/* 이번 turn에서 skill을 부르지 않아 막힌 횟수입니다. */
+/* 이번 요청에서 skill을 부르지 않아 막힌 횟수입니다. */
 export function skillDenials(entries) {
   let count = 0;
   for (const entry of entries) {
@@ -91,7 +91,7 @@ export function skillDenials(entries) {
 /*
  * 한국어를 쓰기 전에 skill을 불러야 하는지 판단합니다.
  * skill이 꺼져 있거나 설치되지 않았거나, 한글이 기준보다 적거나, transcript를 읽지 못하면 요구하지 않습니다.
- * Claude가 이번 turn에 이미 skill을 불렀거나 hook이 같은 turn에서 정해 둔 횟수만큼 막았을 때도 요구하지 않습니다.
+ * Claude가 이번 요청에 이미 skill을 불렀거나 hook이 같은 요청에서 정해 둔 횟수만큼 막았을 때도 요구하지 않습니다.
  */
 export function needsSkill({ text, rules, projectRoot, transcriptPath, agentId }) {
   const name = rules.writingSkill;
@@ -106,5 +106,5 @@ export function needsSkill({ text, rules, projectRoot, transcriptPath, agentId }
 
 /* skill을 부르라고 요구하는 문구입니다. */
 export function skillRequest(name, retry) {
-  return `이번 요청에 답하면서 아직 ${name} ${SKILL_MISSING}. 한국어를 쓰기 전에 Skill 도구로 ${name} skill을 부르고, 그 절차를 따라 ${retry}`;
+  return `이번 요청에 답하면서 아직 ${name} ${SKILL_MISSING}. 한국어를 쓰기 전에 Skill 도구로 ${name} skill을 부르고 그 절차를 따라 ${retry}`;
 }

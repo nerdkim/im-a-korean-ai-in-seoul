@@ -24,7 +24,7 @@ for (const text of natural) test(`문맥을 봐야 판단할 수 있는 표현�
   assert.equal(blockingViolations(findings).length, 0);
 });
 
-test('실제 표기 오류와 이중피동은 계속 차단한다', () => {
+test('실제 표기 오류와 이중피동은 계속 막는다', () => {
   assert.ok(blockingViolations(checkText('작업이 완료됬습니다.', rules)).some(v => v.rule === 'known-typo'));
   assert.equal(blockingViolations(checkText('작업이 완료됐습니다.', rules)).length, 0);
   assert.ok(blockingViolations(checkText('결과가 보여집니다.', rules)).some(v => v.rule === 'double-passive'));
@@ -35,7 +35,7 @@ test('영어 기술 용어가 많아도 용어 수를 줄이라고 요구하지 
   assert.ok(!checkText(text, rules).some(v => v.rule === 'bound-english'));
 });
 
-test('산문의 가운뎃점과 줄표는 막고, 백틱으로 감싼 문자와 대신 쓴 표현은 허용한다', () => {
+test('산문의 가운뎃점과 줄표는 막고 백틱으로 감싼 문자와 대신 쓴 표현은 허용한다', () => {
   for (const target of ['chat', 'doc']) {
     for (const char of ['\u00b7', '\u2014']) {
       assert.ok(blockingViolations(checkText(`API${char}DB를 확인합니다.`, rules, target))
@@ -49,7 +49,7 @@ test('산문의 가운뎃점과 줄표는 막고, 백틱으로 감싼 문자와 
 });
 
 test('hook이 Claude에게 알릴 규칙은 모두 경고 규칙이고 규칙 이름 표에 있다', () => {
-  /* 오류 규칙을 넣으면 쓰기가 막혀 알릴 기회가 없고, 이름을 틀리면 그 규칙의 알림이 조용히 꺼집니다. */
+  /* 오류 규칙을 넣으면 쓰기가 막혀 알릴 기회가 없습니다. 이름을 잘못 적으면 그 규칙의 알림이 아무 표시 없이 꺼집니다. */
   const reported = new Set([...readFileSync(rulesPath, 'utf8').matchAll(/^\| `([a-z-]+)` \|/gm)].map(m => m[1]));
   assert.ok(rules.reviewRules.length > 0);
   for (const name of rules.reviewRules) {
@@ -67,7 +67,7 @@ test('기본 규칙에서는 `_workspace/` 아래의 작업 파일을 검사하�
   }
 });
 
-test('경고로 둘 규칙은 규칙 문서에서 정하고, 앞서 파싱한 결과는 다음 파싱에 섞이지 않는다', () => {
+test('경고로 둘 규칙은 규칙 문서에서 정하고 앞서 파싱한 결과는 다음 파싱에 섞이지 않는다', () => {
   const warn = parseRuleBlock('advisory-rules: translationese\ntranslationese-patterns: 를 통해=~해');
   const strict = parseRuleBlock('translationese-patterns: 를 통해=~해');
   assert.equal(blockingViolations(checkText('API를 통해 확인합니다.', warn)).length, 0);
@@ -75,9 +75,9 @@ test('경고로 둘 규칙은 규칙 문서에서 정하고, 앞서 파싱한 �
   assert.deepEqual(strict.advisoryRules, []);
 });
 
-test('실제 모델로 평가할 때 응답이 빠지거나 중복되거나 제약을 어기면 통과라고 보고하지 않는다', () => {
-  assert.throws(() => answersOf('<answer id="a">응답</answer>', [{ id: 'a' }, { id: 'b' }]), /응답이 없거나 중복되었습니다: b/);
-  assert.throws(() => answersOf('<answer id="a">첫째</answer><answer id="a">둘째</answer>', [{ id: 'a' }]), /응답이 없거나 중복되었습니다: a/);
+test('실제 모델로 평가할 때 답변이 빠지거나 중복되거나 제약을 어기면 통과라고 보고하지 않는다', () => {
+  assert.throws(() => answersOf('<answer id="a">응답</answer>', [{ id: 'a' }, { id: 'b' }]), /답변이 없거나 중복되었습니다: b/);
+  assert.throws(() => answersOf('<answer id="a">첫째</answer><answer id="a">둘째</answer>', [{ id: 'a' }]), /답변이 없거나 중복되었습니다: a/);
   const score = assessAnswer({ id: 'a', text: '끝났습니다.' }, { must: ['API'], maxChars: 3, sentences: 2 });
   assert.deepEqual(score.missing, ['API']);
   assert.equal(score.overLength, true);
@@ -102,8 +102,8 @@ test('저장된 평가 결과에서 프로필마다 항목을 세어 README에 �
   const summary = summarize(rows, rules);
   assert.deepEqual(summary.baseline, { answers: 2, skill: 0, rewritten: 0, errors: 2, register: 1, emoji: 1, middot: 1, attribution: 1, chars: [...rows[0].answers[0].text].length + [...rows[1].answers[0].text].length, costUsd: 0.1, seconds: 22 });
   assert.equal(summary.installed.skill, 2);
-  assert.equal(summary.installed.rewritten, 1, 'Stop hook이 막은 기록만 셉니다');
-  assert.equal(summary.installed.errors, 0, 'inline code로 감싼 해요체 예문은 세지 않습니다');
+  assert.equal(summary.installed.rewritten, 1, 'Stop hook이 다시 쓰게 한 기록만 셉니다');
+  assert.equal(summary.installed.errors, 0, '인라인 코드로 감싼 해요체 예문은 세지 않습니다');
   assert.equal(summary.installed.register, 0);
   const table = formatSummary(summary);
   assert.match(table, /^\| 항목 \| 이 도구가 없는 프로젝트 \| 이 도구를 설치한 프로젝트 \|$/m);
@@ -114,7 +114,7 @@ test('저장된 평가 결과에서 프로필마다 항목을 세어 README에 �
   assert.match(table, /^\| 답변 하나를 받는 데 걸린 평균 시간 \| 11\.0초 \| 16\.0초 \|$/m);
 });
 
-test('평가 결과를 셀 때 답변이 없는 프로필과 잘못된 입력을 그대로 표에 싣지 않고, 프로필 이름이 `__proto__`여도 다른 객체를 건드리지 않는다', () => {
+test('평가 결과를 셀 때 답변이 없는 프로필과 잘못된 입력을 그대로 표에 싣지 않고 프로필 이름이 `__proto__`여도 다른 객체를 건드리지 않는다', () => {
   const summary = summarize([{ profile: 'installed', costUsd: 0.1, seconds: 3, answers: [] }], rules);
   assert.match(formatSummary(summary), /^\| 답변 하나에 든 평균 비용 \| - \|$/m);
   assert.throws(() => formatSummary(summarize([], rules)), /답변이 없습니다/);
@@ -124,14 +124,14 @@ test('평가 결과를 셀 때 답변이 없는 프로필과 잘못된 입력을
   assert.equal(({}).answers, undefined, '다른 객체에 속성이 생기면 안 됩니다');
 });
 
-test('세션마다 system prompt에 들어가는 작성 지침의 분량을 제한한다', () => {
+test('세션마다 시스템 프롬프트에 들어가는 작성 지침의 분량을 제한한다', () => {
   const style = readFileSync(new URL('../output-styles/korean-style.md', import.meta.url), 'utf8');
   assert.ok([...style].length <= 1600, '긴 설명은 skill이나 docs/ 아래 문서에 둡니다');
   assert.match(style, /keep-coding-instructions: true/);
 });
 
-test('작성 지침은 처음부터 한국어로 생각하고 생성 표시를 넣지 말라고 지시한다', () => {
-  /* 지침이 영어이거나 생각할 언어를 정하지 않으면 Claude는 영어로 구상한 뒤 옮기기 쉽습니다. */
+test('작성 지침에는 처음부터 한국어로 생각하라는 지시와 생성 표시를 넣지 말라는 지시가 들어 있다', () => {
+  /* 작성 지침이 영어이거나 어느 언어로 생각할지 적혀 있지 않으면 Claude는 영어로 구상한 뒤 한국어로 옮기기 쉽습니다. */
   const style = readFileSync(new URL('../output-styles/korean-style.md', import.meta.url), 'utf8');
   assert.match(style, /한국어로 생각합니다/);
   assert.match(style, /Generated with \[Claude Code\]/);

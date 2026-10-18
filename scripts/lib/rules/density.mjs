@@ -18,7 +18,7 @@ const PARENTHETICAL_GLOSS = /[가-힣]\s?\(([A-Za-z][A-Za-z0-9 ._-]{1,40})\)/gu;
 /* 설명이 아니라 약어나 번호를 담은 괄호입니다. */
 const CITATION = /^(?:[^a-z]*|[A-Z]{1,3}-?\d+[a-z]?)$/;
 
-/* 설명 대신 이름을 담은 괄호입니다. */
+/* 설명 대신 식별자를 담은 괄호입니다. */
 const IDENTIFIER = /_|[a-z][A-Z]|^[a-z][a-z0-9]*\.[a-z]/;
 
 /* 굵게 표시한 강조 구간입니다. */
@@ -95,7 +95,7 @@ export function densityViolations(text, rules) {
     if (density === null) continue;
     out.push({
       rule: 'contrast-density',
-      detail: `대조 표현을 ${hits.length}회 썼습니다. 1000자당 ${density.toFixed(2)}회입니다.`,
+      detail: `대조 구문을 ${hits.length}회 썼습니다. 1000자당 ${density.toFixed(2)}회입니다.`,
       line: lineOf(text, hits[hits.length - 1].index),
     });
   }

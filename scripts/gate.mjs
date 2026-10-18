@@ -13,7 +13,7 @@ const TOOL = toolRoot();
 
 /* `--self-check`가 없어도 되는 진입점과 그 이유입니다. */
 const SELF_CHECK_EXEMPT = {
-  'gate.mjs': 'gate는 이 검사를 실행하는 스크립트이므로 --self-check를 두면 자기 자신을 검사하게 됩니다.',
+  'gate.mjs': 'gate는 검사기와 설치 스크립트의 자체 검사를 실행하는 스크립트이므로 --self-check를 두면 자기 자신을 검사하게 됩니다.',
 };
 
 /* hook은 Claude Code가 stdin으로 주는 JSON이나 Git이 넘겨 주는 메시지 파일을 받으므로 `--self-check` 옵션이 없습니다. */

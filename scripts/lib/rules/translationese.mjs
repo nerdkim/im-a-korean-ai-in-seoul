@@ -48,7 +48,7 @@ export function translationeseViolations(text, rules) {
       if (stems.length === 0) continue;
       /* 영어 낱말과 목적격 조사 뒤에 동사가 오는 모양입니다. 조사와 동사 사이에는 낱말이 두 개까지 올 수 있습니다. */
       const re = new RegExp(`(${LATIN_WORD})\\s*${OBJECT_PARTICLE}\\s+(?:\\S+\\s+){0,2}(?:${stems})`, 'gu');
-      /* 목록에 있는 영어 낱말은 건너뜁니다. */
+      /* `literal-verb-exempt`에 든 영어 낱말은 건너뜁니다. */
       const exempt = new Set(rules.literalVerbExempt.map((w) => w.toLowerCase()));
       const exemptRe =
         exempt.size === 0 ? null : new RegExp(`\\b(?:${[...exempt].map(escape).join('|')})\\b`, 'iu');

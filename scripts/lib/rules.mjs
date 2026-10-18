@@ -1,13 +1,13 @@
 /* 규칙을 읽어 옵니다. */
 import { readFileSync } from 'node:fs';
 
-/* 규칙 블록을 감싸는 fence의 info string입니다. */
+/* 규칙 블록을 여는 줄에 쓰는 info string입니다. */
 export const RULE_FENCE = 'korean-style-rules';
 
 /* 값이 여러 개인 키입니다. */
 const LIST_KEYS = {
   'advisory-rules': 'advisoryRules',
-  /* Claude가 파일을 쓰거나 고칠 때 바뀐 문단에서 이 경고 규칙에 걸리는 표현이 새로 생기면 hook이 Claude에게 알립니다. */
+  /* hook이 Claude에게 알릴 경고 규칙입니다. Claude가 파일을 쓰거나 고칠 때 바뀐 문단에서 이 규칙에 걸리는 표현이 새로 생기면 hook이 알립니다. */
   'review-rules': 'reviewRules',
   'banned-char': 'bannedChar',
   'banned-address': 'bannedAddress',
@@ -55,7 +55,7 @@ const NUMBER_KEYS = {
   'max-comma-per-sentence': 'maxCommaPerSentence',
   'max-comma-segment-words': 'maxCommaSegmentWords',
   'enumeration-word-max': 'enumerationWordMax',
-  /* 쉼표 수, 쉼표 구간 길이, 긴 문장 규칙이 한국어 문장으로 볼 최소 한글 비율입니다. */
+  /* 쉼표 수, 쉼표 구간 길이, 긴 문장 규칙에서 한국어 문장으로 볼 최소 한글 비율입니다. */
   'sentence-min-hangul-ratio': 'sentenceMinHangulRatio',
   /* 절로 볼 최소 어절 수입니다. */
   'clause-min-words': 'clauseMinWords',
@@ -83,7 +83,7 @@ const KEYED_NUMBER_KEYS = {
 /* 값이 문자열 하나인 키입니다. */
 const STRING_KEYS = {
   register: 'register',
-  /* 한국어를 쓰는 turn마다 불러야 하는 skill입니다. 비워 두면 요구하지 않습니다. */
+  /* 한국어를 쓰는 요청마다 불러야 하는 skill입니다. 비워 두면 요구하지 않습니다. */
   'writing-skill': 'writingSkill',
   /* 문서에서 `<!-- 이 값 -->` 줄과 `<!-- /이 값 -->` 줄 사이는 다른 글을 그대로 옮긴 인용으로 보고 검사하지 않습니다. */
   'quote-marker': 'quoteMarker',
@@ -171,7 +171,7 @@ const FALLBACK = {
   maxCommaSegmentWords: 0,
   /* 쉼표로 나눈 구간이 이 어절 수 이하여야 나열 항목으로 봅니다. */
   enumerationWordMax: 3,
-  /* 쉼표 수, 쉼표 구간 길이, 긴 문장 규칙이 한국어 문장으로 볼 최소 한글 비율입니다. */
+  /* 쉼표 수, 쉼표 구간 길이, 긴 문장 규칙에서 한국어 문장으로 볼 최소 한글 비율입니다. */
   sentenceMinHangulRatio: 0,
   /* 절로 볼 최소 어절 수입니다. */
   clauseMinWords: 2,
@@ -219,7 +219,7 @@ function freshRules() {
     sweepSkipDirs: [],
     pluralQuantifiers: [],
     literalVerbExempt: [],
-    /* 키가 없으면 null로 남고, `withMinimum`이 기본 목록으로 채웁니다. */
+    /* 키가 없으면 null로 남겨 두고 `withMinimum`에서 기본 목록으로 채웁니다. */
     bannedAttribution: null,
     bannedTransliteration: new Map(),
     bannedTranslation: new Map(),
@@ -262,7 +262,7 @@ export function parseRuleBlock(body) {
       .filter((v) => v.length > 0);
 
     if (STRING_KEYS[key] !== undefined) {
-      /* `writing-skill:`처럼 값을 비우면 skill을 요구하지 않고, `quote-marker:`처럼 비우면 인용 구간을 두지 않습니다. */
+      /* `writing-skill:`처럼 값을 비우면 skill을 요구하지 않고 `quote-marker:`처럼 비우면 인용 구간을 두지 않습니다. */
       if (values[0] !== undefined || key === 'writing-skill' || key === 'quote-marker') rules[STRING_KEYS[key]] = values[0] ?? '';
       continue;
     }
@@ -307,7 +307,7 @@ export function parseRuleBlock(body) {
     }
   }
 
-  /* 예전 이름으로 적은 말투를 이 도구가 쓰는 이름으로 바꾸고, 그 말투에 맞는 금지 어미를 더합니다. */
+  /* 예전 이름으로 적은 말투를 이 도구가 쓰는 이름으로 바꾸고 그 말투에 맞는 금지 어미를 더합니다. */
   rules.register = canonicalRegister(rules.register);
   for (const ending of REGISTER_BANNED_ENDINGS[rules.register] ?? []) {
     if (!rules.bannedRegisterEndings.includes(ending)) rules.bannedRegisterEndings.push(ending);
@@ -340,7 +340,7 @@ export function loadRules(docPath) {
   return { ...parseRuleBlock(block[1]), source: docPath, reason: null };
 }
 
-/* fence 안쪽을 다시 볼 때 쓰는 규칙입니다. */
+/* 코드 블록 안쪽을 다시 볼 때 쓰는 규칙입니다. */
 export function fenceRules(rules) {
   return {
     ...rules,
