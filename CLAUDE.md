@@ -1,27 +1,40 @@
-# Working guide
+# 작업 지침
 
-This repository installs a Korean writing guide and a style checker into other projects.
-Claude Code, Codex and Gemini CLI share this file: `AGENTS.md` and `GEMINI.md` are symlinks to `CLAUDE.md`. Edit `CLAUDE.md` only and keep the symlinks.
+이 저장소는 다른 프로젝트에 한국어 작성 skill과 문체 검사기를 설치하는 도구입니다.
+Claude Code, Codex, Gemini CLI가 이 파일을 함께 읽습니다. `AGENTS.md`와 `GEMINI.md`는 `CLAUDE.md`를 가리키는 symlink이므로 `CLAUDE.md`만 고치고 symlink는 그대로 둡니다.
 
-- The goal is natural Korean that preserves meaning. Do not treat style preferences as grammar errors.
-- The writing rules live in the `korean-rewrite` skill (`skill/korean-rewrite/SKILL.md`); `output-styles/korean-style.md` holds the register and the basics. In Claude Code, call the skill before writing Korean in every turn; the hooks block Korean files and commits written without it. Other agents read the skill file before writing Korean.
-- The Claude Code hooks check writes and answers automatically. Other agents do not run them, so check Korean text with `node scripts/check-korean.mjs --file <path>` or `--stdin` before finishing. The commit-msg Git hook runs for every agent once installed with `npm run doctor -- --install-commit-hook`.
-- `docs/rules.md` defines the checker rules and which of them block. Do not hide policy values in code.
-- Report ambiguous expressions as warnings. Hooks block only errors and ask for a rewrite at most once.
-- Technical terms may stay in English. Cut repetition to save length, but keep particles and meaning.
-- Never use middle dots or em dashes in answers or in the prose of any document.
-- Write model-facing prompts (the output style, skills, register fragments and this file) in English. Keep human-facing docs, messages and commit messages in Korean.
-- In Korean prose, write on-screen terms whose Korean spelling is unstable in English, such as shell, hook and skill. Established loanwords such as 파일, 디렉터리 and 커밋 are fine.
-- In Korean prose and answers, call phrasing that copies English structure 영어식 표현. Do not use the word 번역투.
-- Never translate English word for word, including your own English reasoning and the English names of project concepts. Write who does what in plain Korean, and describe what the reader sees instead of internal mechanism names. If a Korean sentence maps word for word back onto English, rewrite it.
-- Commit messages and release notes follow the same Korean rules as docs. After a short noun-phrase subject, write the body, bullets included, in complete 합니다체 sentences; do not leave notes made of verbless fragments, parenthetical shorthand or list items in mixed forms.
-- Before committing a change that adds or edits Korean prose (docs, messages, comments, test titles, release notes), run the `korean-reviewer` agent on the diff and on the commit message, and resolve its findings. Agents without `.claude/agents` review the diff and the commit message against the checklist in `.claude/agents/korean-reviewer.md`.
-- When you change behavior, add regression tests that include false positives, and pass `npm run gate`.
-- Real-model checks run with `npm run eval -- --run`. They make paid API calls, so keep them out of the regular tests.
-- Review the source and the response together.
-- Trim unnecessary files and explanations, but keep tests, rationale and runnable usage.
-- Keep run results, reports, personal notes and local settings out of Git. Share eval inputs and regression tests.
-- This is a public repository. Keep personal settings, private project names and local paths out of tracked files.
+## 한국어로 생각하고 쓰기
 
-The installer is `scripts/install.mjs`, the engine is in `scripts/lib/`, and the hooks are in `scripts/hooks/`.
-Usage is in `README.md` and limits are in `docs/limits.md`. Eval inputs live in `test/fixtures/eval/`; keep results only in `.eval/`.
+- 처음부터 한국어로 생각합니다. 계획, 메모, 추론도 한국어로 하고, 영어로 떠올린 문장을 한국어로 옮기지 않습니다.
+- 모델이 읽는 지시문(작성 지침, skill, 말투별 문구, `korean-reviewer`, 이 파일)도 한국어로 씁니다. 사람이 읽는 문서, 메시지, 커밋 메시지, 릴리스 노트도 한국어로 씁니다.
+- 목표는 뜻을 지키는 자연스러운 한국어입니다. 문체 취향을 문법 오류처럼 다루지 않습니다.
+- 작성 규칙은 `korean-rewrite` skill(`skill/korean-rewrite/SKILL.md`)에 있고, 그 근거와 출처는 `docs/writing.md`에 있습니다. `output-styles/korean-style.md`에는 말투와 기본 원칙만 둡니다.
+- Claude Code에서는 한국어를 쓰기 전에 매번 skill을 부릅니다. skill을 거치지 않은 한국어 파일과 커밋은 hook이 막습니다. 다른 agent는 한국어를 쓰기 전에 skill 파일을 읽습니다.
+- 영어를 낱말 단위로 옮기지 않습니다. 내가 영어로 한 생각과 프로젝트 개념의 영어 이름도 마찬가지입니다. 누가 무엇을 하는지 쉬운 한국어로 쓰고, 내부 동작의 이름 대신 독자가 화면에서 보는 것을 설명합니다. 다 쓴 문장을 영어로 되옮겨 낱말 단위로 맞아떨어지면 다시 씁니다.
+- 한국어로 굳은 말(파일, 디렉터리, 커밋, 커넥션 풀, 파이프라인, 알림)은 한국어로 씁니다. 화면에 영어로 나오고 한글 표기가 흔들리는 말(shell, hook, skill)은 영어로 씁니다.
+- 영어 구조를 따른 표현은 `영어식 표현`이라고 부르고 `번역투`라는 말은 쓰지 않습니다. 합니다체나 해요체를 가리킬 때는 `어투` 대신 `말투`라고 씁니다.
+- 답변과 문서 산문에 가운뎃점, 줄표, emoji를 쓰지 않습니다.
+
+## 검사와 규칙
+
+- Claude Code hook은 파일 쓰기와 답변을 자동으로 검사합니다. 다른 agent에서는 hook이 실행되지 않으므로 일을 마치기 전에 `node scripts/check-korean.mjs --file <경로>`나 `--stdin`으로 한국어를 확인합니다. commit-msg Git hook은 `npm run doctor -- --install-commit-hook`으로 설치하면 어느 agent로 커밋하든 실행됩니다.
+- `docs/rules.md`가 검사 규칙과 그 가운데 무엇을 막을지 정합니다. 정책 값을 코드에 숨기지 않습니다.
+- 뜻이 모호할 수 있는 표현은 경고로만 알립니다. hook은 오류만 막고, 답변을 다시 쓰라는 요청은 한 번만 합니다.
+- 동작을 바꾸면 회귀 테스트를 더하고 `npm run gate`를 통과시킵니다. 회귀 테스트에는 검사기가 잡으면 안 되는 문장도 넣습니다.
+
+## 문서와 측정
+
+- README와 예시 문서에는 측정한 결과만 씁니다. 숫자는 `npm run eval -- --summary`로 다시 셀 수 있어야 하고, 인용한 답변은 저장된 답변과 글자 하나 다르지 않아야 합니다. 사람이 읽고 판단한 내용은 그 기준을 함께 적습니다.
+- 실제 모델로 하는 평가는 `npm run eval -- --run`으로 실행합니다. 유료 API를 쓰므로 일반 테스트에 넣지 않습니다. 요청과 답변은 함께 놓고 검토합니다.
+- 필요 없는 파일과 설명은 줄이되 테스트, 근거, 실행할 수 있는 사용법은 남깁니다.
+- 실행 결과, 보고서, 개인 메모, 로컬 설정은 Git에 넣지 않습니다. 평가 입력과 회귀 테스트는 저장소에 둡니다.
+- 공개 저장소입니다. 개인 설정, 비공개 프로젝트 이름, 로컬 경로는 Git이 추적하는 파일에 넣지 않습니다.
+
+## 커밋
+
+- 커밋 메시지와 릴리스 노트도 문서와 같은 한국어 규칙을 따릅니다. 짧은 명사구 제목 뒤의 본문은 목록까지 완결된 합니다체 문장으로 씁니다. 서술어 없는 조각, 괄호 약식, 형식이 섞인 목록을 남기지 않습니다.
+- 커밋과 PR에 `Co-Authored-By: Claude`나 `Generated with [Claude Code]` 같은 생성 표시를 넣지 않습니다.
+- 한국어 산문(문서, 메시지, 주석, 테스트 제목, 릴리스 노트)을 더하거나 고쳤으면 커밋하기 전에 `korean-reviewer` agent로 diff와 커밋 메시지를 검토합니다. 지적은 모두 반영합니다. `.claude/agents`를 쓰지 못하는 agent는 `.claude/agents/korean-reviewer.md`의 점검 목록으로 직접 검토합니다.
+
+설치 스크립트는 `scripts/install.mjs`, 검사 엔진은 `scripts/lib/`, hook은 `scripts/hooks/`에 있습니다.
+사용법은 `README.md`와 `docs/usage.md`에, 제약은 `docs/limits.md`에 있습니다. 평가 입력은 `test/fixtures/eval/`에 두고, 결과는 `.eval/`에만 둡니다.
