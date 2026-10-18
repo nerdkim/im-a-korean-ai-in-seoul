@@ -31,11 +31,13 @@ const LIST_KEYS = {
   'plural-quantifiers': 'pluralQuantifiers',
   /* 직역 동사 규칙에서 예외로 두는 영어 목적어입니다. */
   'literal-verb-exempt': 'literalVerbExempt',
+  /* Claude Code가 커밋 메시지와 PR 설명에 붙이는 생성 표시입니다. */
+  'banned-attribution': 'bannedAttribution',
 };
 
 /* 찾을 표현과 대신 쓸 후보를 짝지은 매핑 키입니다. */
 const MAP_KEYS = {
-  /* 이중피동은 매핑으로 씁니다. */
+  /* 이중피동도 `보여=보이`처럼 찾을 어간과 대신 쓸 어간을 짝지어 적습니다. */
   'double-passive': 'doublePassive',
   'banned-transliteration': 'bannedTransliteration',
   'banned-translation': 'bannedTranslation',
@@ -53,9 +55,9 @@ const NUMBER_KEYS = {
   'max-comma-per-sentence': 'maxCommaPerSentence',
   'max-comma-segment-words': 'maxCommaSegmentWords',
   'enumeration-word-max': 'enumerationWordMax',
-  /* 문장 단위 규칙 세 개가 한국어 문장으로 인정하는 최소 한글 비율입니다. */
+  /* 쉼표 수, 쉼표 구간 길이, 긴 문장 규칙이 한국어 문장으로 볼 최소 한글 비율입니다. */
   'sentence-min-hangul-ratio': 'sentenceMinHangulRatio',
-  /* 절로 인정하는 최소 어절 수입니다. */
+  /* 절로 볼 최소 어절 수입니다. */
   'clause-min-words': 'clauseMinWords',
   'max-connective-comma-per-1k': 'maxConnectiveCommaPer1k',
   'max-sentence-chars': 'maxSentenceChars',
@@ -69,7 +71,7 @@ const NUMBER_KEYS = {
   'density-rule-floor': 'densityRuleFloor',
   /* 밀도 규칙의 한도에 더하는 여유입니다. */
   'density-margin': 'densityMargin',
-  /* 한글이 이 수 이상 들어간 글을 쓰기 전에 Claude가 `writing-skill`에 적은 skill을 불러야 합니다. */
+  /* 한글이 이 수 이상 들어간 글을 쓰기 전에 Claude는 `writing-skill`에 적힌 skill을 불러야 합니다. */
   'writing-skill-min-hangul': 'writingSkillMinHangul',
 };
 
@@ -93,16 +95,28 @@ const TOOL_FIELD_KEYS = {
   'agent-tool-fields': 'agentToolFields',
 };
 
-/* 어투별 금지 어미 표입니다. */
+/* 말투별 금지 어미 표입니다. */
 export const REGISTER_BANNED_ENDINGS = {
-  다나까체: ['세요', '셔요', '에요', '예요', '아요', '어요', '해요'],
-  /* 해요체를 골랐으면 다나까체 표지가 섞이지 않아야 합니다. */
+  합니다체: ['세요', '셔요', '에요', '예요', '아요', '어요', '해요'],
+  /* 해요체를 골랐으면 합니다체 어미가 섞이지 않아야 합니다. */
   해요체: ['니다'],
   혼용: [],
 };
 
-/* 어투만 바꾼 규칙 사본을 돌려줍니다. */
-export function withRegister(rules, register) {
+/* Claude Code가 커밋 메시지와 PR 설명에 붙이는 생성 표시입니다. `banned-attribution` 키가 없는 예전 규칙을 쓰거나 규칙 문서를 읽지 못했을 때도 이 목록으로 검사합니다. */
+export const DEFAULT_ATTRIBUTION = ['Generated with [Claude Code]', 'Generated with Claude Code', 'noreply@anthropic.com'];
+
+/* 같은 말투를 가리키는 다른 이름입니다. 이 도구는 0.3.0까지 합니다체를 `다나까체`라고 불렀습니다. 국립국어원 문법 용어로는 하십시오체라고 합니다. */
+export const REGISTER_ALIASES = { 다나까체: '합니다체', 하십시오체: '합니다체' };
+
+/* 말투 이름을 이 도구가 쓰는 이름으로 바꿉니다. 모르는 이름은 그대로 돌려줍니다. */
+export function canonicalRegister(name) {
+  return Object.hasOwn(REGISTER_ALIASES, name) ? REGISTER_ALIASES[name] : name;
+}
+
+/* 말투만 바꾼 규칙 사본을 돌려줍니다. */
+export function withRegister(rules, name) {
+  const register = canonicalRegister(name);
   if (register === rules.register) return rules;
   const fromTable = new Set(REGISTER_BANNED_ENDINGS[rules.register] ?? []);
   const endings = rules.bannedRegisterEndings.filter((ending) => !fromTable.has(ending));
@@ -115,7 +129,7 @@ export function withRegister(rules, register) {
 const FALLBACK = {
   advisoryRules: [],
   reviewRules: [],
-  register: '다나까체',
+  register: '합니다체',
   bannedChar: ['middot', 'em-dash', 'emoji', 'hanja', 'kana'],
   bannedAddress: ['당신'],
   imperativeEndings: [],
@@ -137,6 +151,7 @@ const FALLBACK = {
   sweepSkipDirs: ['.git', 'node_modules', 'dist', 'coverage', 'build', '.next', 'vendor'],
   pluralQuantifiers: [],
   literalVerbExempt: [],
+  bannedAttribution: DEFAULT_ATTRIBUTION,
   bannedTransliteration: new Map(),
   bannedTranslation: new Map(),
   requiredSpelling: new Map(),
@@ -150,15 +165,15 @@ const FALLBACK = {
   maxContrastPer1k: {},
   /* 키가 없는 예전 규칙이나 읽지 못한 규칙에서도 기본 인용 표시를 씁니다. 끄려면 규칙 문서에서 값을 비웁니다. */
   quoteMarker: 'korean-style-quote',
-  /* 0으로 두면 규칙이 꺼집니다. */
+  /* koreanRequiredMinChars와 max로 시작하는 한도는 0으로 두면 그 규칙이 꺼집니다. */
   koreanRequiredMinChars: 40,
   maxCommaPerSentence: 0,
   maxCommaSegmentWords: 0,
   /* 쉼표로 나눈 구간이 이 어절 수 이하여야 나열 항목으로 봅니다. */
   enumerationWordMax: 3,
-  /* 문장 단위 규칙 세 개가 한국어 문장으로 인정하는 최소 한글 비율입니다. */
+  /* 쉼표 수, 쉼표 구간 길이, 긴 문장 규칙이 한국어 문장으로 볼 최소 한글 비율입니다. */
   sentenceMinHangulRatio: 0,
-  /* 절로 인정하는 최소 어절 수입니다. */
+  /* 절로 볼 최소 어절 수입니다. */
   clauseMinWords: 2,
   maxConnectiveCommaPer1k: 0,
   maxSentenceChars: 0,
@@ -172,7 +187,7 @@ const FALLBACK = {
   densityRuleFloor: 4,
   /* 여유의 기본값은 일부러 0으로 둡니다. */
   densityMargin: 0,
-  /* 키가 없는 예전 규칙에서도 작성 skill을 요구합니다. 끄려면 규칙 문서에서 값을 비웁니다. */
+  /* `writing-skill` 키가 없는 예전 규칙에서도 `korean-rewrite` skill을 요구합니다. 끄려면 규칙 문서에서 값을 비웁니다. */
   writingSkill: 'korean-rewrite',
   writingSkillMinHangul: 20,
 };
@@ -204,6 +219,8 @@ function freshRules() {
     sweepSkipDirs: [],
     pluralQuantifiers: [],
     literalVerbExempt: [],
+    /* 키가 없으면 null로 남고, `withMinimum`이 기본 목록으로 채웁니다. */
+    bannedAttribution: null,
     bannedTransliteration: new Map(),
     bannedTranslation: new Map(),
     requiredSpelling: new Map(),
@@ -213,7 +230,7 @@ function freshRules() {
     knownTypos: new Map(),
     inclusiveTerms: new Map(),
     chatToolFields: new Map(),
-  agentToolFields: new Map(),
+    agentToolFields: new Map(),
     maxContrastPer1k: {},
   };
 }
@@ -250,6 +267,8 @@ export function parseRuleBlock(body) {
       continue;
     }
     if (LIST_KEYS[key] !== undefined) {
+      /* `banned-attribution:`처럼 값을 비우면 빈 목록이 되어 검사가 꺼집니다. */
+      rules[LIST_KEYS[key]] ??= [];
       rules[LIST_KEYS[key]].push(...values);
       continue;
     }
@@ -288,7 +307,8 @@ export function parseRuleBlock(body) {
     }
   }
 
-  /* 어투에 맞는 금지 어미를 더합니다. */
+  /* 예전 이름으로 적은 말투를 이 도구가 쓰는 이름으로 바꾸고, 그 말투에 맞는 금지 어미를 더합니다. */
+  rules.register = canonicalRegister(rules.register);
   for (const ending of REGISTER_BANNED_ENDINGS[rules.register] ?? []) {
     if (!rules.bannedRegisterEndings.includes(ending)) rules.bannedRegisterEndings.push(ending);
   }
@@ -296,11 +316,12 @@ export function parseRuleBlock(body) {
   return withMinimum(rules);
 }
 
-/* 비어 있는 목록을 기본값으로 채웁니다. */
+/* 금지 문자, 금지 호칭, 건너뛸 디렉터리 목록이 비어 있거나 생성 표시 키가 없으면 기본값으로 채웁니다. */
 function withMinimum(rules) {
   if (rules.bannedChar.length === 0) rules.bannedChar = [...FALLBACK.bannedChar];
   if (rules.bannedAddress.length === 0) rules.bannedAddress = [...FALLBACK.bannedAddress];
   if (rules.sweepSkipDirs.length === 0) rules.sweepSkipDirs = [...FALLBACK.sweepSkipDirs];
+  if (rules.bannedAttribution === null) rules.bannedAttribution = [...DEFAULT_ATTRIBUTION];
   return rules;
 }
 

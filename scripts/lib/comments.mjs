@@ -50,7 +50,7 @@ export function onlyComments(text, syntax) {
       continue;
     }
 
-    /* 파이썬 삼중 따옴표입니다. */
+    /* Python 삼중 따옴표입니다. */
     if (syntax.docstring === true && (text.startsWith('"""', i) || text.startsWith("'''", i))) {
       const mark = text.slice(i, i + 3);
       const end = text.indexOf(mark, i + 3);

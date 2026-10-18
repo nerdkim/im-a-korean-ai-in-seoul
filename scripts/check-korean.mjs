@@ -17,7 +17,7 @@ export function rules() {
   return loadRules(rulesDocPath(PROJECT_ROOT));
 }
 
-/* 밀도 한도에 더하는 여유를 확인하는 케이스에서 글 길이를 늘리려고 끼워 넣는 문장입니다. */
+/* 글 길이를 늘리려고 끼워 넣는 문장입니다. 밀도 한도에 더하는 여유(`density-margin`)를 확인하는 케이스에서 씁니다. */
 const FILLER = '상태를 다시 확인했습니다. ';
 
 /* 연결어미 뒤 쉼표가 네 번 나오는 글을 만듭니다. */
@@ -32,12 +32,12 @@ export const SELF_CHECK_CASES = [
   ['위반이 없는 한국어 답변', '작업을 마쳤습니다. 결과를 정리해 드리겠습니다.', false, 'chat'],
   ['해요체가 섞였다', '확인했어요. 곧 알려 드릴게요.', true, 'chat'],
   ['해요체로 쓴 요청은 위반', '값을 직접 입력해 주세요.', true, 'chat'],
-  ['같은 요청을 맞는 어투로 쓰면 통과', '값을 직접 입력해 주시기 바랍니다.', false, 'chat'],
-  ['굳어진 인사말은 예외', '안녕하세요. 확인해 보겠습니다.', false, 'chat'],
+  ['같은 요청을 맞는 말투로 쓰면 통과', '값을 직접 입력해 주시기 바랍니다.', false, 'chat'],
+  ['굳어진 인사말은 해요체여도 통과', '안녕하세요. 확인해 보겠습니다.', false, 'chat'],
   /* 명령형과 요청형을 가르는 두 케이스입니다. */
   ['`주다` 없는 명령형은 위반', '결과를 확인하십시오.', true, 'chat'],
   ['`주다`가 붙은 요청형은 통과', '값을 입력해 주십시오.', false, 'chat'],
-  ['제안형은 통과', '스크린샷을 더 찍으실 수 있습니다.', false, 'chat'],
+  ['`~할 수 있습니다`로 권하는 문장은 통과', '스크린샷을 더 찍으실 수 있습니다.', false, 'chat'],
   ['의문형은 통과', '지금 배포해 드릴까요?', false, 'chat'],
   ['조건부 요청은 통과', '알려 주시면 반영하겠습니다.', false, 'chat'],
   ['금지된 호칭', '당신이 요청하신 작업입니다.', true, 'chat'],
@@ -59,9 +59,9 @@ export const SELF_CHECK_CASES = [
   ['가나', 'テスト 완료했습니다.', true, 'chat'],
   ['백틱 안의 인용은 통과', '`·` 문자를 지웠습니다. 대신 쉼표를 씁니다.', false, 'chat'],
 
-  ['접속부사 뒤 쉼표', '값을 확인했습니다. 그러나, 원인은 아직 모릅니다.', true, 'doc'],
-  ['접속부사 뒤 쉼표 없음', '값을 확인했습니다. 그러나 원인은 아직 모릅니다.', false, 'doc'],
-  /* 한도가 2이므로 쉼표가 둘 이하면 통과하고 셋이면 걸립니다. */
+  ['접속부사 뒤에 쉼표를 찍으면 위반', '값을 확인했습니다. 그러나, 원인은 아직 모릅니다.', true, 'doc'],
+  ['접속부사 뒤에 쉼표가 없으면 통과', '값을 확인했습니다. 그러나 원인은 아직 모릅니다.', false, 'doc'],
+  /* 기본 규칙의 `max-comma-per-sentence`가 2이므로 절을 잇는 쉼표가 둘 이하면 통과하고 셋이면 걸립니다. */
   ['절을 잇는 쉼표 하나는 통과', '오늘 배포를 마쳤고, 남은 것은 보고 하나입니다.', false, 'doc'],
   [
     '절을 잇는 쉼표 셋은 위반',
@@ -94,7 +94,7 @@ export const SELF_CHECK_CASES = [
   ],
   /* 위 케이스와 짝입니다. */
   [
-    '절로 끝나는 긴 구간은 밀도 규칙의 몫',
+    '쉼표 앞 구간이 길어도 절로 끝나면 `comma-segment-length`가 아니라 `comma-after-connective`가 본다',
     '어제 오후에 확인한 배포 기록과 로그를 모두 다시 읽었지만, 원인은 아직 확정하지 못했습니다.',
     false,
     'doc',
@@ -130,7 +130,7 @@ export const SELF_CHECK_CASES = [
     true,
     'doc',
   ],
-  /* 숫자의 천 단위 쉼표, 괄호 안, 따옴표 안을 다루는 케이스입니다. */
+  /* 숫자의 천 단위 쉼표와 괄호 안의 쉼표, 따옴표로 옮긴 글을 다루는 케이스입니다. */
   ['숫자의 천 단위 쉼표는 세지 않는다', '어제 배포한 워커 이미지 아홉 개가 쓴 token이 모두 1,624개였습니다.', false, 'doc'],
   [
     '괄호 안의 쉼표는 세지 않는다',
@@ -138,7 +138,7 @@ export const SELF_CHECK_CASES = [
     false,
     'doc',
   ],
-  ['따옴표 안은 인용이고 직접 쓴 말이 아니다', '사용자가 "값을 직접 입력해 주세요"라고 하셨습니다.', false, 'chat'],
+  ['따옴표로 옮겨 적은 남의 말은 통과', '사용자가 "값을 직접 입력해 주세요"라고 하셨습니다.', false, 'chat'],
 
   /* --- 밀도 한도에 더하는 여유 ---  두 케이스 모두 연결어미 뒤 쉼표가 네 번 나옵니다. */
   ['짧은 글에서는 적은 횟수도 잡는다', connectiveCommas(3), true, 'doc'],
@@ -168,7 +168,7 @@ export const SELF_CHECK_CASES = [
   ['되어 있습니다는 통과', '설정이 이미 되어 있습니다.', false, 'doc'],
   ['쓰여 있습니다는 통과', '문서에 쓰여 있습니다.', false, 'doc'],
   ['표준 피동 밝혀졌습니다는 통과', '원인이 밝혀졌습니다.', false, 'doc'],
-  /* 나중에 추가한 어간 셋입니다. */
+  /* 이중피동 목록에 나중에 추가한 어간 셋입니다. */
   ['담겨지다', '요청 본문에 사용자 정보가 담겨집니다.', true, 'doc'],
   ['담겨 있습니다는 통과', '요청 본문에 사용자 정보가 담겨 있습니다.', false, 'doc'],
   ['바뀌어지다', '설정 값이 재시작할 때마다 바뀌어집니다.', true, 'doc'],
@@ -183,19 +183,19 @@ export const SELF_CHECK_CASES = [
   ['에 의하여', '이 값은 스케줄러에 의하여 결정됩니다.', true, 'doc'],
   /* `있다`에 `-어서`가 붙은 평범한 한국어입니다. */
   ['`있다`에 `-어서`가 붙은 것은 통과', '그 파일은 목록에 있어서 검사받지 않습니다.', false, 'doc'],
-  /* 목록에서 뺀 항목입니다. */
-  ['에 대해는 영어식 표현 목록에 없다', 'iam:CreateRole에 대해 implicitDeny를 돌려줍니다.', false, 'doc'],
+  /* 영어식 표현 목록에서 뺀 항목입니다. */
+  ['`에 대해`는 영어식 표현 목록에 없다', 'iam:CreateRole에 대해 implicitDeny를 돌려줍니다.', false, 'doc'],
   ['진행 표현 `중이었습니다`는 통과', '35분째 조사 중이었습니다.', false, 'doc'],
   /* 'have + 명사'를 직역한 표현입니다. */
   ['을 가지고 있다', '봇은 stage 환경에 쓰기 권한을 가지고 있습니다.', true, 'doc'],
   ['를 가지고 있다', '그 저장소는 tracked 파일만 보는 검사를 가지고 있습니다.', true, 'doc'],
   /* 이 문장의 '가지고'는 뒤에 '있다'가 없고 무엇을 도구로 삼는다는 뜻의 평범한 한국어입니다. */
   ['도구로 쓰는 가지고는 통과', '이 값을 가지고 다음 단계를 계산합니다.', false, 'doc'],
-  /* 회귀 케이스입니다. */
+  /* 활용형도 잡는지 확인하는 회귀 케이스입니다. */
   ['에 위치하다의 활용형', '이 값은 서울 리전에 위치합니다.', true, 'doc'],
   ['라고 생각되다의 활용형', '그것이 원인이라고 생각됩니다.', true, 'doc'],
   ['하지 않으면 안 되다의 활용형', '지금 반영하지 않으면 안 됩니다.', true, 'doc'],
-  ['같은 뜻을 바로 쓰면 통과', '이 값은 서울 리전에 있습니다.', false, 'doc'],
+  ['`위치하다` 대신 `있다`로 쓰면 통과', '이 값은 서울 리전에 있습니다.', false, 'doc'],
   /* 가지다의 활용형 케이스입니다. */
   ['회의를 가지다의 활용형', '다음 주에 설계 회의를 가질 예정입니다.', true, 'doc'],
   ['회의를 가지다의 과거형', '어제 설계 회의를 가졌습니다.', true, 'doc'],
@@ -206,14 +206,15 @@ export const SELF_CHECK_CASES = [
   /* allow와 ensure를 직역한 표현입니다. */
   ['것을 허용하다', '이 기능은 사용자가 데이터를 내보내는 것을 허용합니다.', true, 'doc'],
   ['것을 보장하다', '해당 설정은 모든 요청이 기록되는 것을 보장합니다.', true, 'doc'],
-  ['대명사 그것을 허용합니다는 통과', '예외 요청이 오면 그것을 허용합니다.', false, 'doc'],
-  ['cannot be overemphasized', '테스트 커버리지의 중요성은 아무리 강조해도 지나치지 않습니다.', true, 'doc'],
-  /* 검토했지만 넣지 않은 후보입니다. */
-  ['`중요한 역할을 한다`는 목록에 없다', '그 사람은 팀에서 중요한 역할을 합니다.', false, 'doc'],
+  ['`그것을 허용합니다`처럼 대명사를 쓴 문장은 통과', '예외 요청이 오면 그것을 허용합니다.', false, 'doc'],
+  /* cannot be overemphasized를 직역한 표현입니다. */
+  ['`아무리 강조해도 지나치지 않다`는 위반', '테스트 커버리지의 중요성은 아무리 강조해도 지나치지 않습니다.', true, 'doc'],
+  /* 영어식 표현 목록에 넣을지 검토했지만 넣지 않은 표현입니다. */
+  ['`중요한 역할을 한다`는 영어식 표현 목록에 없다', '그 사람은 팀에서 중요한 역할을 합니다.', false, 'doc'],
   ['`임에 틀림없다`는 목록에 없다', '기록을 보면 그가 마지막으로 고친 사람임에 틀림없습니다.', false, 'doc'],
   ['겹조사 에서의', 'apply에서의 잘못된 거절이 더 나쁩니다.', true, 'doc'],
-  /* 검토했지만 넣지 않은 후보입니다. */
-  ['앞으로의는 통과', '앞으로의 메시지에만 적용됩니다.', false, 'doc'],
+  /* 영어식 표현 목록에 넣을지 검토했지만 넣지 않은 표현입니다. */
+  ['`앞으로의`는 통과', '앞으로의 메시지에만 적용됩니다.', false, 'doc'],
   ['영어 목적어에 붙인 직역 동사', 'Agent를 VPC에 세우거나 내부 LB를 앞단에 둡니다.', true, 'doc'],
   ['영어 목적어에 붙인 직역 동사의 활용형', 'Agent를 VPC에 세웁니다.', true, 'doc'],
   ['계획을 세우다는 통과', '다음 배포 계획을 세웠습니다.', false, 'doc'],
@@ -231,7 +232,7 @@ export const SELF_CHECK_CASES = [
   /* 식별자 안은 산문이 아닙니다. */
   ['식별자 안의 낱말은 산문이 아니다', 'ADMIN_IP_WHITELIST 값을 바꿨습니다.', false, 'doc'],
   /* 인용한 오타는 직접 낸 오타가 아닙니다. */
-  ['낱말이 아닌 철자', '작업이 됬습니다.', true, 'doc'],
+  ['목록에 있는 오타는 위반', '작업이 됬습니다.', true, 'doc'],
   ['따옴표 안에 인용한 오타는 통과', '봇이 "작업이 됬습니다"라고 적었습니다.', false, 'doc'],
   ['한글 부정 접두사를 영어 어간에 붙인 표현', '이 경로는 비blocking 으로 동작합니다.', true, 'chat'],
   ['접두사 음절로 끝나는 한글 낱말은 통과', '장비 목록을 정리했습니다.', false, 'chat'],
@@ -257,27 +258,31 @@ export const SELF_CHECK_CASES = [
     'doc',
   ],
 
-  ['fence 안에도 낱말 규칙을 적용한다', '아래를 확인합니다.\n```\n워크플로우 확인\n```', true, 'doc'],
-  ['fence 안의 명령어는 통과', '아래를 실행합니다.\n```\nterragrunt force-unlock 1234\n```', false, 'doc'],
+  ['코드 블록 안에도 표기 규칙을 적용한다', '아래를 확인합니다.\n```\n워크플로우 확인\n```', true, 'doc'],
+  ['코드 블록 안의 명령어는 통과', '아래를 실행합니다.\n```\nterragrunt force-unlock 1234\n```', false, 'doc'],
   ['문서의 인용 구간은 통과', '받은 답변입니다.\n<!-- korean-style-quote -->\n> 확인해 보세요.\n<!-- /korean-style-quote -->', false, 'doc'],
   ['답변에서는 인용 구간 안도 위반', '받은 답변입니다.\n<!-- korean-style-quote -->\n> 확인해 보세요.\n<!-- /korean-style-quote -->', true, 'chat'],
 
   ['빈 텍스트는 통과', '', false, 'chat'],
 
-  /* --- 어투를 바꿔 실행하는 예제 ---  어투마다 걸려야 하는 문장과 걸리면 안 되는 문장을 하나 이상씩 둡니다. */
-  ['해요체에서 해요체는 통과', '확인했어요. 곧 알려 드릴게요.', false, 'chat', '해요체'],
-  ['해요체에서 다나까체는 위반', '확인했습니다. 곧 알려 드리겠습니다.', true, 'chat', '해요체'],
-  ['해요체에서도 아니다는 통과', '그것은 아니에요.', false, 'chat', '해요체'],
-  ['혼용에서 다나까체는 통과', '확인했습니다.', false, 'chat', '혼용'],
-  ['혼용에서 해요체도 통과', '확인했어요.', false, 'chat', '혼용'],
-  ['혼용에서도 `주다` 없는 명령형은 위반', '값을 직접 입력하십시오.', true, 'chat', '혼용'],
+  /* Claude Code가 커밋 메시지와 PR 설명 끝에 붙이는 생성 표시를 잡는지 확인하는 케이스입니다. */
+  ['커밋 메시지의 Claude 공동 작성자 줄은 위반', '변경을 정리했습니다.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>', true, 'commit'],
+  ['사용자가 정한 공동 작성자 줄은 통과', '변경을 정리했습니다.\n\nCo-Authored-By: mikdren <bot-sidekick@nerd.kim>', false, 'commit'],
+
+  /* --- 말투를 바꿔 실행하는 예제 ---  말투마다 걸려야 하는 문장과 걸리면 안 되는 문장을 하나 이상씩 둡니다. */
+  ['해요체로 정하면 해요체 문장은 통과', '확인했어요. 곧 알려 드릴게요.', false, 'chat', '해요체'],
+  ['해요체로 정하면 합니다체 문장은 위반', '확인했습니다. 곧 알려 드리겠습니다.', true, 'chat', '해요체'],
+  ['해요체로 정하면 `아니에요`도 통과', '그것은 아니에요.', false, 'chat', '해요체'],
+  ['혼용으로 정하면 합니다체 문장도 통과', '확인했습니다.', false, 'chat', '혼용'],
+  ['혼용으로 정하면 해요체 문장도 통과', '확인했어요.', false, 'chat', '혼용'],
+  ['혼용으로 정해도 `주다` 없는 명령형은 위반', '값을 직접 입력하십시오.', true, 'chat', '혼용'],
 ];
 
 function runSelfCheck(r) {
   const tool = toolRoot();
   const reference = loadRules(join(tool, 'docs', basename(tool) === '.korean-style' ? 'defaults.md' : 'rules.md'));
   let failed = 0;
-  for (const [label, input, expect, target, register = '다나까체'] of SELF_CHECK_CASES) {
+  for (const [label, input, expect, target, register = '합니다체'] of SELF_CHECK_CASES) {
     /* 자체 검사 케이스는 프로젝트 규칙 대신 도구와 함께 배포한 기본 규칙으로 검사합니다. */
     const rules = withRegister(reference, register);
     let got;
@@ -289,7 +294,7 @@ function runSelfCheck(r) {
     const ok = got === expect;
     if (!ok) failed += 1;
     process.stdout.write(
-      `${ok ? '  ok  ' : '  실패'} [${target}/${register}] ${label} (기대: ${expect ? '위반' : '통과'}, 결과: ${got === true ? '위반' : got === false ? '통과' : got})\n`,
+      `${ok ? '  성공' : '  실패'} [${target}/${register}] ${label} (기대: ${expect ? '위반' : '통과'}, 결과: ${got === true ? '위반' : got === false ? '통과' : got})\n`,
     );
     if (!ok && typeof got === 'boolean') {
       process.stdout.write(`        입력: ${JSON.stringify(input)}\n`);
@@ -298,9 +303,9 @@ function runSelfCheck(r) {
     }
   }
   const where = r.source === null ? `기본값 (${r.reason})` : toProjectRelative(r.source, PROJECT_ROOT) ?? r.source;
-  process.stdout.write(`검사기 기본 규칙: ${reference.source ?? '읽기 실패'}\n프로젝트 규칙을 읽은 곳: ${where}\n`);
+  process.stdout.write(`기본 규칙 문서: ${reference.source ?? '읽기 실패'}\n프로젝트 규칙 문서: ${where}\n`);
   if (r.source === null) {
-    process.stdout.write('규칙 문서를 읽지 못했으므로 이번 실행을 실패로 봅니다. 통과라고 보고하면 거짓이 되기 때문입니다.\n');
+    process.stdout.write('규칙 문서를 읽지 못했으므로 위 검사를 모두 통과해도 이번 실행은 실패로 봅니다.\n');
   }
   const passed = failed === 0 && r.source !== null && reference.source !== null;
   if (passed) process.stdout.write('자체 검사 통과\n');
@@ -309,24 +314,37 @@ function runSelfCheck(r) {
   return passed;
 }
 
-/* 규칙 하나가 무엇을 잡는지 규칙 문서에서 찾아 보여 줍니다. */
-function explain(name) {
+/* 도구와 함께 배포한 기본 규칙 문서의 경로입니다. 설치한 프로젝트에서는 `.korean-style/docs/defaults.md`입니다. */
+const defaultRulesDoc = () => join(toolRoot(), 'docs', basename(toolRoot()) === '.korean-style' ? 'defaults.md' : 'rules.md');
+
+/* 문서에서 규칙 이름이 나오는 줄을 찾습니다. 문서를 열지 못하면 null을 돌려줍니다. */
+function linesNaming(path, name) {
   let doc;
   try {
-    doc = readFileSync(rulesDocPath(PROJECT_ROOT), 'utf-8');
+    doc = readFileSync(path, 'utf-8');
   } catch {
-    process.stderr.write(`규칙 문서를 열지 못했습니다: ${RULES_DOC}\n`);
-    return 2;
+    return null;
   }
-  const hits = doc
+  return doc
     .split('\n')
     .map((line, i) => ({ line, n: i + 1 }))
     .filter(({ line }) => line.includes(`\`${name}\``) || line.includes(`| ${name} |`));
+}
+
+/* 규칙 하나가 무엇을 잡는지 규칙 문서에서 찾아 보여 줍니다. 직접 고친 예전 규칙 문서에 설명이 없으면 기본 규칙 문서에서 찾습니다. */
+function explain(name) {
+  const own = linesNaming(rulesDocPath(PROJECT_ROOT), name);
+  if (own === null) {
+    process.stderr.write(`규칙 문서를 열지 못했습니다: ${RULES_DOC}\n`);
+    return 2;
+  }
+  const fallback = own.length === 0 ? linesNaming(defaultRulesDoc(), name) ?? [] : [];
+  const [label, hits] = own.length > 0 ? [RULES_DOC, own] : [toProjectRelative(defaultRulesDoc(), PROJECT_ROOT) ?? defaultRulesDoc(), fallback];
   if (hits.length === 0) {
     process.stdout.write(`${RULES_DOC}에 ${JSON.stringify(name)} 설명이 없습니다.\n`);
     return 1;
   }
-  for (const { line, n } of hits) process.stdout.write(`${RULES_DOC}:${n}: ${line.trim()}\n`);
+  for (const { line, n } of hits) process.stdout.write(`${label}:${n}: ${line.trim()}\n`);
   return 0;
 }
 
@@ -336,7 +354,7 @@ const passLabel = (r) => (r.source === null ? '위반 없음' : '통과');
 /* 통과로 보고해도 되는지를 종료 코드로 돌려줍니다. */
 function exitCodeForPass(r) {
   if (r.source !== null) return 0;
-  process.stdout.write(`경고: ${r.reason} 검사한 것은 금지 문자, 금지 호칭, 영어로만 쓴 답변뿐이므로 통과로 보지 않습니다.\n`);
+  process.stdout.write(`${r.reason} 금지 문자와 생성 표시, 답변의 호칭과 언어만 검사했으므로 통과로 보지 않습니다.\n`);
   return 1;
 }
 
@@ -361,11 +379,11 @@ function main() {
 
   if (argv.includes('--rules')) {
     process.stdout.write(`규칙을 읽은 곳: ${r.source ?? `기본값 (${r.reason})`}\n`);
-    process.stdout.write(`어투: ${r.register}\n`);
+    process.stdout.write(`말투: ${r.register}\n`);
     process.stdout.write(`금지 어미: ${r.bannedRegisterEndings.join(', ') || '없음'}\n`);
     process.stdout.write(`금지 문자: ${r.bannedChar.join(', ')}\n`);
     process.stdout.write(
-      `목록 크기: 외래어 ${r.loanwordSpelling.size}, 음차 ${r.bannedTransliteration.size}, 영어식 표현 ${r.translationesePatterns.size}, 직역 동사 ${r.literalVerbs.size}, 이중피동 ${r.doublePassive.size}\n`,
+      `목록별 항목 수: 외래어 표기 ${r.loanwordSpelling.size}, 음차 ${r.bannedTransliteration.size}, 영어식 표현 ${r.translationesePatterns.size}, 직역 동사 ${r.literalVerbs.size}, 이중피동 ${r.doublePassive.size}\n`,
     );
     process.exit(0);
   }

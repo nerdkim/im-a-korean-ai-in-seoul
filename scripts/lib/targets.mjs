@@ -3,7 +3,7 @@ import { relative, resolve, sep } from 'node:path';
 
 export const TARGETS = ['chat', 'doc', 'comment', 'commit'];
 
-/* 사람이 직접 읽으므로 존대와 어투 규칙이 모두 걸리는 종류입니다. */
+/* 사람이 직접 읽으므로 말투 규칙에 더해 높임 표현 규칙도 걸리는 종류입니다. */
 export const HUMAN_TARGETS = new Set(['chat']);
 
 /* 한국어 산문이 들어 있어서 한국어 문법 규칙이 걸리는 종류입니다. */

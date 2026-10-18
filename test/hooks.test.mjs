@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { commitMessagesIn, formatReviewNotes, resultOfEdit, reviewNotes } from '../scripts/hooks/pretooluse.mjs';
+import { commitMessagesIn, formatReviewNotes, pullRequestTextsIn, resultOfEdit, reviewNotes } from '../scripts/hooks/pretooluse.mjs';
 import { lastAssistantText } from '../scripts/hooks/stop.mjs';
 import { messageBody } from '../scripts/hooks/commit-msg.mjs';
 import { mergeHookSettings } from '../scripts/install.mjs';
@@ -31,7 +31,7 @@ function runHook(script, input) {
   return JSON.parse(out);
 }
 
-test('회귀: symlink로 건 commit-msg hook이 실제로 막는다', () => {
+test('회귀: symlink로 건 commit-msg hook도 규칙을 어긴 메시지를 막는다', () => {
   /* 실제로 있었던 결함을 재현합니다. */
   const dir = scratch();
   const link = join(dir, 'commit-msg');
@@ -143,7 +143,7 @@ test('바뀌기 전 파일에 있던 경고는 Edit로 그 줄을 고쳐도 다�
   assert.equal(r.stdout.trim(), '', '이번 편집으로 생긴 표현이 아닙니다');
 });
 
-test('review-rules에 없는 경고는 알리지 않는다', () => {
+test('review-rules에 없는 규칙의 경고는 알리지 않는다', () => {
   /* 쉼표 수 규칙은 경고 규칙이지만 Claude에게 알리지는 않습니다. */
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Write',
@@ -164,7 +164,7 @@ test('오류가 있으면 경고는 알리지 않고 쓰기를 거부한다', ()
   assert.equal(out.hookSpecificOutput.additionalContext, undefined);
 });
 
-test('커밋 메시지와 질문의 경고는 Claude에게 알리지 않는다', () => {
+test('커밋 메시지와 사용자에게 보내는 질문에서 나온 경고는 Claude에게 알리지 않는다', () => {
   /* 알림은 도구가 실행된 뒤에 도착하므로 이미 끝난 커밋이나 보낸 질문은 고칠 수 없습니다. */
   assert.equal(runHook('pretooluse.mjs', { tool_name: 'Bash', tool_input: { command: 'git commit -m "로그를 통해 원인을 찾았습니다"' } }), null);
   assert.equal(runHook('pretooluse.mjs', {
@@ -198,15 +198,15 @@ test('MultiEdit로 문단을 옮겨도 원래 있던 경고는 다시 알리지 
 test('Write로 기존 파일을 덮어쓰면 원래 있던 경고는 다시 알리지 않는다', () => {
   const before = '로그를 통해 원인을 찾았습니다.\n';
   const notes = reviewNotes(before, `${before}\n여러 파일들을 봤습니다.\n`, RULES, 'doc', 'a.md');
-  assert.deepEqual(notes.map(v => [v.rule, v.line]), [['redundant-plural', 3]], '줄 번호는 파일 기준입니다');
+  assert.deepEqual(notes.map(v => [v.rule, v.line]), [['redundant-plural', 3]], '줄 번호는 파일 전체에서 센 번호여야 합니다');
 });
 
 test('같은 문단에서 바꾸지 않은 줄의 경고는 다시 알리지 않는다', () => {
   assert.deepEqual(rulesOf('로그를 통해 원인을 찾았습니다.\n결과를 적었습니다.\n', '로그를 통해 원인을 찾았습니다.\n결과를 다시 적었습니다.\n'), []);
 });
 
-test('편집 조각에 주석 표시가 없어도 주석 안의 경고를 알린다', () => {
-  /* Edit는 바꿀 부분만 담는 경우가 많아 조각에 `//`가 없습니다. */
+test('고친 부분에 주석 표시가 없어도 주석 안의 경고를 알린다', () => {
+  /* Edit 도구에는 바꿀 부분만 넘기는 경우가 많아 그 안에 `//`가 없습니다. */
   const { before, after } = edited('a.js', '// 사용자를 조회합니다.\nconst a = 1;\n', 'Edit', {
     old_string: '사용자를 조회합니다.', new_string: '로그를 통해 사용자를 조회합니다.',
   });
@@ -262,7 +262,7 @@ test('프로젝트 밖의 파일은 검사하지 않는다', () => {
   assert.equal(out, null);
 });
 
-test('검사 대상이 아닌 확장자는 보지 않는다', () => {
+test('검사 대상이 아닌 확장자의 파일은 보지 않는다', () => {
   const out = runHook('pretooluse.mjs', {
     tool_name: 'Write',
     tool_input: { file_path: join(ROOT, 'a.png'), content: '워크플로우를 확인했어요.' },
@@ -325,6 +325,105 @@ test('규칙을 어긴 커밋 메시지를 거부한다', () => {
 
 test('git commit이 아닌 Bash 명령은 보지 않는다', () => {
   const out = runHook('pretooluse.mjs', { tool_name: 'Bash', tool_input: { command: 'ls -la 워크플로우' } });
+  assert.equal(out, null);
+});
+
+/* Claude Code가 커밋할 때 쓰는 형태입니다. */
+const HEREDOC_COMMIT = (body) => `git commit -m "$(cat <<'EOF'\n${body}\nEOF\n)"`;
+
+test('커밋 메시지에 Claude Code 생성 표시가 있으면 거부한다', () => {
+  const out = runHook('pretooluse.mjs', {
+    tool_name: 'Bash',
+    tool_input: { command: HEREDOC_COMMIT('feat: 로그인 API에 rate limit 추가\n\n한도를 넘으면 429를 반환합니다.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>') },
+  });
+  assert.equal(out?.hookSpecificOutput?.permissionDecision, 'deny');
+  assert.match(out.hookSpecificOutput.permissionDecisionReason, /ai-attribution/);
+});
+
+test('사용자가 정한 공동 작성자 줄은 커밋 메시지에 남겨도 된다', () => {
+  const out = runHook('pretooluse.mjs', {
+    tool_name: 'Bash',
+    tool_input: { command: HEREDOC_COMMIT('feat: 로그인 API에 rate limit 추가\n\n한도를 넘으면 429를 반환합니다.\n\nCo-Authored-By: mikdren <bot-sidekick@nerd.kim>') },
+  });
+  assert.equal(out, null);
+});
+
+test('gh 명령에서 PR과 이슈의 제목, 설명, 코멘트를 모두 뽑는다', () => {
+  assert.deepEqual(pullRequestTextsIn('gh pr create --title "제목입니다" --body "본문입니다"'), ['제목입니다', '본문입니다']);
+  assert.deepEqual(pullRequestTextsIn("gh pr create -t '제목입니다' -b '본문입니다'"), ['제목입니다', '본문입니다']);
+  assert.deepEqual(pullRequestTextsIn('gh pr edit 12 --body="고친 본문입니다"'), ['고친 본문입니다']);
+  assert.deepEqual(pullRequestTextsIn('gh pr comment 12 --body "의견입니다"'), ['의견입니다']);
+  assert.deepEqual(pullRequestTextsIn('gh pr review 12 --approve -b "확인했습니다"'), ['확인했습니다']);
+  assert.deepEqual(pullRequestTextsIn('gh issue create --title "제목입니다" --body "본문입니다"'), ['제목입니다', '본문입니다']);
+  const heredoc = pullRequestTextsIn(`gh pr create --title "제목입니다" --body "$(cat <<'EOF'\n## 변경 내용\n\n- 재시도를 추가했습니다.\nEOF\n)"`);
+  assert.equal(heredoc.length, 2);
+  assert.ok(heredoc[1].includes('- 재시도를 추가했습니다.'));
+});
+
+test('PR과 이슈에 글을 쓰지 않는 명령에서는 아무것도 뽑지 않는다', () => {
+  for (const command of ['gh pr view 12', 'gh pr list --search "본문입니다"', 'echo --body "본문입니다"', 'gh pr checkout 12', undefined]) {
+    assert.deepEqual(pullRequestTextsIn(command), [], String(command));
+  }
+});
+
+test('`create` 대신 `new`로 쓴 gh 명령에서도 글을 뽑고, 병합 커밋 메시지와 표준 입력으로 넘긴 PR 본문도 뽑는다', () => {
+  assert.deepEqual(pullRequestTextsIn('gh pr new --title "제목입니다" --body "본문입니다"'), ['제목입니다', '본문입니다']);
+  assert.deepEqual(pullRequestTextsIn('gh issue new -t "제목입니다" -b "본문입니다"'), ['제목입니다', '본문입니다']);
+  assert.deepEqual(pullRequestTextsIn('gh pr merge 12 --squash --subject "병합 제목입니다" --body "병합 본문입니다"'), ['병합 제목입니다', '병합 본문입니다']);
+  assert.deepEqual(pullRequestTextsIn('gh pr comment 12 -b의견을남겼습니다'), ['의견을남겼습니다']);
+  assert.deepEqual(pullRequestTextsIn("gh pr create --title \"제목입니다\" --body-file - <<'EOF'\n본문입니다.\nEOF"), ['제목입니다', '본문입니다.']);
+});
+
+test('커밋 메시지를 옵션에 붙여 쓰거나 ANSI-C 따옴표나 줄을 이은 큰따옴표로 감싸도 뽑고, trailer와 표준 입력으로 넘긴 메시지도 뽑는다', () => {
+  assert.deepEqual(commitMessagesIn('git commit -m로그를통해원인을찾았습니다'), ['로그를통해원인을찾았습니다']);
+  assert.deepEqual(commitMessagesIn('git commit -am메시지입니다'), ['메시지입니다']);
+  assert.deepEqual(commitMessagesIn("git commit -m $'첫 줄입니다.\\n\\n둘째 줄입니다.'"), ['첫 줄입니다.\n\n둘째 줄입니다.']);
+  assert.deepEqual(commitMessagesIn('git commit -m "첫 줄입니다. \\\n이어지는 줄입니다."'), ['첫 줄입니다. 이어지는 줄입니다.']);
+  assert.deepEqual(commitMessagesIn('git commit -m "제목입니다" --trailer "Co-Authored-By: Claude <noreply@anthropic.com>"'), ['제목입니다', 'Co-Authored-By: Claude <noreply@anthropic.com>']);
+  assert.deepEqual(commitMessagesIn("git commit -F - <<'EOF'\nfeat: 재시도 추가\n\n본문입니다.\nEOF"), ['feat: 재시도 추가\n\n본문입니다.']);
+  assert.deepEqual(commitMessagesIn('git -C sub commit -m "하위 저장소에서 커밋합니다"'), ['하위 저장소에서 커밋합니다']);
+});
+
+test('따옴표 안이나 heredoc 본문에 든 명령과 뒤에 이어진 다른 명령의 옵션에서는 글을 뽑지 않는다', () => {
+  const quiet = [
+    `echo 'gh pr create --title "릴리스" --body "배포를 준비했어요"' >> /tmp/notes.txt`,
+    `cat > /tmp/pr.sh <<'EOF'\ngh pr create --title "릴리스" --body "배포를 준비했어요"\nEOF`,
+    `echo "git commit -m '예시 메시지예요'"`,
+    'git log --grep commit -m 1',
+  ];
+  for (const command of quiet) {
+    assert.deepEqual([...commitMessagesIn(command), ...pullRequestTextsIn(command)], [], command);
+  }
+  assert.deepEqual(pullRequestTextsIn('gh pr create --title "제목입니다" --body "본문입니다" && git checkout -b 새브랜치'), ['제목입니다', '본문입니다']);
+  assert.deepEqual(commitMessagesIn('git add . && git commit -m "메시지입니다" && gh pr create -b "본문입니다"'), ['메시지입니다']);
+});
+
+test('닫히지 않은 heredoc이 아주 길어도 명령을 빨리 읽는다', () => {
+  /* 정규식이 백트래킹에 빠지면 hook이 멈췄다가 예외로 끝나고, 명령은 검사 없이 통과합니다. */
+  const command = `git commit -m "$(cat <<'EOF'${'\n'.repeat(3400)}EOF${' '.repeat(3400)}x`;
+  const started = process.hrtime.bigint();
+  commitMessagesIn(command);
+  pullRequestTextsIn(command.replace('git commit -m', 'gh pr create --title "t" --body'));
+  const ms = Number(process.hrtime.bigint() - started) / 1e6;
+  assert.ok(ms < 1000, `${ms.toFixed(0)}ms 걸렸습니다`);
+});
+
+test('PR 설명이 규칙을 어기거나 생성 표시를 담고 있으면 거부한다', () => {
+  const body = '## 변경 내용\n\n- 결제 클라이언트에 재시도를 추가했습니다.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)';
+  const out = runHook('pretooluse.mjs', {
+    tool_name: 'Bash',
+    tool_input: { command: `gh pr create --title "결제 재시도 추가" --body "$(cat <<'EOF'\n${body}\nEOF\n)"` },
+  });
+  assert.equal(out?.hookSpecificOutput?.permissionDecision, 'deny');
+  assert.match(out.hookSpecificOutput.permissionDecisionReason, /ai-attribution/);
+  assert.match(out.hookSpecificOutput.permissionDecisionReason, /PR/);
+});
+
+test('규칙을 지킨 PR 설명은 통과시킨다', () => {
+  const out = runHook('pretooluse.mjs', {
+    tool_name: 'Bash',
+    tool_input: { command: 'gh pr create --title "결제 재시도 추가" --body "결제 클라이언트에 재시도를 추가했습니다."' },
+  });
   assert.equal(out, null);
 });
 
@@ -397,6 +496,10 @@ test('git commit 명령에서 메시지를 모두 뽑는다', () => {
   assert.deepEqual(commitMessagesIn("git commit -m '작은따옴표'"), ['작은따옴표']);
   assert.deepEqual(commitMessagesIn('git commit --message="긴 형태"'), ['긴 형태']);
   assert.deepEqual(commitMessagesIn('git add . && git commit -m "이어 쓴 명령"'), ['이어 쓴 명령']);
+  assert.deepEqual(commitMessagesIn('git commit --message "공백으로 띄운 긴 형태"'), ['공백으로 띄운 긴 형태']);
+  assert.deepEqual(commitMessagesIn('git commit -am "모두 담았습니다"'), ['모두 담았습니다']);
+  const body = 'feat: 재시도 추가\n\n결제 클라이언트가 "일시적 오류"를 받으면 다시 요청합니다.';
+  assert.deepEqual(commitMessagesIn(`git commit -m "$(cat <<'EOF'\n${body}\nEOF\n)"`), [body], 'heredoc 본문의 큰따옴표에서 값이 끊기면 안 됩니다');
 });
 
 test('commit이 아닌 명령에서는 아무것도 뽑지 않는다', () => {
@@ -417,13 +520,13 @@ function transcriptWith(text) {
   return path;
 }
 
-test('기록 파일이 없어도 최종 응답 필드의 오류를 검사한다', () => {
+test('기록 파일이 없어도 hook 입력으로 받은 마지막 답변을 검사한다', () => {
   const out = runHook('stop.mjs', { last_assistant_message: '작업이 완료됬습니다.', stop_hook_active: false });
   assert.equal(out.decision, 'block');
   assert.match(out.reason, /known-typo/);
 });
 
-test('최종 응답 필드가 있으면 오래된 기록 파일은 검사하지 않는다', () => {
+test('hook 입력에 마지막 답변이 있으면 기록 파일의 답변 대신 그 답변을 검사한다', () => {
   assert.equal(runHook('stop.mjs', { transcript_path: transcriptWith('결과가 보여집니다.'),
     last_assistant_message: '결과가 보입니다.', stop_hook_active: false }), null);
 });
@@ -432,7 +535,7 @@ test('경고만 있는 답변에는 재작성을 요구하지 않는다', () => 
   assert.equal(runHook('stop.mjs', { last_assistant_message: 'API를 통해 확인했습니다.' }), null);
 });
 
-test('최종 응답 필드를 사용해도 재작성은 한 번으로 제한한다', () => {
+test('hook 입력으로 마지막 답변을 받아도 다시 쓰라는 요청은 한 번만 한다', () => {
   assert.equal(runHook('stop.mjs', { last_assistant_message: '작업이 완료됬습니다.', stop_hook_active: true }), null);
 });
 
@@ -448,7 +551,7 @@ test('도구 결과를 새 사용자 요청으로 오인하지 않는다', () =>
   assert.equal(lastAssistantText(path), '먼저 살펴보겠습니다.\n\n확인했습니다.');
 });
 
-test('Task 대신 지금 쓰는 Agent 도구에서도 오류를 검사한다', () => {
+test('Claude Code가 Task 대신 쓰는 Agent 도구에서도 오류를 검사한다', () => {
   const out = runHook('pretooluse.mjs', { tool_name: 'Agent', tool_input: { prompt: '결과가 보여집니다.' } });
   assert.match(out.hookSpecificOutput.permissionDecisionReason, /double-passive/);
 });
@@ -467,13 +570,13 @@ test('규칙을 지킨 답변에는 재작성을 요구하지 않는다', () => 
   assert.equal(runHook('stop.mjs', { transcript_path: path, stop_hook_active: false }), null);
 });
 
-test('Stop hook 때문에 이미 이어진 turn에는 재작성을 다시 요구하지 않는다', () => {
+test('Stop hook이 이미 한 번 다시 쓰게 한 답변에는 또 요구하지 않는다', () => {
   /* 이 검사가 없으면 만족할 수 없는 규칙 하나 때문에 차단과 재작성이 끝없이 되풀이됩니다. */
   const path = transcriptWith('당신이 요청한 것입니다.');
   assert.equal(runHook('stop.mjs', { transcript_path: path, stop_hook_active: true }), null);
 });
 
-test('기록 경로와 최종 응답 필드가 둘 다 없으면 아무 일도 하지 않는다', () => {
+test('hook 입력에 기록 경로도 마지막 답변도 없으면 아무 일도 하지 않는다', () => {
   assert.equal(runHook('stop.mjs', { stop_hook_active: false }), null);
 });
 

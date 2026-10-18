@@ -1,19 +1,19 @@
-/* 어투와 존대를 검사하는 규칙입니다. */
+/* 말투와 높임 표현을 검사하는 규칙입니다. */
 import { findAllEndings, HANGUL_SYLLABLE, lineOf, stripQuoted } from '../text.mjs';
 
-/* 어투별로 대신 쓸 표현입니다. */
+/* 말투별로 대신 쓸 표현입니다. */
 const REGISTER_ADVICE = {
-  다나까체:
-    '사람에게 요청할 때는 `~해 주시기 바랍니다`나 `~해 주십시오`를, 행위 명사 뒤에는 `~ 부탁드립니다`를 쓰십시오. 서술은 `~습니다`로, 의문은 `~합니까`나 `~할까요`로 끝냅니다.',
+  합니다체:
+    '사람에게 요청할 때는 `~해 주시기 바랍니다`나 `~해 주십시오`를, 행위 명사 뒤에는 `~ 부탁드립니다`를 쓰십시오. 서술은 `~습니다`로, 의문은 `~합니까`로 끝냅니다.',
   해요체:
     '서술과 의문을 `~해요`, `~예요`, `~할까요`로 맞추십시오. 요청은 `~해 주세요`나 `~ 부탁드려요`로 씁니다.',
-  혼용: '문서 하나 안에서는 서술 어투를 하나로 맞추십시오.',
+  혼용: '문서 하나 안에서는 합니다체와 해요체 가운데 하나로만 쓰십시오.',
 };
 
-/* 사람에게 명령하는 대신 쓸 형태입니다. 예는 프로젝트 어투로 씁니다. */
-const REQUEST_EXAMPLE = { 다나까체: '확인해 주십시오', 해요체: '확인해 주세요' };
+/* 사람에게 명령하는 대신 쓸 형태입니다. 예시는 프로젝트에서 고른 말투로 씁니다. */
+const REQUEST_EXAMPLE = { 합니다체: '확인해 주십시오', 해요체: '확인해 주세요' };
 const imperativeAdvice = (register) =>
-  `뜻은 그대로 두고 정중한 요청으로 고치십시오. 예: ${REQUEST_EXAMPLE[register] ?? REQUEST_EXAMPLE.다나까체}.`;
+  `뜻은 그대로 두고 정중한 요청으로 고치십시오. 예: ${REQUEST_EXAMPLE[register] ?? REQUEST_EXAMPLE.합니다체}.`;
 
 export const FLATTERY_HINT =
   '이 문장을 지우고 답부터 쓰십시오. 질문이나 지적을 평가하는 문장은 정보를 주지 못하고 읽는 사람을 평가하는 셈이 됩니다.';
@@ -29,7 +29,7 @@ export function registerViolations(text, rules, target, inFence = false) {
   /* 아래 1)부터 4)까지는 따옴표 안을 보지 않습니다. */
   const written = stripQuoted(text);
 
-  /* 1) 어투입니다. 모든 종류에 걸립니다. */
+  /* 1) 말투입니다. 모든 종류에 걸립니다. */
   const reported = new Set();
   for (const ending of rules.bannedRegisterEndings) {
     const hits = findAllEndings(written, ending, exemptWords(rules));
@@ -37,7 +37,7 @@ export function registerViolations(text, rules, target, inFence = false) {
     for (const hit of hits) reported.add(hit.index + hit[0].length);
     out.push({
       rule: 'wrong-register',
-      detail: `이 프로젝트의 어투(${rules.register})와 다른 어미를 썼습니다: ${JSON.stringify(hits[0][0])}. ${REGISTER_ADVICE[rules.register] ?? ''}`,
+      detail: `이 프로젝트에서 정한 말투(${rules.register})와 다른 어미를 썼습니다: ${JSON.stringify(hits[0][0])}. ${REGISTER_ADVICE[rules.register] ?? ''}`,
       line: lineOf(text, hits[0].index),
     });
   }

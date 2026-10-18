@@ -99,7 +99,7 @@ export function punctuationViolations(text, rules) {
     if (m === null) continue;
     out.push({
       rule: 'comma-after-conjunctive-adverb',
-      detail: `접속부사 ${JSON.stringify(adverb)} 뒤의 쉼표입니다.`,
+      detail: `접속부사 ${JSON.stringify(adverb)} 뒤에 쉼표를 찍었습니다.`,
       line: lineOf(text, m.index + m[1].length),
     });
   }

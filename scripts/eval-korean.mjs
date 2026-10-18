@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* 실제 모델의 답변을 비교하는 스크립트입니다. 유료 API를 쓰므로 --run을 줄 때만 실행합니다. --with-hooks를 주면 설치한 프로젝트에서 hook과 skill이 실제로 동작합니다. 주지 않으면 도구와 skill을 모두 끕니다. */
+/* 실제 모델의 답변을 비교하는 스크립트입니다. 유료 API를 쓰므로 --run을 줄 때만 실행합니다. --with-hooks를 주면 설치한 프로젝트에서 hook과 skill이 실제로 동작합니다. 주지 않으면 Claude Code의 내장 도구와 skill을 모두 끕니다. */
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -7,8 +7,86 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { isEntryPoint } from './lib/paths.mjs';
+import { loadRules } from './lib/rules.mjs';
+import { blockingViolations, checkText } from './lib/check.mjs';
+import { CHAR_CLASSES, SHORTCODE_RE } from './lib/rules/chars.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+/* 집계표에 쓰는 프로필 이름입니다. */
+const PROFILE_LABELS = { baseline: '이 도구가 없는 프로젝트', installed: '이 도구를 설치한 프로젝트', legacy: '예전 작성 지침을 둔 프로젝트' };
+
+/* Stop hook이 답변을 막고 다시 쓰라고 했는지 hook 출력으로 판단합니다. 출력이 JSON이 아니면 막지 않은 것으로 봅니다. */
+function stopBlocked(responses) {
+  return (responses ?? []).some((h) => {
+    if (h?.event !== 'Stop') return false;
+    try {
+      return JSON.parse(h.output).decision === 'block';
+    } catch {
+      return false;
+    }
+  });
+}
+
+/*
+ * 저장된 답변을 프로필마다 셉니다. 사람이 읽고 판단해야 하는 항목은 세지 않고, 검사기와 기록으로 셀 수 있는 것만 셉니다.
+ * emoji와 가운뎃점은 inline code만 빼고 찾으므로 코드 블록 안에 있어도 셉니다.
+ * 저장된 답변은 Stop hook이 다시 쓰게 했다면 다시 쓴 글이므로, 다시 쓰게 한 답변 수도 함께 셉니다.
+ */
+export function summarize(rows, rules) {
+  /* 프로필 이름이 `__proto__` 같은 값이어도 다른 객체에 속성이 생기지 않게 프로토타입 없는 객체에 모읍니다. */
+  const out = Object.create(null);
+  for (const row of rows) {
+    if (!Array.isArray(row?.answers) || row.answers.some((answer) => typeof answer?.text !== 'string')) {
+      throw new Error(`answers 배열이 없거나 답변 글(text)이 빠진 행입니다: ${JSON.stringify(row?.profile ?? null)}`);
+    }
+    const t = (out[row.profile] ??= { answers: 0, skill: 0, rewritten: 0, errors: 0, register: 0, emoji: 0, middot: 0, attribution: 0, chars: 0, costUsd: 0, seconds: 0 });
+    t.costUsd += row.costUsd ?? 0;
+    t.seconds += row.seconds ?? 0;
+    const rewritten = stopBlocked(row.hookResponses);
+    for (const answer of row.answers) {
+      const found = checkText(answer.text, rules, 'chat');
+      const prose = answer.text.replace(/`[^`\n]*`/g, ' ');
+      t.answers += 1;
+      if ((row.skills ?? []).includes(rules.writingSkill)) t.skill += 1;
+      if (rewritten) t.rewritten += 1;
+      if (blockingViolations(found).length > 0) t.errors += 1;
+      if (found.some((v) => v.rule === 'wrong-register')) t.register += 1;
+      if (found.some((v) => v.rule === 'ai-attribution')) t.attribution += 1;
+      if (CHAR_CLASSES.emoji.re.test(prose) || SHORTCODE_RE.test(prose)) t.emoji += 1;
+      if (CHAR_CLASSES.middot.re.test(prose)) t.middot += 1;
+      t.chars += [...answer.text].length;
+    }
+  }
+  for (const t of Object.values(out)) t.costUsd = Math.round(t.costUsd * 1e6) / 1e6;
+  return out;
+}
+
+/* `summarize`의 결과를 README에 옮길 수 있는 Markdown 표로 만듭니다. */
+export function formatSummary(summary) {
+  const profiles = Object.keys(summary);
+  if (profiles.length === 0) throw new Error('셀 답변이 없습니다');
+  /* 답변이 없는 프로필은 평균을 낼 수 없으므로 `-` 기호를 씁니다. */
+  const average = (p, key, digits, unit) => (summary[p].answers === 0 ? '-' : `${(summary[p][key] / summary[p].answers).toFixed(digits)}${unit}`);
+  const count = (key) => profiles.map((p) => `${summary[p].answers}개 중 ${summary[p][key]}개`);
+  const lines = [
+    ['skill을 거친 답변', count('skill')],
+    ['Stop hook이 다시 쓰게 한 답변', count('rewritten')],
+    ['검사기 오류가 나온 답변', count('errors')],
+    ['검사기가 해요체 어미를 찾은 답변', count('register')],
+    ['emoji가 들어간 답변', count('emoji')],
+    ['가운뎃점이 들어간 답변', count('middot')],
+    ['Claude Code 생성 표시가 들어간 답변', count('attribution')],
+    ['답변 길이 합계', profiles.map((p) => `${summary[p].chars.toLocaleString('en-US')}자`)],
+    ['답변 하나에 든 평균 비용', profiles.map((p) => average(p, 'costUsd', 3, '달러'))],
+    ['답변 하나를 받는 데 걸린 평균 시간', profiles.map((p) => average(p, 'seconds', 1, '초'))],
+  ];
+  return [
+    `| 항목 | ${profiles.map((p) => (Object.hasOwn(PROFILE_LABELS, p) ? PROFILE_LABELS[p] : p)).join(' | ')} |`,
+    `| --- |${profiles.map(() => ' --- |').join('')}`,
+    ...lines.map(([label, cells]) => `| ${label} | ${cells.join(' | ')} |`),
+  ].join('\n');
+}
 export function answersOf(text, cases) {
   return cases.map(({ id }) => {
     const matches = [...text.matchAll(new RegExp(`<answer id="${id}">([\\s\\S]*?)</answer>`, 'g'))];
@@ -39,11 +117,26 @@ function main() {
   };
   if (args.includes('--self-check')) {
     if (answersOf('<answer id="a">ok</answer>', [{ id: 'a' }])[0].text !== 'ok') throw new Error('응답을 읽지 못했습니다');
-    console.log('eval 자체 검사 통과 (API 호출 없음)');
+    console.log('eval 자체 검사를 통과했습니다. API는 호출하지 않았습니다.');
+    return;
+  }
+  if (args.includes('--summary')) {
+    /* `--summary` 바로 뒤에 이어 쓴 결과 디렉터리나 results.json 경로만 받습니다. API를 호출하지 않습니다. */
+    const after = args.slice(args.indexOf('--summary') + 1);
+    const end = after.findIndex((arg) => arg.startsWith('--'));
+    if (end !== -1) throw new Error('--summary는 다른 옵션과 함께 쓰지 않습니다');
+    const files = [...new Set(after.map((path) => resolve(path.endsWith('.json') ? path : join(path, 'results.json'))))];
+    if (files.length === 0) throw new Error('--summary 다음에 평가 결과 경로가 필요합니다');
+    const rows = files.flatMap((file) => {
+      const results = JSON.parse(readFileSync(file, 'utf8')).results;
+      if (!Array.isArray(results)) throw new Error(`평가 결과 파일이 아닙니다: ${file}`);
+      return results;
+    });
+    console.log(formatSummary(summarize(rows, loadRules(join(ROOT, 'docs/rules.md')))));
     return;
   }
   if (!args.includes('--run')) {
-    console.log('사용법: npm run eval -- --run [--models claude-sonnet-5-5,claude-opus-5-5] [--profiles baseline,installed] [--reference DIR] [--out DIR] [--repeat 1] [--individual] [--cases FILE] [--effort low] [--with-hooks]');
+    console.log('사용법: npm run eval -- --run [--models claude-sonnet-5-5,claude-opus-5-5] [--profiles baseline,installed] [--reference DIR] [--out DIR] [--repeat 1] [--individual] [--cases FILE] [--effort low] [--with-hooks] | --summary <결과 경로>...');
     return;
   }
   const cases = JSON.parse(readFileSync(resolve(value('--cases', join(ROOT, 'test/fixtures/eval/cases.json'))), 'utf8'));

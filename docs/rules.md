@@ -1,50 +1,51 @@
 # 검사 규칙
 
-검사기는 이 문서의 `korean-style-rules` 블록에서 설정을 읽습니다.
+검사기는 이 문서의 `korean-style-rules` 블록에서 설정을 읽습니다. 설치한 프로젝트에서는 `.korean-style/rules.md`가 이 문서를 대신합니다.
 작성 지침은 이 도구 저장소의 `output-styles/korean-style.md`에 있고, 설치한 프로젝트에서는 `.claude/output-styles/korean-style.md`에 있습니다.
-지침은 세션을 시작할 때 system prompt에 들어가고, hook은 실행될 때마다 이 문서를 새로 읽습니다. 그래서 모델이 두 파일을 직접 읽을 필요는 없습니다.
+작성 지침은 세션을 시작할 때 시스템 프롬프트에 들어갑니다. hook은 실행될 때마다 이 문서를 새로 읽습니다. 그래서 Claude가 작성 지침과 이 문서를 직접 읽을 필요는 없습니다.
 
 ## 오류와 경고
 
-- 오류는 hook에서 차단합니다. 오류로 분류한 규칙은 어투와 표기처럼 프로젝트가 정한 정책입니다.
-- 기본 규칙에서는 산문에 쓴 middle dot(U+00B7), em-dash(U+2014) 등 `banned-char`에 든 문자를 오류로 막습니다. 나열은 쉼표나 조사로 잇고 부연은 괄호나 별도 문장으로 씁니다.
-- `advisory-rules`에 든 규칙에 걸리면 경고로만 보고합니다. CLI는 경고를 보여 주고, hook은 경고 때문에 쓰기를 막거나 재작성을 요구하지 않습니다.
-- `review-rules`에 든 규칙의 경고는 PreToolUse hook이 쓰기를 막지 않고 Claude에게 알립니다. 이번에 바꾼 문단에서 새로 생긴 경고만 알리며, 알림에는 어색하면 고치고 문맥에 맞으면 그대로 두라는 안내가 붙습니다.
-- CLI는 오류가 있으면 1, 사용법이 틀리면 2를 반환합니다. 경고만 있으면 0이며 `--strict`를 붙이면 1입니다.
-- CLI는 규칙을 읽지 못하면 실패합니다. hook은 규칙을 읽지 못해도 멈추지 않습니다. 이때 검사하는 것은 금지 문자, 금지 호칭, 영어로만 쓴 답변뿐입니다. hook은 기본값대로 `korean-rewrite` skill도 요구합니다. 규칙을 읽지 못하는 문제는 `doctor`와 `gate`로 확인합니다.
+- hook은 오류가 있는 글을 막습니다. 오류로 나눈 규칙은 말투와 표기처럼 프로젝트가 정한 정책입니다.
+- 기본 규칙은 `banned-char`에 든 문자를 산문에 쓰면 오류로 막습니다. 가운뎃점(U+00B7)과 줄표(U+2014)도 여기에 듭니다. 나열은 쉼표나 조사로 잇고, 덧붙이는 설명은 괄호나 다른 문장으로 씁니다.
+- Claude Code가 커밋 메시지와 PR 설명에 붙이는 생성 표시도 오류로 막습니다. 막을 문구는 `banned-attribution`에 적습니다.
+- 글이 `advisory-rules`에 든 규칙에 걸리면 검사기는 경고로만 보고합니다. CLI는 경고를 보여 줍니다. hook은 경고 때문에 쓰기를 막거나 다시 쓰라고 요구하지 않습니다.
+- PreToolUse hook은 `review-rules`에 든 규칙의 경고를 Claude에게 알립니다. 이때도 쓰기는 막지 않습니다. hook은 이번에 바꾼 문단에서 새로 생긴 경고만 알리고, 어색하면 고치고 문맥에 맞으면 그대로 두라고 덧붙입니다.
+- CLI의 종료 코드는 오류가 있으면 1, 사용법이 틀리면 2입니다. 경고만 있으면 0이고, `--strict`를 붙이면 경고만 있어도 1입니다.
+- CLI는 규칙을 읽지 못하면 실패합니다. hook은 규칙을 읽지 못해도 멈추지 않습니다. 이때 hook은 금지 문자, 금지 호칭, 영어로만 쓴 답변, 생성 표시만 검사하고 `writing-skill`의 기본값인 `korean-rewrite` skill을 요구합니다. 규칙을 읽지 못하는 문제는 `doctor`와 `gate`로 확인합니다.
 
 ## 한국어를 쓰기 전에 부르는 skill
 
-- Claude는 한국어를 쓰는 turn마다 `writing-skill`에 적은 skill을 먼저 불러야 합니다. 사용자가 프롬프트를 보낼 때마다 UserPromptSubmit hook이 이 skill을 부르라고 Claude에게 알립니다.
-- 그 turn에서 skill을 부르지 않은 채 한글이 `writing-skill-min-hangul`개 이상 들어간 파일을 쓰거나 커밋하려 하면 PreToolUse hook이 막습니다. skill을 부르지 않은 채 한국어 답변을 마치면 Stop hook이 skill을 부르고 답변을 다시 쓰라고 요청합니다.
-- subagent가 파일을 쓸 때는 hook이 그 subagent의 기록에서 skill을 불렀는지 봅니다.
-- 같은 turn에서 두 번 막았는데도 Claude가 skill을 부르지 않으면 hook은 Skill 도구를 쓸 수 없는 환경으로 보고 더 막지 않습니다.
-- `writing-skill:`처럼 값을 비우거나 그 skill이 `.claude/skills/`에 없으면 skill을 요구하지 않습니다. 직접 고친 예전 규칙처럼 두 키가 아예 없으면 기본값인 `korean-rewrite`와 20을 씁니다.
+- Claude는 요청을 받을 때마다 한국어를 쓰기 전에 `writing-skill`에 적은 skill을 불러야 합니다. 사용자가 프롬프트를 보낼 때마다 UserPromptSubmit hook이 이 skill을 부르라고 Claude에게 알립니다.
+- Claude가 그 요청에서 skill을 부르지 않은 채 파일을 쓰거나 커밋하거나 PR을 올리려 하면 PreToolUse hook이 막습니다. 이번에 쓰는 내용에 한글이 `writing-skill-min-hangul`에 적은 수 이상 들어 있을 때만 막습니다. skill을 부르지 않은 채 한국어 답변을 마치면 Stop hook이 skill을 부르고 답변을 다시 쓰라고 요청합니다.
+- subagent가 파일을 쓸 때는 hook이 그 subagent의 대화 기록에서 skill을 불렀는지 봅니다.
+- hook은 같은 요청에서 두 번 막았는데도 Claude가 skill을 부르지 않으면 Skill 도구를 쓸 수 없는 환경이라고 보고 더는 막지 않습니다.
+- `writing-skill:`처럼 값을 비우거나 그 skill이 `.claude/skills/`에 없으면 hook은 skill을 요구하지 않습니다. 직접 고친 예전 규칙처럼 `writing-skill`과 `writing-skill-min-hangul` 키가 아예 없으면 기본값인 `korean-rewrite`와 20을 씁니다.
 
-## 일부 규칙을 경고로 바꾸고 영어 용어 수 제한을 푼 근거
+## 일부 규칙을 경고로만 두고 영어 용어 수를 제한하지 않는 이유
 
-교정은 원문의 의미를 보존해야 합니다. 검사 규칙은 자연스러운 표현을 바꾸거나 원문에 없는 사실을 덧붙이도록 강제하지 않습니다.
+글을 고칠 때는 원문의 뜻을 지켜야 합니다. 그래서 자연스러운 표현을 바꾸거나 원문에 없는 사실을 덧붙여야 통과하는 규칙은 오류로 두지 않습니다.
 
-`문을 통해 들어갑니다`, `책을 가지고 있습니다`, `예전에는 서울에 살았었습니다`는 문맥에 맞는 표현입니다.
-`translationese`는 이 문장들도 잡습니다. `디스크에서 자리를 차지하는 파일입니다`도 `literal-verb`에 잡힙니다.
-경로, 소유, 시제, 비유를 나타내는 정상적인 문장에도 같은 구절이 들어가므로 두 규칙을 경고로 바꿨습니다.
+`문을 통해 들어갑니다`, `책을 가지고 있습니다`, `예전에는 서울에 살았었습니다`는 문맥에 맞는 표현인데도 `translationese`에 걸립니다. `디스크에서 자리를 차지하는 파일입니다`도 `literal-verb`에 걸립니다.
+경로, 소유, 시제, 비유를 나타내는 정상적인 문장에도 같은 구절이 들어가므로 두 규칙은 경고로만 둡니다.
 
-쉼표 수, 문장 길이, 굵은 글씨 수, 명사형 종결이나 `~의` 같은 표현의 빈도는 문법이 아니라 문체의 경향을 보여 주는 값입니다.
-임계값은 전에 측정해 정한 값을 그대로 두고 경고에만 씁니다. 기본 규칙에서는 영어 용어 수를 제한하지 않습니다.
-이 도구 저장소의 `test/quality.test.mjs`가 이 분류를 정상 문장과 실제 오류로 함께 검증합니다.
+쉼표 수, 문장 길이, 굵은 글씨 수, 명사형 종결이나 `~의`가 나오는 빈도는 문법 오류가 아니라 문체 경향을 보여 주는 값입니다.
+한도 값은 전에 측정해 정한 그대로 두고, 경고를 낼지 정할 때만 씁니다. 기본 규칙은 영어 용어 수를 제한하지 않습니다.
+이 도구 저장소의 `test/quality.test.mjs`는 정상 문장과 실제 오류 문장을 함께 넣어 이 분류가 맞는지 확인합니다.
 
 긴 문장 경고는 글을 읽기 쉽게 하려고 둔 것입니다. 경고를 없애려고 한 가지 뜻을 담은 문장을 쪼개지 않습니다.
 
 ## 설정
 
-목록 항목은 쉼표로 구분하고, 치환 후보는 `원문=후보` 형식으로 씁니다. 목록 키와 치환 후보 키는 줄마다 키를 다시 적어 여러 줄에 나눠 쓸 수 있습니다.
-`max-`로 시작하는 한도 값과 `korean-required-min-chars`는 0으로 두면 그 검사가 꺼집니다. `max-contrast-per-1k`는 `ko=0`처럼 언어별 값을 0으로 두면 그 언어의 검사가 꺼집니다. `register`는 `다나까체`, `해요체`, `혼용` 중 하나입니다.
-직역 동사의 활용형은 `|`로 나열하고, 목적어가 영어 낱말일 때만 잡으려면 항목 앞에 `@latin:`을 붙입니다.
+목록은 쉼표로 나누고, 고칠 표현은 `원문=후보` 형식으로 씁니다. 목록이나 고칠 표현을 값으로 받는 키는 줄마다 같은 키를 다시 적으면 값을 여러 줄에 나눠 쓸 수 있습니다.
+`max-`로 시작하는 한도 값과 `korean-required-min-chars`는 0으로 두면 그 검사가 꺼집니다. `max-contrast-per-1k`는 `ko=0`처럼 언어별 값을 0으로 두면 그 언어의 검사가 꺼집니다.
+`register` 값은 `합니다체`, `해요체`, `혼용` 가운데 하나입니다. 합니다체는 국립국어원 문법 용어로 하십시오체이고, 0.3.0까지는 `다나까체`라고 불렀습니다. 검사기와 설치 스크립트는 `하십시오체`와 `다나까체`도 `합니다체`로 읽습니다.
+`literal-verbs`에서는 동사 활용형을 `|`로 나열하고, 목적어가 영어 낱말일 때만 잡으려면 항목 앞에 `@latin:`을 붙입니다.
 
 ```korean-style-rules
 advisory-rules: translationese, literal-verb, comma-per-sentence, comma-segment-length, comma-after-conjunctive-adverb, comma-after-connective, sentence-too-long, nominalization, demonstrative-density, suffix-jeok-density, particle-ui-density, redundant-plural, bound-english, repeated-gloss, bold-density, contrast-density, inclusive-term, hybrid-negation, korean-required
 review-rules: translationese, literal-verb, redundant-plural, comma-after-conjunctive-adverb, hybrid-negation, inclusive-term, sentence-too-long
-register: 다나까체
+register: 합니다체
 banned-address: 당신
 imperative-endings: 하십시오, 하시오, 해라, 하라, 해줘, 해봐, 하세요, 하십쇼
 imperative-exempt: 안녕하세요, 아니다, 감사합니다, 죄송합니다
@@ -96,6 +97,7 @@ source-globs:
 skip-globs: node_modules/**, dist/**, build/**, coverage/**, vendor/**, .venv/**, **/*.min.js, **/*.generated.*, skill/korean-style/register/*.md, **/_workspace/**
 sweep-skip-dirs: .git, node_modules, dist, build, coverage, vendor, .venv, __pycache__, target
 quote-marker: korean-style-quote
+banned-attribution: Generated with [Claude Code], Generated with Claude Code, noreply@anthropic.com
 ```
 
 ## 키 설명
@@ -104,15 +106,15 @@ quote-marker: korean-style-quote
 | ---  | --- |
 | `advisory-rules` | 차단하지 않고 경고로만 보고할 규칙 이름입니다. |
 | `review-rules` | 경고 규칙 가운데 hook이 Claude에게 알릴 규칙입니다. 이번에 바꾼 문단에서 새로 생긴 위반만 알립니다. |
-| `register`  | 이 프로젝트가 쓰는 어투입니다. |
+| `register`  | 이 프로젝트가 쓰는 말투입니다. |
 | `banned-address`  | 읽는 사람을 부를 때 쓰면 안 되는 말입니다. |
 | `imperative-endings`  | 사람에게 명령이 되는 어미입니다. |
-| `imperative-exempt`  | 명령 어미나 다른 어투의 어미로 끝나지만 위반으로 보지 않는 표현입니다. |
+| `imperative-exempt`  | 명령 어미나 다른 말투의 어미로 끝나지만 위반으로 보지 않는 표현입니다. |
 | `flattery-openers`  | 답부터 하지 않고 질문이나 지적을 칭찬하는 문장입니다. |
 | `korean-required-min-chars`  | 코드와 공백을 뺀 글자 수가 이 값 이상인데 한글이 없으면 영어로 쓴 것으로 봅니다. |
-| `writing-skill`  | 한국어를 쓰는 turn마다 Claude가 먼저 불러야 하는 skill입니다. 값을 비우면 hook이 skill을 요구하지 않고, 키가 없으면 `korean-rewrite`를 씁니다. |
-| `writing-skill-min-hangul`  | 답변이나 파일, 커밋 메시지에 한글이 이 수 이상 들어가면 hook이 skill을 요구합니다. |
-| `banned-char`  | `scripts/lib/rules/chars.mjs`의 글자 종류 가운데 켜 둘 것입니다. |
+| `writing-skill`  | Claude가 요청을 받을 때마다 한국어를 쓰기 전에 불러야 하는 skill입니다. 값을 비우면 hook이 skill을 요구하지 않고, 키가 없으면 `korean-rewrite`를 씁니다. |
+| `writing-skill-min-hangul`  | 답변이나 커밋 메시지, 이번에 파일에 쓰는 내용에 한글이 이 수 이상 들어 있으면 hook이 skill을 요구합니다. |
+| `banned-char`  | 검사할 글자 종류입니다. 쓸 수 있는 이름은 `scripts/lib/rules/chars.mjs`에 있습니다. |
 | `allowed-emoji-shortcode`  | 사용자가 이름을 지정해 허용한 shortcode입니다. |
 | `sentence-min-hangul-ratio`  | 문장을 한국어 산문으로 보려면 한글이 차지해야 하는 최소 비율입니다. |
 | `final-endings`  | 종결어미입니다. |
@@ -154,6 +156,7 @@ quote-marker: korean-style-quote
 | `doc-globs`, `source-globs`  | 확장자보다 먼저 적용해 검사 종류를 정하는 경로 패턴입니다. |
 | `skip-globs`  | 검사하지 않을 경로입니다. |
 | `sweep-skip-dirs`  | 전체 검사에서 들어가지 않을 디렉터리 이름입니다. |
+| `banned-attribution` | Claude Code가 커밋 메시지와 PR 설명 끝에 붙이는 생성 표시입니다. 같은 줄에서 이 문구 앞에 글자나 숫자가 없으면 막고, 이메일 주소처럼 `@`가 든 문구는 줄 어디에 있어도 막습니다. 그래서 emoji나 목록 기호 뒤에 붙은 생성 표시도 막지만, 문장 안에서 생성 표시를 언급하기만 한 줄은 막지 않습니다. 대소문자는 가리지 않습니다. 값을 비우면 검사하지 않고, 키가 없으면 기본 목록을 씁니다. |
 | `quote-marker`  | 인용 구간을 나타내는 이름입니다. 문서에서 `<!-- 이 값 -->` 줄과 `<!-- /이 값 -->` 줄 사이에 넣은 글은 다른 글을 그대로 옮긴 인용으로 보고 검사하지 않습니다. 답변과 커밋 메시지에서는 이 구간도 검사합니다. 값을 비우면 인용 표시가 있어도 그 사이를 검사합니다. 키가 없으면 `korean-style-quote`를 씁니다. |
 
 ## 보고에 나오는 규칙 이름
@@ -162,16 +165,16 @@ quote-marker: korean-style-quote
 | --- | --- |
 | `banned-char` | 프로젝트가 금지한 부호와 문자입니다. |
 | `banned-address` | 금지 목록에 있는 호칭입니다. |
-| `wrong-register` | 선택한 어투와 다른 종결어미입니다. |
+| `wrong-register` | 고른 말투와 다른 종결어미입니다. |
 | `imperative-to-human` | 프로젝트가 피하기로 한 직접 명령입니다. |
 | `flattery` | 질문이나 지적을 칭찬하는 표현입니다. |
 | `korean-required` | 긴 영어 답변입니다. 요청한 언어인지는 사람이 판단합니다. |
-| `double-passive` | 목록에 있는 이중피동 후보입니다. |
+| `double-passive` | 목록에 있는 이중피동입니다. |
 | `loanword-spelling` | 프로젝트가 정한 외래어 표기와 다른 표기입니다. |
 | `known-typo` | 목록에 있는 오타입니다. |
-| `translationese` | 영어식 표현 후보입니다. 문맥에 맞는 표현이면 그대로 둡니다. |
-| `literal-verb` | 직역 동사 후보입니다. 실제 동작을 나타낸 문장이면 그대로 둡니다. |
-| `comma-per-sentence` | 한 문장의 쉼표 수입니다. 나열은 제외합니다. |
+| `translationese` | 영어식 표현일 수 있는 구절입니다. 문맥에 맞는 표현이면 그대로 둡니다. |
+| `literal-verb` | 영어 동사를 그대로 옮겼을 수 있는 동사입니다. 실제 동작을 나타낸 문장이면 그대로 둡니다. |
+| `comma-per-sentence` | 한 문장에 쓴 쉼표 수입니다. 나열에 쓴 쉼표는 세지 않습니다. |
 | `comma-segment-length` | 쉼표로 나눈 구간의 어절 수입니다. |
 | `comma-after-conjunctive-adverb` | 접속부사 뒤 쉼표입니다. |
 | `comma-after-connective` | 연결어미 뒤 쉼표의 빈도입니다. |
@@ -191,9 +194,10 @@ quote-marker: korean-style-quote
 | `transliteration` | 팀이 쓰지 않기로 한 음차 표기입니다. |
 | `loose-translation` | 팀이 쓰지 않기로 한 번역 표기입니다. |
 | `required-spelling` | 팀 표기와 다른 용어입니다. |
+| `ai-attribution` | Claude Code가 붙이는 생성 표시입니다. 코드 블록 안에서도 찾습니다. |
 
-## 변경과 검증
+## 규칙을 바꿀 때
 
 규칙 값과 설명을 함께 고치고, 잡아야 할 문장과 잡으면 안 되는 문장을 함께 확인합니다.
 이 도구 저장소에서는 두 종류의 문장을 테스트에 넣고 `npm run gate`로 확인합니다. 설치한 프로젝트에서는 `check-korean.mjs --text`로 확인합니다.
-작성 지침을 바꾸면 같은 입력을 실제 모델에 보내 답변도 비교합니다.
+작성 지침이나 skill을 바꾸면 `test/fixtures/eval/`의 요청을 실제 모델에 보내고, 바꾸기 전에 받은 답변과 새로 받은 답변을 비교합니다.

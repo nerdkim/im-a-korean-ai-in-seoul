@@ -1,7 +1,7 @@
 /* 낱말을 잡는 대신 습관처럼 쓰는 표현이 몇 번 나오는지 세는 규칙입니다. */
 import { hangulLength, isKoreanProse, lineOf, overDensity, proseLength, sentencesOf, unitsOf } from '../text.mjs';
 
-/* 조사나 경동사가 붙은 영어 낱말입니다. */
+/* 조사나 `~하다`, `~되다`가 붙은 영어 낱말입니다. */
 /* 낱말은 첫 번째 캡처 그룹에 담깁니다. */
 const BOUND_ENGLISH = new RegExp(
   "\\b([A-Za-z][A-Za-z0-9'’]*(?:[-.][A-Za-z0-9]+)*)" +
@@ -15,7 +15,7 @@ const BOUND_ENGLISH = new RegExp(
 /* `한글(English)`처럼 괄호 안에 영어를 덧붙인 설명입니다. */
 const PARENTHETICAL_GLOSS = /[가-힣]\s?\(([A-Za-z][A-Za-z0-9 ._-]{1,40})\)/gu;
 
-/* 설명이 아니라 인용인 괄호입니다. */
+/* 설명이 아니라 약어나 번호를 담은 괄호입니다. */
 const CITATION = /^(?:[^a-z]*|[A-Z]{1,3}-?\d+[a-z]?)$/;
 
 /* 설명 대신 이름을 담은 괄호입니다. */
@@ -36,7 +36,7 @@ export function densityViolations(text, rules) {
   /* 한글이 없으면 한국어 문법 규칙을 적용하지 않습니다. */
   const hasHangul = hangulLength(text) > 0;
 
-  /* 1) 한 문장에서 조사나 경동사가 붙은 영어 낱말 수입니다. */
+  /* 1) 한 문장에서 조사나 `~하다`, `~되다`가 붙은 영어 낱말 수입니다. */
   if (hasHangul && rules.maxBoundEnglishPerSentence > 0) {
     for (const sentence of sentencesOf(text)) {
       if (!/[가-힣]/u.test(sentence.text)) continue;
@@ -45,7 +45,7 @@ export function densityViolations(text, rules) {
       if (words.length <= rules.maxBoundEnglishPerSentence) continue;
       out.push({
         rule: 'bound-english',
-        detail: `한국어 문장 하나에 조사나 경동사가 붙은 서로 다른 영어 낱말이 ${words.length}개로 기준 ${rules.maxBoundEnglishPerSentence}개보다 많습니다: ${words
+        detail: `한국어 문장 하나에 조사나 "~하다", "~되다"가 붙은 서로 다른 영어 낱말이 ${words.length}개로 기준 ${rules.maxBoundEnglishPerSentence}개보다 많습니다: ${words
           .slice(0, 6)
           .map((w) => JSON.stringify(w))
           .join(', ')}. 문장을 나누십시오. 용어를 한국어로 바꾸지는 마십시오.`,

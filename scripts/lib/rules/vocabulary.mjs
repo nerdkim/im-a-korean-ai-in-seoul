@@ -12,7 +12,7 @@ export function hasGlossNear(text, index, termLength) {
   return KOREAN_DEFINING.test(win);
 }
 
-/* 왼쪽을 오른쪽으로 바꾸라고 하는 규칙들을 같은 방식으로 처리합니다. */
+/* 찾을 표현과 대신 쓸 표현을 짝지은 규칙들을 같은 방식으로 처리합니다. 찾을 표현이 글에 있으면 대신 쓸 표현으로 바꾸라고 알립니다. */
 function substitutionViolations(text, map, rule, describe) {
   const out = [];
   for (const [wrong, right] of map) {
@@ -117,7 +117,7 @@ export function vocabularyViolations(text, rules, target) {
     if (m !== null) {
       out.push({
         rule: 'hybrid-negation',
-        detail: `한글 부정 접두사를 영어 어간에 붙였습니다: ${JSON.stringify(m[2] + m[3])}. 부정형 용어는 전부 영어로 쓰십시오. 예: non-blocking.`,
+        detail: `한글 부정 접두사를 영어 어간에 붙였습니다: ${JSON.stringify(m[2] + m[3])}. 접두사까지 포함해 용어를 영어로 쓰십시오. 예: non-blocking.`,
         line: lineOf(text, m.index + m[1].length),
       });
     }

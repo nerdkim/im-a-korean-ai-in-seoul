@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { loadRules, parseRuleBlock, RULE_FENCE, REGISTER_BANNED_ENDINGS } from '../scripts/lib/rules.mjs';
+import { canonicalRegister, loadRules, parseRuleBlock, RULE_FENCE, REGISTER_BANNED_ENDINGS, withRegister } from '../scripts/lib/rules.mjs';
 import { checkText, checkToolCall, formatViolations, toolFieldTexts } from '../scripts/lib/check.mjs';
 import { koreanCommentsOf, commentSyntaxOf, onlyComments } from '../scripts/lib/comments.mjs';
 import { sentencesOf, unitsOf, wordCount, onlyFenced, stripCode } from '../scripts/lib/text.mjs';
@@ -16,19 +16,19 @@ const names = (violations) => violations.map((v) => v.rule);
 
 /* ---------------------------------------------------------------------------  회귀 테스트입니다. 실제로 있었던 결함을 재현합니다. */
 
-test('회귀: 규칙 문서를 못 읽으면 문자 규칙이 남는다', () => {
+test('회귀: 규칙 문서를 못 읽어도 금지 문자 규칙은 남는다', () => {
   /* 실제로 있었던 결함을 재현합니다. */
   const dir = mkdtempSync(join(tmpdir(), 'korean-style-'));
   const missing = loadRules(join(dir, '없는파일.md'));
   assert.equal(missing.source, null, '못 읽었다는 사실이 드러나야 합니다');
   assert.ok(missing.reason.length > 0, '왜 못 읽었는지 적혀야 합니다');
-  assert.ok(missing.bannedChar.length > 0, '문자 규칙은 남아야 합니다');
+  assert.ok(missing.bannedChar.length > 0, '금지 문자 규칙은 남아야 합니다');
   const found = checkText('이것은 — 저것입니다. 항목 A·B 이며 완료했습니다 ✅', missing, 'chat');
-  assert.ok(found.length >= 3, `문자 규칙 위반이 세 건 이상 나와야 하는데 ${found.length}건입니다`);
+  assert.ok(found.length >= 3, `금지 문자 위반이 세 건 이상 나와야 하는데 ${found.length}건입니다`);
   assert.ok(formatViolations(found, missing).includes('규칙 설정을 찾지 못했습니다'), '보고에 규칙 문서를 못 읽었다는 경고가 있어야 합니다');
 });
 
-test('회귀: 규칙 블록이 없는 문서를 읽어도 문자 규칙이 남는다', () => {
+test('회귀: 규칙 블록이 없는 문서를 읽어도 금지 문자 규칙은 남는다', () => {
   const dir = mkdtempSync(join(tmpdir(), 'korean-style-'));
   const path = join(dir, 'rules.md');
   writeFileSync(path, '# 규칙\n\n블록이 없습니다.\n', 'utf-8');
@@ -76,36 +76,49 @@ test('회귀: 명령형과 ~해 주십시오 같은 요청형을 구분한다', 
   assert.equal(checkText('작업 전 이 절을 참조하십시오.', r, 'doc').length, 0);
 });
 
-test('회귀: 같은 어미를 어투 위반과 명령형으로 두 번 보고하지 않는다', () => {
-  /* 다나까체에서 `확인하세요`는 어투도 틀리고 명령형이기도 합니다. */
-  const r = rulesOf(['register: 다나까체', 'imperative-endings: 하세요, 하십시오']);
+test('회귀: 같은 어미를 말투 위반과 명령형으로 두 번 보고하지 않는다', () => {
+  /* 합니다체에서 `확인하세요`는 말투도 틀리고 명령형이기도 합니다. */
+  const r = rulesOf(['register: 합니다체', 'imperative-endings: 하세요, 하십시오']);
   const got = names(checkText('값을 확인하세요.', r, 'chat'));
   assert.equal(got.length, 1, `한 건이어야 하는데 ${JSON.stringify(got)}입니다`);
   assert.equal(got[0], 'wrong-register');
 });
 
-/* ---------------------------------------------------------------------------  어투와 주석  --------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------  말투와 주석  --------------------------------------------------------------------------- */
 
-test('어투를 고르면 금지 어미가 따라 바뀐다', () => {
-  const formal = rulesOf(['register: 다나까체']);
+test('말투를 고르면 금지 어미가 따라 바뀐다', () => {
+  const formal = rulesOf(['register: 합니다체']);
   const casual = rulesOf(['register: 해요체']);
   const mixed = rulesOf(['register: 혼용']);
 
-  assert.ok(checkText('확인했어요.', formal, 'chat').length > 0, '다나까체에서 해요체는 걸립니다');
+  assert.ok(checkText('확인했어요.', formal, 'chat').length > 0, '합니다체에서 해요체는 걸립니다');
   assert.equal(checkText('확인했습니다.', formal, 'chat').length, 0);
 
-  assert.ok(checkText('확인했습니다.', casual, 'chat').length > 0, '해요체에서 다나까체는 걸립니다');
+  assert.ok(checkText('확인했습니다.', casual, 'chat').length > 0, '해요체에서 합니다체는 걸립니다');
   assert.equal(checkText('확인했어요.', casual, 'chat').length, 0);
 
   assert.equal(checkText('확인했습니다.', mixed, 'chat').length, 0, '혼용은 둘 다 허용합니다');
   assert.equal(checkText('확인했어요.', mixed, 'chat').length, 0);
 });
 
-test('명령형을 고치라는 안내는 프로젝트 어투로 쓴 요청을 예로 든다', () => {
-  /* 해요체 프로젝트에 `~해 주십시오`를 권하면 Claude가 그대로 따라 써서 한 글에 두 어투가 섞입니다. */
+test('예전 말투 이름 `다나까체`와 문법 용어 `하십시오체`는 `합니다체`로 읽는다', () => {
+  /* 0.3.0까지 설치한 프로젝트의 규칙 문서에는 `register: 다나까체`가 남아 있습니다. */
+  for (const name of ['다나까체', '하십시오체']) {
+    const r = rulesOf([`register: ${name}`]);
+    assert.equal(r.register, '합니다체', `${name}를 합니다체로 읽어야 합니다`);
+    assert.ok(checkText('확인했어요.', r, 'chat').length > 0, `${name} 규칙에서 해요체는 걸립니다`);
+    assert.equal(checkText('확인했습니다.', r, 'chat').length, 0, `${name} 규칙에서 합니다체는 통과합니다`);
+    assert.equal(withRegister(rulesOf(['register: 해요체']), name).register, '합니다체');
+  }
+  assert.equal(canonicalRegister('해요체'), '해요체');
+  assert.equal(canonicalRegister('알수없는말투'), '알수없는말투', '모르는 이름은 바꾸지 않습니다');
+});
+
+test('명령형을 고치라는 안내는 프로젝트 말투로 쓴 요청을 예로 든다', () => {
+  /* 해요체 프로젝트에 `~해 주십시오`를 권하면 Claude가 그대로 따라 써서 한 글에 두 말투가 섞입니다. */
   const cases = [
     { register: '해요체', imperative: '값을 확인하세요.', request: '확인해 주세요', other: '주십시오' },
-    { register: '다나까체', imperative: '값을 확인하십시오.', request: '확인해 주십시오', other: '주세요' },
+    { register: '합니다체', imperative: '값을 확인하십시오.', request: '확인해 주십시오', other: '주세요' },
     { register: '혼용', imperative: '값을 확인하세요.', request: '확인해 주십시오', other: '주세요' },
   ];
   for (const { register, imperative, request, other } of cases) {
@@ -113,28 +126,84 @@ test('명령형을 고치라는 안내는 프로젝트 어투로 쓴 요청을 �
     const found = checkText(imperative, r, 'chat');
     assert.deepEqual(names(found), ['imperative-to-human'], `${register} 프로젝트에서는 imperative-to-human만 걸려야 합니다: ${JSON.stringify(names(found))}`);
     assert.ok(found[0].detail.includes(request), `${register} 프로젝트의 안내에 예로 든 요청이 없습니다`);
-    assert.ok(!found[0].detail.includes(other), `${register} 프로젝트의 안내에 다른 어투의 요청이 들어 있습니다`);
+    assert.ok(!found[0].detail.includes(other), `${register} 프로젝트의 안내에 다른 말투의 요청이 들어 있습니다`);
     assert.equal(checkText(`값을 ${request}.`, r, 'chat').length, 0, `예로 든 요청은 ${register} 검사를 통과해야 합니다`);
   }
 });
 
-test('해요체에서 `아니다`를 다나까체로 보지 않는다', () => {
+test('해요체에서 `아니다`를 합니다체로 보지 않는다', () => {
   /* `아니다`는 `~니다`로 끝나지만 기본형입니다. */
   const r = rulesOf(['register: 해요체', 'imperative-exempt: 아니다']);
   assert.equal(checkText('그것은 사실이 아니다', r, 'doc').length, 0);
   assert.ok(checkText('그것은 사실입니다', r, 'doc').length > 0);
 });
 
-test('어투 이름을 알 수 없으면 어미를 금지하지 않는다', () => {
+test('말투 이름을 알 수 없으면 어미를 금지하지 않는다', () => {
   /* 알 수 없는 이름 때문에 검사기가 멈추면 그때부터 어떤 규칙도 적용되지 않습니다. */
-  const r = rulesOf(['register: 알수없는어투']);
+  const r = rulesOf(['register: 알수없는말투']);
   assert.equal(r.bannedRegisterEndings.length, 0);
   assert.ok(Object.keys(REGISTER_BANNED_ENDINGS).length >= 3);
 });
 
+/* ---------------------------------------------------------------------------  생성 표시  --------------------------------------------------------------------------- */
+
+const ATTRIBUTION = rulesOf(['banned-attribution: Generated with [Claude Code], Generated with Claude Code, noreply@anthropic.com']);
+
+test('Claude Code가 커밋 메시지와 PR 설명 끝에 붙이는 생성 표시를 막는다', () => {
+  const lines = [
+    '🤖 Generated with [Claude Code](https://claude.com/claude-code)',
+    'Generated with [Claude Code](https://claude.com/claude-code)',
+    'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>',
+    'co-authored-by: claude <noreply@anthropic.com>',
+  ];
+  for (const line of lines) {
+    for (const target of ['commit', 'chat', 'doc']) {
+      const found = checkText(`feat: 로그인 API에 rate limit 추가\n\n한도를 넘으면 429를 반환합니다.\n\n${line}\n`, ATTRIBUTION, target);
+      assert.ok(names(found).includes('ai-attribution'), `${target}에서 걸려야 합니다: ${line}`);
+      assert.equal(found.find((v) => v.rule === 'ai-attribution').line, 5, '생성 표시가 있는 줄을 보고해야 합니다');
+    }
+  }
+});
+
+test('답변의 코드 블록 안에 쓴 PR 설명에 생성 표시가 있어도 막는다', () => {
+  const answer = '```markdown\n## 변경 내용\n\n- 재시도를 추가했습니다.\n\nGenerated with [Claude Code](https://claude.com/claude-code)\n```';
+  assert.ok(names(checkText(answer, ATTRIBUTION, 'chat')).includes('ai-attribution'));
+});
+
+test('생성 표시를 언급하기만 한 문장과 사용자가 정한 공동 작성자 줄은 막지 않는다', () => {
+  const allowed = [
+    'feat: 재시도 추가\n\nCo-Authored-By: mikdren <bot-sidekick@nerd.kim>',
+    'feat: 재시도 추가\n\nCo-Authored-By: Claude Bernard <claude.bernard@example.fr>',
+    'Claude Code로 생성한 코드를 검토했습니다.',
+    '설치하면 `Generated with [Claude Code]` 줄을 붙이지 않습니다.',
+    '커밋 메시지에서 Co-Authored-By: Claude 줄을 지웠습니다.',
+    'PR 설명 끝의 Generated with [Claude Code] 줄도 지웠습니다.',
+  ];
+  for (const text of allowed) {
+    for (const target of ['chat', 'doc', 'commit']) {
+      assert.ok(!names(checkText(text, ATTRIBUTION, target)).includes('ai-attribution'), `${target}: ${text}`);
+    }
+  }
+});
+
+test('`banned-attribution` 키가 없는 예전 규칙에서도, 규칙 문서를 읽지 못했을 때도 생성 표시를 막는다', () => {
+  /* 0.3.0까지 설치한 뒤 직접 고친 규칙에는 이 키가 없습니다. */
+  const old = rulesOf(['register: 합니다체', 'banned-address: 당신']);
+  assert.ok(old.bannedAttribution.length > 0);
+  assert.ok(names(checkText('정리했습니다.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>', old, 'commit')).includes('ai-attribution'));
+  const missing = loadRules(join(mkdtempSync(join(tmpdir(), 'korean-style-')), '없는파일.md'));
+  assert.ok(names(checkText('정리했습니다.\n\nGenerated with [Claude Code](https://claude.com/claude-code)', missing, 'commit')).includes('ai-attribution'));
+});
+
+test('`banned-attribution`이 비어 있으면 생성 표시를 막지 않는다', () => {
+  const off = rulesOf(['banned-attribution:']);
+  assert.deepEqual(off.bannedAttribution, []);
+  assert.equal(checkText('Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>', off, 'commit').length, 0);
+});
+
 test('소스 파일은 주석만 검사한다', () => {
   /* 코드까지 검사하던 것이 이 도구의 가장 큰 오검출 원인이었습니다. */
-  const r = rulesOf(['register: 다나까체', 'max-comma-per-sentence: 2', 'loanword-spelling: 워크플로우=워크플로']);
+  const r = rulesOf(['register: 합니다체', 'max-comma-per-sentence: 2', 'loanword-spelling: 워크플로우=워크플로']);
   const source = [
     "const CASES = ['워크플로우', '확인했어요', '당신', '보여집니다', '항목'];",
     '// 이 주석의 워크플로우는 걸려야 합니다.',
@@ -190,7 +259,7 @@ test('onlyComments는 길이를 바꾸지 않는다', () => {
 
 /* ---------------------------------------------------------------------------  fence  --------------------------------------------------------------------------- */
 
-test('fence 안에는 낱말 규칙을 적용하고 문장 규칙은 적용하지 않는다', () => {
+test('코드 블록 안에는 낱말 규칙을 적용하고 문장 규칙은 적용하지 않는다', () => {
   const r = rulesOf([
     'loanword-spelling: 워크플로우=워크플로',
     'max-comma-per-sentence: 2',
@@ -202,15 +271,15 @@ test('fence 안에는 낱말 규칙을 적용하고 문장 규칙은 적용하�
   assert.equal(checkText(command, r, 'doc').length, 0);
 });
 
-test('fence 안을 다시 검사할 때 규칙 블록은 빠진다', () => {
+test('코드 블록 안을 따로 검사할 때 규칙 설정 블록은 뺀다', () => {
   /* 규칙 블록에는 금지할 낱말이 그대로 적혀 있습니다. */
   const r = rulesOf(['loanword-spelling: 워크플로우=워크플로']);
   const doc = ['문서입니다.', '```' + RULE_FENCE, 'loanword-spelling: 워크플로우=워크플로', '```'].join('\n');
   assert.equal(checkText(doc, r, 'doc').length, 0);
 });
 
-/* 다른 사람이나 모델이 쓴 글을 인용 표시 사이에 옮겨 적은 문서입니다. 인용한 글에는 가운뎃점과 다른 어투가 그대로 들어 있습니다. */
-const QUOTE_RULES = ['register: 다나까체', 'banned-char: middot', 'quote-marker: korean-style-quote'];
+/* 다른 사람이나 모델이 쓴 글을 인용 표시 사이에 옮겨 적은 문서입니다. 인용한 글에는 가운뎃점과 해요체 문장이 그대로 들어 있습니다. */
+const QUOTE_RULES = ['register: 합니다체', 'banned-char: middot', 'quote-marker: korean-style-quote'];
 const QUOTED_ANSWER = (close = '<!-- /korean-style-quote -->') =>
   ['아래는 받은 답변입니다.', '', '<!-- korean-style-quote -->', '> 결제 API·DB를 확인해 보세요.', close, '', '설명을 마칩니다.'].join('\n');
 
@@ -236,16 +305,16 @@ test('닫는 인용 표시가 없으면 여는 표시 뒤도 검사한다', () =
 
 test('`quote-marker` 키가 없는 예전 규칙에서도 기본 인용 표시를 따른다', () => {
   /* 직접 고친 예전 규칙에는 이 키가 없습니다. 문서에 넣은 인용 표시는 그래도 지켜야 합니다. */
-  const r = rulesOf(['register: 다나까체', 'banned-char: middot']);
+  const r = rulesOf(['register: 합니다체', 'banned-char: middot']);
   assert.equal(checkText(QUOTED_ANSWER(), r, 'doc').length, 0);
 });
 
 test('`quote-marker`가 비어 있으면 인용 표시가 있어도 검사한다', () => {
-  const r = rulesOf(['register: 다나까체', 'banned-char: middot', 'quote-marker:']);
+  const r = rulesOf(['register: 합니다체', 'banned-char: middot', 'quote-marker:']);
   assert.ok(names(checkText(QUOTED_ANSWER(), r, 'doc')).includes('banned-char'));
 });
 
-test('onlyFenced는 fence 안쪽만 남기고 fence 표시와 바깥은 공백으로 바꾼다', () => {
+test('onlyFenced는 코드 블록 안쪽만 남기고 여닫는 줄과 바깥은 공백으로 바꾼다', () => {
   const doc = '밖입니다.\n```\n안입니다.\n```\n';
   const inner = onlyFenced(doc, []);
   assert.ok(inner.includes('안입니다'));
@@ -269,17 +338,17 @@ test('백틱 네 개로 연 block은 그 안의 백틱 세 개 줄에서 닫히�
   const inner = onlyFenced(NESTED_FENCE, []);
   assert.ok(inner.includes('주석을 달았어요') && inner.includes('안쪽 끝입니다'));
   assert.ok(!inner.includes('다시 밖입니다'));
-  /* 바깥 block 전체를 code block으로 보므로 그 안의 다른 어투는 code block 규칙으로 잡습니다. */
-  assert.ok(names(checkText(NESTED_FENCE, rulesOf(['register: 다나까체']), 'doc')).includes('wrong-register'));
+  /* 바깥 블록 전체를 코드 블록 하나로 보므로 그 안의 해요체 문장은 코드 블록 검사에서 잡습니다. */
+  assert.ok(names(checkText(NESTED_FENCE, rulesOf(['register: 합니다체']), 'doc')).includes('wrong-register'));
 });
 
-test('물결표로 연 block도 code block으로 본다', () => {
+test('물결표로 연 부분도 코드 블록으로 본다', () => {
   const doc = ['밖입니다.', '~~~', '안입니다.', '~~~', '다시 밖입니다.'].join('\n');
   assert.ok(!stripCode(doc).includes('안입니다'));
   assert.ok(onlyFenced(doc, []).includes('안입니다'));
 });
 
-test('한 줄 안에서 백틱 세 개로 감싼 code 뒤의 줄은 code block으로 보지 않는다', () => {
+test('한 줄 안에서 백틱 세 개로 감싼 코드 뒤의 줄은 코드 블록으로 보지 않는다', () => {
   const doc = ['```npm test```로 실행합니다.', '다음 줄은 산문입니다.'].join('\n');
   const stripped = stripCode(doc);
   assert.ok(!stripped.includes('npm test'));
@@ -321,7 +390,7 @@ test('어절은 공백으로 나눠 센다', () => {
 
 test('도구 입력의 산문을 필드 이름으로 찾는다', () => {
   /* 필드의 전체 경로를 규칙에 적으면 harness가 입력을 한 단계 더 감싸는 순간 그 규칙은 아무것도 잡지 못합니다. 그런데도 겉으로는 규칙이 계속 적용되는 것처럼 보입니다. */
-  const r = rulesOf(['chat-tool-fields: AskUserQuestion.question, AskUserQuestion.label', 'register: 다나까체']);
+  const r = rulesOf(['chat-tool-fields: AskUserQuestion.question, AskUserQuestion.label', 'register: 합니다체']);
   const input = { questions: [{ question: '확인했어요?', options: [{ label: '당신 선택' }, { label: '괜찮습니다' }] }] };
   const found = toolFieldTexts('AskUserQuestion', input, r);
   assert.equal(found.length, 3, `필드 셋이어야 하는데 ${found.length}개입니다`);
@@ -355,7 +424,7 @@ test('회귀: 자모가 분리된(NFD) 한글도 완성형과 똑같이 검사�
   const r = rulesOf([
     'double-passive: 보여=보이',
     'loanword-spelling: 워크플로우=워크플로, 디렉토리=디렉터리',
-    'register: 다나까체',
+    'register: 합니다체',
   ]);
   const sentence = '이것은 보여집니다. 워크플로우와 디렉토리를 확인합니다.';
 
@@ -367,7 +436,7 @@ test('회귀: 자모가 분리된(NFD) 한글도 완성형과 똑같이 검사�
 });
 
 test('회귀: 자모가 분리된(NFD) 한글을 한국어가 없는 글로 보지 않는다', () => {
-  const r = rulesOf(['korean-required-min-chars: 20', 'register: 다나까체']);
+  const r = rulesOf(['korean-required-min-chars: 20', 'register: 합니다체']);
   const decomposed = '이 문장은 한국어로 쓰였고 충분히 깁니다.'.normalize('NFD');
   assert.equal(names(checkText(decomposed, r, 'chat')).includes('korean-required'), false);
 });
@@ -378,7 +447,7 @@ test('subagent 프롬프트의 영어식 표현과 이중피동을 잡는다', (
     'agent-tool-fields: Task.prompt',
     'translationese-patterns: 에 의하여=~로',
     'double-passive: 읽혀=읽히',
-    'register: 다나까체',
+    'register: 합니다체',
   ]);
   const input = { prompt: '이 파일은 검사기에 의하여 읽혀집니다. 결과를 보고하십시오.', subagent_type: 'explorer' };
   const problems = checkToolCall('Task', input, r, 'doc');
@@ -388,7 +457,7 @@ test('subagent 프롬프트의 영어식 표현과 이중피동을 잡는다', (
 
 test('영어로 쓴 subagent 프롬프트는 거부하지 않는다', () => {
   /* 규칙을 어긴 한국어 프롬프트를 막는 것보다 영어 프롬프트를 통과시키는 것이 더 중요합니다. */
-  const r = rulesOf(['agent-tool-fields: Task.prompt', 'korean-required-min-chars: 20', 'register: 다나까체']);
+  const r = rulesOf(['agent-tool-fields: Task.prompt', 'korean-required-min-chars: 20', 'register: 합니다체']);
   const input = { prompt: 'Read scripts/lib/text.mjs and report the sentence splitting contract in detail.' };
   assert.equal(checkToolCall('Task', input, r, 'doc').length, 0);
 });
@@ -400,7 +469,7 @@ test('chat-tool-fields와 agent-tool-fields가 서로 섞이지 않는다', () =
   assert.equal(toolFieldTexts('Task', { prompt: '확인했습니다' }, r, 'agentToolFields').length, 1);
 });
 
-test('glob의 **는 경로 조각이 하나도 없어도 일치한다', () => {
+test('glob의 `**`는 그 자리에 디렉터리가 없어도 일치한다', () => {
   assert.ok(globToRegExp('docs/**/*.md').test('docs/a.md'));
   assert.ok(globToRegExp('docs/**/*.md').test('docs/x/y/a.md'));
   assert.ok(!globToRegExp('docs/*.md').test('docs/x/a.md'));
@@ -428,7 +497,7 @@ test('주석 줄과 빈 줄은 규칙이 아니다', () => {
   assert.deepEqual(r.bannedAddress, ['당신']);
 });
 
-test('오른쪽이 빈 매핑에는 교정안을 만들어 내지 않는다', () => {
+test('대신 쓸 표현을 적지 않은 항목에는 고칠 안을 지어내지 않는다', () => {
   const r = rulesOf(['translationese-patterns: 를 통해']);
   assert.equal(r.translationesePatterns.get('를 통해'), '');
   const v = checkText('로그를 통해 확인했습니다.', r, 'doc');
@@ -447,7 +516,7 @@ test('알 수 없는 검사 종류면 예외를 던진다', () => {
 });
 
 test('빈 텍스트는 통과한다', () => {
-  const r = rulesOf(['register: 다나까체']);
+  const r = rulesOf(['register: 합니다체']);
   assert.equal(checkText('', r, 'chat').length, 0);
   assert.equal(checkText('   \n  ', r, 'chat').length, 0);
 });
@@ -460,7 +529,7 @@ const contrastRules = () => rulesOf(['max-contrast-per-1k: ko=0.8, en=0.5', 'den
 /* 최소 횟수를 1로, 여유를 0으로 두어 한 번만 나와도 밀도를 따지게 합니다. 표현 하나를 세는지만 봅니다. */
 const contrastOnce = () => rulesOf(['max-contrast-per-1k: ko=0.8, en=0.5', 'density-rule-floor: 1', 'density-margin: 0']);
 
-test('`docs/rules.md` 한도에서는 짧은 글에 `A가 아니라 B`가 네 번 나오면 걸린다', () => {
+test('`docs/rules.md`와 같은 한도에서는 짧은 글에 `A가 아니라 B`가 네 번 나오면 걸린다', () => {
   const text = [
     '원인은 코드가 아니라 설정입니다.',
     '고칠 곳은 서버가 아니라 클라이언트입니다.',

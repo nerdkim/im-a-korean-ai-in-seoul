@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { parseArgs } from 'node:util';
 import { INSTALLED_DIR, isEntryPoint } from './lib/paths.mjs';
+import { canonicalRegister } from './lib/rules.mjs';
 import { readSettings, localSettingsPaths, installCommitHook, reportCommitHook } from './lib/setup.mjs';
 export { installCommitHook, reportCommitHook } from './lib/setup.mjs';
 
@@ -40,13 +41,14 @@ const OUTPUT_STYLE_DIR_POSIX = '.claude/output-styles';
 /* output-style의 이름입니다. */
 const OUTPUT_STYLE_NAME = 'korean-style';
 
-/* .gitignore에서 이 도구가 넣은 줄을 알아보는 표시입니다. */
-const GITIGNORE_MARKER = '# korean-style이 설치한 파일입니다. 이 가운데 직접 고치는 파일은 rules.md뿐입니다.';
+/* .gitignore에서 이 도구가 넣은 줄을 알아볼 때 쓰는 주석 줄입니다. */
+const GITIGNORE_MARKER = '# korean-style이 설치한 파일입니다. 이 가운데 직접 고쳐도 되는 파일은 rules.md뿐입니다.';
 
-/* 0.2.1까지 쓰던 표시입니다. 다시 설치하면 새 표시로 바꿉니다. */
+/* 0.3.0까지 쓰던 주석 줄입니다. 다시 설치하면 설치 스크립트가 새 주석 줄로 바꿉니다. */
 const OLD_GITIGNORE_MARKERS = [
   '# korean-style 설치 산출물입니다. rules.md만 이 프로젝트의 것입니다',
   '# korean-style이 설치한 파일입니다. 직접 고치는 파일은 rules.md뿐입니다',
+  '# korean-style이 설치한 파일입니다. 이 가운데 직접 고치는 파일은 rules.md뿐입니다.',
 ];
 
 /* 설치할 저장소의 .gitignore에 더할 줄입니다. */
@@ -62,14 +64,14 @@ export const GITIGNORE_LINES = [
 /* 설치한 프로젝트의 hook 명령에 넣는 이 도구의 경로입니다. */
 const HOOK_BASE = `$CLAUDE_PROJECT_DIR/${INSTALLED_DIR}/scripts/hooks`;
 
-/* settings.json에서 이 도구의 hook 명령을 알아보는 표시입니다. */
+/* settings.json에서 이 도구의 hook 명령을 알아볼 때 찾는 경로입니다. */
 const MARKER = `${INSTALLED_DIR}/scripts/hooks/`;
 
 const HOOKS = {
   UserPromptSubmit: {
     script: 'userprompt.mjs',
     command: `node "${HOOK_BASE}/userprompt.mjs"`,
-    statusMessage: '한국어 작성 skill 안내 중',
+    statusMessage: 'Claude에게 skill을 먼저 부르라고 알리는 중',
   },
   PreToolUse: {
     script: 'pretooluse.mjs',
@@ -86,17 +88,17 @@ const HOOKS = {
 
 export const RULES_REGISTER_LINE = /^register:.*$/m;
 
-/* 어투 조각의 파일 이름입니다. */
+/* 말투별 문구를 담은 파일의 이름입니다. */
 export const REGISTER_FRAGMENTS = {
-  다나까체: 'danaka.md',
+  합니다체: 'hapnida.md',
   해요체: 'hayo.md',
   혼용: 'honyong.md',
 };
 
-/* skill과 output-style에서 어투 조각을 넣을 구간입니다. */
+/* skill과 output-style에서 말투별 문구가 들어갈 구간입니다. */
 export const REGISTER_SLOT = /<!-- register:begin -->[\s\S]*?<!-- register:end -->/;
 
-/* skill과 output-style의 어투 구간을 고른 조각으로 바꿉니다. */
+/* skill과 output-style의 말투 구간을 고른 말투의 문구로 바꿉니다. */
 export function skillWithRegister(body, fragment) {
   const filled = `<!-- register:begin -->\n${fragment.trim()}\n<!-- register:end -->`;
   return body.replace(REGISTER_SLOT, () => filled);
@@ -123,6 +125,14 @@ export function mergeHookSettings(existing, hooks = HOOKS) {
     if (!found) added.push(event);
   }
   return { settings: out, added };
+}
+
+/* Claude Code가 커밋 메시지와 PR 설명에 생성 표시를 붙이지 않게 합니다. 프로젝트가 이미 정해 둔 값은 그대로 두고 빠진 값만 빈 문자열로 채웁니다. */
+export function mergeAttribution(settings) {
+  const out = settings === null || typeof settings !== 'object' ? {} : { ...settings };
+  const current = out.attribution !== null && typeof out.attribution === 'object' && !Array.isArray(out.attribution) ? out.attribution : {};
+  out.attribution = { ...current, commit: current.commit ?? '', pr: current.pr ?? '' };
+  return out;
 }
 
 /* 프로젝트 설정에서 고른 output-style이 없을 때만 이 도구의 output-style을 기본값으로 둡니다. */
@@ -152,7 +162,7 @@ function selfCheck() {
   let failed = 0;
   const report = (ok, label) => {
     if (!ok) failed += 1;
-    process.stdout.write(`${ok ? '  ok  ' : '  실패'} ${label}\n`);
+    process.stdout.write(`${ok ? '  성공' : '  실패'} ${label}\n`);
   };
 
   report(mergeHookSettings({}).added.length === 3, '빈 설정에 hook 셋을 더한다');
@@ -175,26 +185,33 @@ function selfCheck() {
   const withEnv = mergeHookSettings({ env: { FOO: 'bar' } }).settings;
   report(withEnv.env?.FOO === 'bar', 'hook 밖의 설정을 지우지 않는다');
 
-  /* 어투를 바꿀 때 `register:` 줄만 바뀌는지 확인합니다. */
-  const swapped = 'register: 다나까체\nbanned-address: 당신\n'.replace(RULES_REGISTER_LINE, 'register: 해요체');
-  report(swapped === 'register: 해요체\nbanned-address: 당신\n', '어투를 바꾸면 register 줄만 바뀐다');
+  /* 말투를 바꿀 때 `register:` 줄만 바뀌는지 확인합니다. */
+  const swapped = 'register: 합니다체\nbanned-address: 당신\n'.replace(RULES_REGISTER_LINE, 'register: 해요체');
+  report(swapped === 'register: 해요체\nbanned-address: 당신\n', '말투를 바꾸면 register 줄만 바뀐다');
 
-  /* 어투 조각이 register 표시 사이에만 들어가는지 확인합니다. */
-  const body = '# 제목\n<!-- register:begin -->\n옛 조각입니다.\n<!-- register:end -->\n남은 산문입니다.\n';
-  const filled = skillWithRegister(body, '새 조각입니다.');
+  /* 말투별 문구가 register 표시 사이에만 들어가는지 확인합니다. */
+  const body = '# 제목\n<!-- register:begin -->\n예전 문구입니다.\n<!-- register:end -->\n남은 산문입니다.\n';
+  const filled = skillWithRegister(body, '새 문구입니다.');
   report(
-    filled.includes('새 조각입니다.') && !filled.includes('옛 조각입니다.') && filled.includes('남은 산문입니다.'),
-    '어투 조각은 register 표시 사이에만 들어간다',
+    filled.includes('새 문구입니다.') && !filled.includes('예전 문구입니다.') && filled.includes('남은 산문입니다.'),
+    '말투별 문구는 register 표시 사이에만 들어간다',
   );
 
   /* 달러 기호가 치환 패턴으로 읽히면 파일에 쓰는 내용이 달라집니다. */
-  report(skillWithRegister(body, '값은 $1 입니다.').includes('$1'), '조각의 달러 기호를 치환 패턴으로 읽지 않는다');
+  report(skillWithRegister(body, '값은 $1 입니다.').includes('$1'), '문구의 달러 기호를 치환 패턴으로 읽지 않는다');
 
-  /* 어투 이름 세 개에 모두 조각 파일이 있어야 합니다. */
+  /* 말투 이름 세 개에 각각 문구 파일이 있어야 합니다. */
   report(
     Object.keys(REGISTER_FRAGMENTS).length === 3 &&
       Object.values(REGISTER_FRAGMENTS).every((name) => existsSync(join(SOURCE_ROOT, 'skill', 'korean-style', 'register', name))),
-    '어투 이름마다 조각 파일이 있다',
+    '말투 이름마다 문구 파일이 있다',
+  );
+
+  /* 생성 표시 설정은 빠진 값만 채웁니다. */
+  report(
+    JSON.stringify(mergeAttribution({}).attribution) === JSON.stringify({ commit: '', pr: '' }) &&
+      mergeAttribution({ attribution: { commit: '직접 정한 값' } }).attribution.commit === '직접 정한 값',
+    '생성 표시 설정은 빠진 값만 빈 문자열로 채운다',
   );
 
   /* gitignore 병합을 확인합니다. */
@@ -202,7 +219,7 @@ function selfCheck() {
   report(ignoreOnce.added && ignoreOnce.text.includes(`${INSTALLED_DIR}/*`), '빈 gitignore에 줄을 더한다');
   report(mergeGitignore(ignoreOnce.text).added === false, '두 번 더해도 줄이 쌓이지 않는다');
 
-  /* 규칙 문서를 빼면 그 프로젝트가 고친 값이 clean checkout에서 사라집니다. */
+  /* 규칙 문서를 Git에서 빼면 저장소를 새로 clone한 사람은 그 프로젝트에서 고친 값을 받지 못합니다. */
   report(ignoreOnce.text.includes(`!${INSTALLED_DIR}/rules.md`), '규칙 문서는 Git에서 제외하지 않는다');
 
   /* 디렉터리 자체를 빼면 git이 그 안을 보지 않아서 부정 패턴이 적용되지 않습니다. */
@@ -228,7 +245,7 @@ function selfCheck() {
   return failed === 0;
 }
 
-const usage = '사용법: --target <경로> [--register 다나까체|해요체|혼용] [--activate] [--dry-run] [--force] | --self-check';
+const usage = '사용법: --target <경로> [--register 합니다체|해요체|혼용] [--activate] [--dry-run] [--force] | --self-check';
 const hashRules = text => createHash('sha256').update(text.replace(RULES_REGISTER_LINE, 'register:')).digest('hex');
 
 function assertWritablePath(root, rel) {
@@ -256,20 +273,24 @@ function main() {
   const root = realpathSync(resolve(args.target));
   if (!lstatSync(root).isDirectory()) throw new Error(`--target에는 디렉터리를 지정해야 합니다: ${root}`);
   if (root === realpathSync(SOURCE_ROOT)) throw new Error('이 도구의 저장소에는 설치하지 않습니다.');
-  if (args.register !== undefined && !Object.hasOwn(REGISTER_FRAGMENTS, args.register)) {
-    throw new Error('--register는 다나까체, 해요체, 혼용 중 하나여야 합니다.');
+  const asked = args.register === undefined ? undefined : canonicalRegister(args.register);
+  if (asked !== undefined && !Object.hasOwn(REGISTER_FRAGMENTS, asked)) {
+    throw new Error('--register는 합니다체, 해요체, 혼용 중 하나여야 합니다.');
   }
   const installDir = join(root, INSTALLED_DIR);
   const rulesTarget = join(installDir, 'rules.md');
   const hashTarget = join(installDir, 'defaults.sha256');
   const before = existsSync(rulesTarget) ? readFileSync(rulesTarget, 'utf8') : null;
-  const register = args.register ?? before?.match(RULES_REGISTER_LINE)?.[0].split(':')[1].trim() ?? '다나까체';
-  if (!Object.hasOwn(REGISTER_FRAGMENTS, register)) throw new Error(`알 수 없는 어투입니다: ${register}`);
-  const defaults = readFileSync(join(SOURCE_ROOT, 'docs/rules.md'), 'utf8').replace(RULES_REGISTER_LINE, `register: ${register}`);
+  /* `--register`를 주지 않으면 규칙 문서에 적힌 이름을 글자 그대로 둡니다. 규칙 문서는 팀이 함께 쓰므로, `다나까체`를 `합니다체`로 바꾸면 아직 0.3.0 검사기를 쓰는 팀원은 말투 검사가 꺼집니다. */
+  const written = before?.match(RULES_REGISTER_LINE)?.[0].split(':')[1].trim() || undefined;
+  const register = asked ?? canonicalRegister(written ?? '합니다체');
+  if (!Object.hasOwn(REGISTER_FRAGMENTS, register)) throw new Error(`알 수 없는 말투입니다: ${register}`);
+  const registerName = asked ?? written ?? register;
+  const defaults = readFileSync(join(SOURCE_ROOT, 'docs/rules.md'), 'utf8').replace(RULES_REGISTER_LINE, `register: ${registerName}`);
   const baseHash = existsSync(hashTarget) ? readFileSync(hashTarget, 'utf8').trim() : null;
   const refresh = !before || args.force || hashRules(before) === baseHash || hashRules(before) === hashRules(defaults);
   let rules = refresh ? defaults : before;
-  if (args.register) {
+  if (asked !== undefined) {
     if (!RULES_REGISTER_LINE.test(rules)) throw new Error('기존 규칙에 register 줄이 없습니다. 규칙을 복구하거나 --force를 사용해야 합니다.');
     rules = rules.replace(RULES_REGISTER_LINE, `register: ${register}`);
   }
@@ -278,7 +299,8 @@ function main() {
   const settingsPath = join(root, '.claude/settings.json');
   const existing = readSettings(settingsPath);
   const local = localSettingsPaths(root).map(path => ({ path, settings: readSettings(path) }));
-  const { settings, added } = mergeHookSettings(existing);
+  const { settings: hooked, added } = mergeHookSettings(existing);
+  const settings = mergeAttribution(hooked);
   const style = mergeOutputStyle(args.activate ? { ...settings, outputStyle: OUTPUT_STYLE_NAME } : settings);
   const ignorePath = join(root, '.gitignore');
   const ignoreBefore = existsSync(ignorePath) ? readFileSync(ignorePath, 'utf8') : '';
@@ -293,12 +315,12 @@ function main() {
     }
   }
   // 로컬 설정은 진단만 합니다. 다른 worktree의 settings.local.json도 바꾸지 않습니다.
-  console.log(`설치할 프로젝트: ${root}\n규칙: ${refresh ? '최신 기본값 적용' : '프로젝트의 기존 규칙 유지'} (${register})`);
-  if (!refresh) console.log('새 기본 규칙이 필요하면 --force로 재설치해야 합니다. 이때 설치 스크립트가 기존 규칙을 백업합니다.');
+  console.log(`설치할 프로젝트: ${root}\n말투: ${register}\n${refresh ? '새 기본 규칙을 씁니다.' : '기존 규칙을 그대로 둡니다.'}`);
+  if (!refresh) console.log('새 기본 규칙이 필요하면 --force를 붙여 다시 설치해야 합니다. 이때 설치 스크립트가 기존 규칙을 백업합니다.');
   if (backup) console.log(`규칙 백업: ${backup}`);
-  if (style.settings.outputStyle !== OUTPUT_STYLE_NAME) console.log('기존 output-style을 유지합니다. 작성 지침을 선택하려면 --activate를 사용해야 합니다.');
+  if (style.settings.outputStyle !== OUTPUT_STYLE_NAME) console.log('기존 output-style을 유지합니다. korean-style로 바꾸려면 --activate를 붙여야 합니다.');
   const effective = Object.assign({}, style.settings, ...local.map(x => x.settings));
-  if (effective.disableAllHooks) console.log('주의: disableAllHooks가 켜져 있습니다. 해당 설정을 해제해야 hook이 실행됩니다.');
+  if (effective.disableAllHooks) console.log('주의: disableAllHooks가 켜져 있습니다. 이 설정을 꺼야 hook이 실행됩니다.');
   if (effective.outputStyle !== style.settings.outputStyle) console.log('주의: settings.local.json의 outputStyle이 프로젝트 설정보다 우선합니다.');
   if (args['dry-run']) { reportCommitHook(installCommitHook(root, true)); console.log('--dry-run: 파일을 쓰지 않았습니다.'); return; }
 
@@ -328,7 +350,7 @@ function main() {
   console.log(`설치했습니다. 새 hook: ${added.join(', ') || '없음'}`);
   if (!hasGit) console.log('.git이 없어서 .gitignore를 수정하지 않았습니다. git init 후 다시 설치하면 설치 스크립트가 필요한 항목을 추가합니다.');
   reportCommitHook(installCommitHook(root));
-  console.log('설치한 프로젝트에서 Claude 세션을 새로 시작해야 설치 내용이 적용됩니다. 그때부터 Claude는 한국어를 쓰는 turn마다 korean-rewrite skill을 먼저 부릅니다.');
+  console.log('설치한 프로젝트에서 Claude Code를 다시 시작해야 설치 내용이 적용됩니다. 그때부터 Claude는 한국어를 써야 하는 요청마다 먼저 korean-rewrite skill을 부릅니다.');
   const quoted = "'" + join(installDir, 'scripts/doctor.mjs').replaceAll("'", "'\\''") + "'";
   console.log(`점검: node ${quoted}`);
 }

@@ -12,6 +12,7 @@ import { structureViolations } from './rules/structure.mjs';
 import { translationeseViolations } from './rules/translationese.mjs';
 import { vocabularyViolations } from './rules/vocabulary.mjs';
 import { densityViolations } from './rules/density.mjs';
+import { attributionViolations } from './rules/attribution.mjs';
 
 /* 텍스트 하나를 검사해 위반 목록을 돌려줍니다. */
 export function checkText(input, rules, target = 'chat', options = {}) {
@@ -42,6 +43,7 @@ export function checkText(input, rules, target = 'chat', options = {}) {
     ...translationeseViolations(text, rules),
     ...vocabularyViolations(text, rules, target),
     ...densityViolations(text, rules),
+    ...attributionViolations(text, rules),
   ];
 
   if (!inFence) {
@@ -50,7 +52,7 @@ export function checkText(input, rules, target = 'chat', options = {}) {
       for (const v of checkText(fenced, fenceRules(rules), target, { inFence: true })) {
         violations.push({
           ...v,
-          detail: `${v.detail} fenced code block 안에서 찾은 위반입니다.`,
+          detail: `${v.detail} 코드 블록 안에서 찾은 위반입니다.`,
         });
       }
     }
@@ -100,7 +102,7 @@ export function checkToolCall(toolName, input, rules, target = 'chat') {
 /* 보고 맨 아래에 붙이는 규칙 출처입니다. */
 function sourceNote(rules) {
   if (rules.source === null) {
-    return `  규칙 설정을 찾지 못했습니다.\n  경고: ${rules.reason} 검사한 것은 금지 문자, 금지 호칭, 영어로만 쓴 답변뿐입니다.`;
+    return `  규칙 설정을 찾지 못했습니다. ${rules.reason}\n  그래서 금지 문자와 생성 표시만 검사했고, 답변이면 금지 호칭을 썼는지와 영어로만 썼는지도 검사했습니다.`;
   }
   return `  규칙 문서: ${rules.source}`;
 }
@@ -115,7 +117,7 @@ export function formatViolations(violations, rules, where) {
 }
 
 export function formatToolViolations(problems, rules) {
-  const head = `한국어 문체 위반 ${problems.length}건 (이 도구에 넘긴 글)`;
+  const head = `한국어 검사: 오류 ${problems.length}건 (이 도구에 넘긴 글)`;
   const body = problems.map((p) => `  [${p.rule}] ${p.where}: ${p.detail}`);
   return [head, ...body, sourceNote(rules)].join('\n');
 }

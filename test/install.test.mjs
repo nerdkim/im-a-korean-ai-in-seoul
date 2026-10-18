@@ -245,18 +245,52 @@ test('register 값이 규칙 문서에 반영된다', () => {
 
   const rules = readFileSync(join(target, INSTALLED_DIR, 'rules.md'), 'utf-8');
   assert.match(rules, /^register: 해요체$/m);
-  assert.ok(!/^register: 다나까체$/m.test(rules));
+  assert.ok(!/^register: 합니다체$/m.test(rules));
 });
 
-test('register를 주지 않으면 기본 어투가 남는다', () => {
+test('register를 주지 않으면 기본 말투인 합니다체가 남는다', () => {
   const target = scratch();
   install(target);
 
   const rules = readFileSync(join(target, INSTALLED_DIR, 'rules.md'), 'utf-8');
-  assert.match(rules, /^register: 다나까체$/m);
+  assert.match(rules, /^register: 합니다체$/m);
 });
 
-test('재설치해도 지침과 검사기 모두 기존 어투를 유지한다', () => {
+test('예전 말투 이름 `다나까체`를 주면 합니다체를 고른 것으로 본다', () => {
+  const target = scratch();
+  const r = install(target, ['--register', '다나까체']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(readFileSync(join(target, INSTALLED_DIR, 'rules.md'), 'utf-8'), /^register: 합니다체$/m);
+  const fragment = readFileSync(join(ROOT, 'skill', 'korean-style', 'register', REGISTER_FRAGMENTS.합니다체), 'utf-8').trim();
+  assert.ok(readFileSync(join(target, SKILL_REL), 'utf-8').includes(fragment), '합니다체 문구가 들어가지 않았습니다');
+});
+
+test('0.3.0 기본 규칙으로 설치한 프로젝트에 다시 설치해도 `다나까체`라는 말투 이름은 그대로 둔다', () => {
+  /* 규칙 문서는 팀이 함께 커밋합니다. 이름을 바꾸면 아직 0.3.0을 쓰는 팀원의 검사기가 `합니다체`를 알아보지 못해 말투 검사가 꺼집니다. */
+  const target = scratch();
+  assert.equal(install(target).status, 0);
+  const rulesPath = join(target, INSTALLED_DIR, 'rules.md');
+  const previous = readFileSync(rulesPath, 'utf8').replace(/^register:.*$/m, 'register: 다나까체').replace(/^banned-attribution:.*\n/m, '');
+  writeFileSync(rulesPath, previous);
+  writeFileSync(join(target, INSTALLED_DIR, 'defaults.sha256'), createHash('sha256').update(previous.replace(/^register:.*$/m, 'register:')).digest('hex'));
+  assert.equal(install(target).status, 0);
+  const rules = readFileSync(rulesPath, 'utf8');
+  assert.match(rules, /^register: 다나까체$/m, '말투 이름이 바뀌었습니다');
+  assert.match(rules, /^banned-attribution:/m, '새 기본 규칙이 들어가지 않았습니다');
+  assert.equal(runInstalled(target, ['--text', '확인했어요.']).status, 1, '`register: 다나까체` 규칙에서 해요체는 위반입니다');
+  assert.equal(doctor(target).status, 0);
+});
+
+test('`--register`로 말투를 고르면 규칙 문서에 새 이름을 적는다', () => {
+  const target = scratch();
+  assert.equal(install(target).status, 0);
+  const rulesPath = join(target, INSTALLED_DIR, 'rules.md');
+  writeFileSync(rulesPath, readFileSync(rulesPath, 'utf8').replace(/^register:.*$/m, 'register: 다나까체'));
+  assert.equal(install(target, ['--register', '합니다체']).status, 0);
+  assert.match(readFileSync(rulesPath, 'utf8'), /^register: 합니다체$/m);
+});
+
+test('재설치해도 지침과 검사기 모두 기존 말투를 유지한다', () => {
   const target = scratch();
   assert.equal(install(target, ['--register', '해요체']).status, 0);
   assert.equal(install(target).status, 0);
@@ -265,7 +299,7 @@ test('재설치해도 지침과 검사기 모두 기존 어투를 유지한다',
   assert.equal(runInstalled(target, ['--text', '확인했어요.']).status, 0);
 });
 
-test('잘못된 어투는 파일을 쓰기 전에 거부한다', () => {
+test('알 수 없는 말투 이름은 파일을 쓰기 전에 거부한다', () => {
   const target = scratch();
   assert.equal(install(target, ['--register', 'typo']).status, 2);
   assert.equal(existsSync(join(target, INSTALLED_DIR)), false);
@@ -294,7 +328,7 @@ test('재설치하면 이 도구의 PreToolUse hook matcher에 빠진 Agent를 �
   assert.ok(next.hooks.PreToolUse[0].matcher.split('|').includes('Agent'));
 });
 
-test('doctor는 disableAllHooks 설정을 실패로 보고한다', () => {
+test('doctor는 disableAllHooks가 켜져 있으면 실패를 알린다', () => {
   const target = scratch();
   install(target);
   const path = join(target, '.claude/settings.json');
@@ -307,7 +341,7 @@ test('doctor는 disableAllHooks 설정을 실패로 보고한다', () => {
 });
 
 test('rules.md가 이미 있으면 register 줄만 바꾼다', () => {
-  /* 기존 규칙 문서를 지키면서 어투도 바꿀 수 있어야 합니다. */
+  /* 기존 규칙 문서를 지키면서 말투도 바꿀 수 있어야 합니다. */
   const target = scratch();
   const path = seedRules(target, '# 우리 규칙\nregister: 다나까체\nbanned-address: 당신\n');
 
@@ -316,39 +350,39 @@ test('rules.md가 이미 있으면 register 줄만 바꾼다', () => {
   assert.equal(readFileSync(path, 'utf-8'), '# 우리 규칙\nregister: 해요체\nbanned-address: 당신\n');
 });
 
-test('어투 조각이 자기 어투를 지킨다', () => {
-  /* 이 조각들은 전체 검사에서 빠져 있습니다. */
+test('말투별 문구가 그 말투의 검사를 통과한다', () => {
+  /* 말투별 문구 파일은 전체 검사에서 빠져 있습니다. */
   const rules = loadRules(rulesDocPath(ROOT));
   assert.notEqual(rules.source, null, '규칙 문서를 읽지 못했습니다');
 
   for (const [register, name] of Object.entries(REGISTER_FRAGMENTS)) {
     const path = join(ROOT, 'skill', 'korean-style', 'register', name);
     const violations = checkText(readFileSync(path, 'utf-8'), withRegister(rules, register), 'doc');
-    assert.equal(violations.length, 0, `${name} 조각이 ${register} 규칙을 어겼습니다\n${JSON.stringify(violations, null, 2)}`);
+    assert.equal(violations.length, 0, `${name} 파일의 문구가 ${register} 규칙을 어겼습니다\n${JSON.stringify(violations, null, 2)}`);
   }
 });
 
-test('설치할 때 고른 어투 조각을 skill에 끼운다', () => {
+test('설치할 때 고른 말투의 문구를 skill에 넣는다', () => {
   const target = scratch();
   install(target, ['--register', '해요체']);
 
   const skill = readFileSync(join(target, SKILL_REL), 'utf-8');
   const fragment = readFileSync(join(ROOT, 'skill', 'korean-style', 'register', 'hayo.md'), 'utf-8');
-  assert.ok(skill.includes(fragment.trim()), '해요체 조각이 들어가지 않았습니다');
-  const danaka = readFileSync(join(ROOT, 'skill', 'korean-style', 'register', 'danaka.md'), 'utf-8').trim();
-  assert.ok(!skill.includes(danaka), '다나까체 조각이 남아 있습니다');
+  assert.ok(skill.includes(fragment.trim()), '해요체 문구가 들어가지 않았습니다');
+  const formal = readFileSync(join(ROOT, 'skill', 'korean-style', 'register', 'hapnida.md'), 'utf-8').trim();
+  assert.ok(!skill.includes(formal), '합니다체 문구가 남아 있습니다');
 
   /* 공통 절은 그대로 있어야 합니다. */
   assert.match(skill, /check-korean\.mjs --stdin/);
   assert.match(skill, /^---$/m);
 });
 
-test('어투를 고르지 않으면 기본 조각이 남는다', () => {
+test('말투를 고르지 않으면 기본 말투의 문구가 남는다', () => {
   const target = scratch();
   install(target);
 
   const skill = readFileSync(join(target, SKILL_REL), 'utf-8');
-  const fragment = readFileSync(join(ROOT, 'skill', 'korean-style', 'register', 'danaka.md'), 'utf-8');
+  const fragment = readFileSync(join(ROOT, 'skill', 'korean-style', 'register', 'hapnida.md'), 'utf-8');
   assert.ok(skill.includes(fragment.trim()));
 });
 
@@ -358,7 +392,7 @@ test('register 값에 따라 설치된 검사기의 결과가 실제로 달라�
   install(target, ['--register', '해요체']);
 
   const r = runInstalled(target, ['--text', '이것은 확인한 결과입니다.']);
-  assert.equal(r.status, 1, `해요체에서 다나까체 문장은 위반입니다. 종료 코드는 ${r.status}입니다.`);
+  assert.equal(r.status, 1, `해요체에서 합니다체 문장은 위반입니다. 종료 코드는 ${r.status}입니다.`);
   assert.match(r.stdout, /wrong-register/);
 });
 
@@ -372,18 +406,18 @@ test('output-style 본문이 이 저장소의 규칙 검사를 통과한다', ()
   assert.equal(violations.length, 0, `output-style이 자기 규칙을 어겼습니다\n${JSON.stringify(violations, null, 2)}`);
 });
 
-test('설치할 때 고른 어투 조각을 output-style에도 끼운다', () => {
-  /* skill과 같은 조각을 써야 합니다. */
+test('설치할 때 고른 말투의 문구를 output-style에도 넣는다', () => {
+  /* skill과 같은 문구를 써야 합니다. */
   const target = scratch();
   const r = install(target, ['--register', '해요체']);
   assert.equal(r.status, 0, r.stderr);
 
   const body = readFileSync(join(target, STYLE_REL), 'utf-8');
   const fragment = readFileSync(join(ROOT, 'skill/korean-style/register/hayo.md'), 'utf8').trim();
-  assert.ok(body.includes(fragment), '고른 어투가 들어가지 않았습니다');
-  const danaka = readFileSync(join(ROOT, 'skill/korean-style/register/danaka.md'), 'utf8').trim();
-  assert.ok(!body.includes(danaka), '기본 어투가 남아 있습니다');
-  assert.ok(body.includes('Preserve meaning before polishing'), '공통 지침이 사라졌습니다');
+  assert.ok(body.includes(fragment), '고른 말투의 문구가 들어가지 않았습니다');
+  const formal = readFileSync(join(ROOT, 'skill/korean-style/register/hapnida.md'), 'utf8').trim();
+  assert.ok(!body.includes(formal), '기본 말투의 문구가 남아 있습니다');
+  assert.ok(body.includes('문장을 다듬더라도 뜻은 그대로 지킵니다'), '공통 지침이 사라졌습니다');
 });
 
 test('고른 output-style이 없으면 이 도구의 것을 켠다', () => {
@@ -411,6 +445,45 @@ test('설치 스크립트가 settings.json에 output-style을 적고 남의 키�
   const settings = JSON.parse(readFileSync(join(target, '.claude', 'settings.json'), 'utf-8'));
   assert.equal(settings.outputStyle, 'korean-style');
   assert.deepEqual(settings.env, { A: '1' }, '남의 키가 사라졌습니다');
+});
+
+test('설치하면 Claude Code가 커밋 메시지와 PR 설명에 붙이는 생성 표시를 끈다', () => {
+  const target = scratch();
+  assert.equal(install(target).status, 0);
+  assert.deepEqual(jsonAt(join(target, '.claude', 'settings.json')).attribution, { commit: '', pr: '' });
+  const r = doctor(target);
+  assert.equal(r.status, 0, r.stdout);
+  assert.doesNotMatch(r.stdout, /생성 표시/);
+});
+
+test('프로젝트가 정해 둔 attribution 값은 그대로 두고 빠진 값만 채운다', () => {
+  const target = scratch();
+  const path = join(target, '.claude', 'settings.json');
+  saveJson(path, { attribution: { commit: 'Co-Authored-By: mikdren <bot-sidekick@nerd.kim>' } });
+  assert.equal(install(target).status, 0);
+  assert.deepEqual(jsonAt(path).attribution, { commit: 'Co-Authored-By: mikdren <bot-sidekick@nerd.kim>', pr: '' });
+});
+
+test('doctor는 생성 표시가 켜져 있으면 주의를 출력한다', () => {
+  const target = scratch();
+  assert.equal(install(target).status, 0);
+  const path = join(target, '.claude', 'settings.json');
+  saveJson(path, { ...jsonAt(path), attribution: { pr: '' } });
+  const missing = doctor(target);
+  assert.equal(missing.status, 0, '생성 표시가 켜진 것은 설치 실패가 아닙니다');
+  assert.match(missing.stdout, /주의 {2}.*커밋 메시지.*생성 표시.*다시 실행/);
+  saveJson(path, { ...jsonAt(path), attribution: { commit: '', pr: '🤖 Generated with [Claude Code](https://claude.com/claude-code)' } });
+  assert.match(doctor(target).stdout, /주의 {2}.*생성 표시.*PR 설명.*직접/);
+});
+
+test('doctor는 프로젝트가 정한 공동 작성자 줄에는 주의를 출력하지 않는다', () => {
+  const target = scratch();
+  const path = join(target, '.claude', 'settings.json');
+  saveJson(path, { attribution: { commit: 'Co-Authored-By: mikdren <bot-sidekick@nerd.kim>' } });
+  assert.equal(install(target).status, 0);
+  const r = doctor(target);
+  assert.equal(r.status, 0, r.stdout);
+  assert.doesNotMatch(r.stdout, /생성 표시/);
 });
 
 test('설치한 프로젝트에서 doctor가 실패 없이 끝난다', () => {
@@ -639,14 +712,14 @@ test('설치된 검사기가 자체 검사를 통과한다', () => {
   assert.match(r.stdout, /자체 검사 통과/);
 });
 
-test('회귀: 설치할 때 어느 어투를 골라도 자체 검사를 통과한다', () => {
+test('회귀: 설치할 때 어느 말투를 골라도 자체 검사를 통과한다', () => {
   /* 실제로 있었던 결함을 재현합니다. */
-  for (const register of ['다나까체', '해요체', '혼용']) {
+  for (const register of ['합니다체', '해요체', '혼용']) {
     const target = scratch();
     install(target, ['--register', register]);
 
     const r = runInstalled(target, ['--self-check']);
-    assert.equal(r.status, 0, `${register} 어투를 골라 설치했을 때 자체 검사가 실패했습니다\n${r.stdout}`);
+    assert.equal(r.status, 0, `${register} 말투를 골라 설치했을 때 자체 검사가 실패했습니다\n${r.stdout}`);
   }
 });
 
@@ -717,7 +790,7 @@ const doctor = target => spawnSync('node', [join(target, INSTALLED_DIR, 'scripts
 const git = (target, args) => spawnSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', ...args],
   { cwd: target, encoding: 'utf8', env: envFor(ROOT) });
 
-test('Claude 세션 안에서 현재 프로젝트에 설치하고 원본 저장소를 가리키는 symlink에는 설치하지 않는다', () => {
+test('Claude 세션 안에서도 현재 프로젝트에 설치할 수 있고, 원본 저장소를 가리키는 symlink에는 설치하지 않는다', () => {
   const target = scratch();
   const r = spawnSync('node', [join(ROOT, 'scripts/install.mjs'), '--target', target], { encoding: 'utf8', env: envFor(target) });
   assert.equal(r.status, 0, r.stderr);
@@ -744,7 +817,7 @@ test('잘못된 옵션과 형식이 틀린 hook 설정은 파일을 바꾸기 �
   }
 });
 
-test('이름이 같은 기존 output-style을 덮어쓰지 않고 외부를 가리키는 symlink를 따라가 쓰지도 않는다', () => {
+test('이름이 같은 기존 output-style을 덮어쓰지 않고, 프로젝트 밖을 가리키는 symlink를 따라가 쓰지도 않는다', () => {
   for (const link of [false, true]) {
     const target = scratch(), external = scratch();
     if (link) symlinkSync(external, join(target, '.claude'));
@@ -756,7 +829,7 @@ test('이름이 같은 기존 output-style을 덮어쓰지 않고 외부를 가�
   }
 });
 
-test('이전 기본 규칙만 자동 갱신하고 어투와 사용자 규칙은 보존한다', () => {
+test('고치지 않은 예전 기본 규칙만 새 규칙으로 바꾸고, 말투와 사용자가 고친 규칙은 그대로 둔다', () => {
   const target = scratch();
   assert.equal(install(target, ['--register', '해요체']).status, 0);
   const rulesPath = join(target, INSTALLED_DIR, 'rules.md');
@@ -842,7 +915,7 @@ test('core.hooksPath를 따로 지정해도 실제 git commit을 검사하고 �
   assert.equal(readFileSync(path, 'utf8'), mine);
 });
 
-test('worktree끼리 공유하는 hook은 커밋하는 checkout의 규칙을 따른다', () => {
+test('작업 트리끼리 같이 쓰는 hook은 커밋하는 작업 트리의 규칙을 따른다', () => {
   const target = gitScratch();
   assert.equal(git(target, ['commit', '--allow-empty', '-m', 'init']).status, 0);
   const worktree = join(scratch(), '한글 worktree');
@@ -872,7 +945,7 @@ test('이 도구가 건 hook의 symlink가 끊어지면 복구하고 다른 곳�
   assert.equal(doctor(target).status, 1);
 });
 
-test('나중에 git init한 뒤 재설치해도 동작하고 clone한 프로젝트에서 다시 설치할 수 있다', () => {
+test('나중에 git init한 뒤 다시 설치해도 동작하고, clone한 프로젝트에서도 다시 설치할 수 있다', () => {
   const target = scratch();
   assert.equal(install(target, ['--register', '해요체']).status, 0);
   assert.equal(git(target, ['init', '-q']).status, 0);
@@ -922,7 +995,7 @@ test('README의 shell 설치 명령을 새 프로젝트와 기존 프로젝트�
   }
 });
 
-test('사용자 규칙을 바꿔도 자체 검사는 통과하고 실제 검사는 사용자 규칙을 따른다', () => {
+test('사용자가 규칙을 바꿔도 자체 검사는 통과하고, 실제 검사는 바꾼 규칙을 따른다', () => {
   const target = scratch();
   install(target);
   const path = join(target, INSTALLED_DIR, 'rules.md');
@@ -948,12 +1021,12 @@ test('doctor는 규칙에 review-rules가 빠져 있으면 주의를 출력하�
   assert.match(doctor(target).stdout, /review-rules의 다음 이름은 advisory-rules에 없어서 hook이 알리지 않습니다: translationeze$/m);
 });
 
-test('doctor는 어투나 금지 문자 종류를 해석하지 못하면 성공으로 보고하지 않는다', () => {
+test('doctor는 말투나 금지 문자 종류를 해석하지 못하면 성공했다고 보고하지 않는다', () => {
   const target = scratch();
   install(target);
   const path = join(target, INSTALLED_DIR, 'rules.md');
   const body = readFileSync(path, 'utf8');
-  for (const changed of [body.replace('register: 다나까체', 'register: unknown'), body.replace('banned-char: middot,', 'banned-char: unknown,')]) {
+  for (const changed of [body.replace('register: 합니다체', 'register: unknown'), body.replace('banned-char: middot,', 'banned-char: unknown,')]) {
     writeFileSync(path, changed);
     const r = doctor(target);
     assert.equal(r.status, 1);

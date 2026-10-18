@@ -34,7 +34,7 @@ export function commitHookPath(root) {
   return path ? resolve(root, path) : null;
 }
 
-// 여러 checkout이 hook 하나를 같이 써도 이 hook은 커밋하는 checkout의 검사기를 실행합니다.
+// 여러 작업 트리가 hook 하나를 같이 써도 이 hook은 커밋하는 작업 트리의 검사기를 실행합니다.
 const HOOK_MARKER = '// korean-style commit hook';
 const COMMIT_LAUNCHER = `#!/usr/bin/env node
 ${HOOK_MARKER}
@@ -89,8 +89,8 @@ export function installCommitHook(root, dry = false) {
 
 export function reportCommitHook(result) {
   const labels = { linked: '커밋 메시지 hook을 설치했습니다', already: '커밋 메시지 hook이 이미 설치되어 있습니다',
-    occupied: '커밋 메시지를 검사하려면 기존 hook에서 검사기를 호출해야 합니다. 기존 커밋 hook은 그대로 둡니다',
-    broken: '기존 커밋 hook의 symlink가 끊겼습니다. 해당 hook을 복구해야 합니다',
-    'not-git': '프로젝트 루트에 .git이 없어 커밋 hook은 생략합니다.', would: '커밋 hook을 설치할 경로입니다' };
+    occupied: '다른 커밋 메시지 hook이 이미 있어 그대로 두었습니다. 커밋 메시지도 검사하려면 그 hook이 검사기를 실행하도록 직접 고쳐야 합니다',
+    broken: '기존 커밋 메시지 hook의 symlink가 끊겼습니다. 그 hook을 복구해야 합니다',
+    'not-git': '프로젝트 루트에 .git이 없어 커밋 메시지 hook은 설치하지 않습니다.', would: '커밋 메시지 hook을 설치할 경로입니다' };
   console.log(`${labels[result.state] ?? result.state}${result.path ? `: ${result.path}` : ''}`);
 }

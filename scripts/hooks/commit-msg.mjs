@@ -8,7 +8,7 @@ import { checkText, formatViolations, blockingViolations } from '../lib/check.mj
 const PROJECT_ROOT = projectRoot();
 const RULES_DOC = rulesDocPath(PROJECT_ROOT);
 
-/* 메시지 파일에서 실제 메시지만 남깁니다. */
+/* 메시지 파일에서 `#`으로 시작하는 줄을 빼고 메시지만 남깁니다. */
 export function messageBody(raw) {
   return raw
     .split('\n')

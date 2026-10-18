@@ -1,62 +1,92 @@
 ---
 name: korean-rewrite
-description: Use before writing any Korean, in every turn that writes it - answers, documents, README, code comments, user-facing messages, commit messages, PR text and translations. Turns what you mean into Korean that a Korean engineer would write, without English-shaped phrasing or AI writing habits.
+description: 한국어를 쓰기 전에 매번 부릅니다. 답변, 문서, README, 코드 주석, 사용자에게 보이는 메시지, 커밋 메시지, PR 설명, 번역에 모두 적용합니다. 처음부터 한국어로 생각해 한국인 개발자가 쓰는 문장으로 쓰고, 영어 문장 구조와 AI가 자주 쓰는 표현을 걸러 냅니다.
 ---
 
-# Writing Korean
+# 한국어로 쓰기
 
-This project's hooks require this skill in every turn that writes Korean. Apply it to the answer and to every file, message and commit you write in the turn. Show only the finished text, and never mention this skill or the checks.
+이 프로젝트의 hook은 Claude가 한국어를 쓸 때마다 이 skill을 거쳤는지 확인합니다. 이번 요청에서 쓰는 답변, 파일, 메시지, 커밋에 모두 적용합니다. 다 쓴 글만 보여 주고, 이 skill이나 검사를 거쳤다는 말은 하지 않습니다.
 
 <!-- register:begin -->
-Register: 합니다체. End statements with `~합니다` and requests with `~해 주십시오`. Do not mix in 해요체. Example: `캐시 무효화 후 재배포 필요` → `캐시를 무효화한 뒤 다시 배포해야 합니다.`
+말투: 합니다체. 서술은 `~합니다`로, 요청은 `~해 주십시오`로 끝냅니다. `~해요`, `~하세요` 같은 해요체를 섞지 않습니다. 예: `캐시 무효화 후 재배포 필요` → `캐시를 무효화한 뒤 다시 배포해야 합니다.`
 <!-- register:end -->
 
-## Steps
+## 처음부터 한국어로 생각하기
 
-1. **Pin down the content.** Settle who does what, to what, under which condition, and what is still unknown. Keep every fact, number, negation, modality (`~할 수 있다`) and tense. Add nothing that the source or your own work did not establish.
-2. **Write from that meaning in Korean order.** Do not translate an English draft, not even your own reasoning. Put context and conditions first and the predicate last. Give each sentence one actor; when the actor changes, start a new sentence.
-3. **Use the words Korean readers see.** For a product, use the term its Korean screen shows, or keep the on-screen English label in backticks. Never build a term by translating English word for word.
-4. **Rewrite every hit** from the patterns below.
-5. **Back-translate.** Read each sentence as English. If it maps onto English word for word, write it again from the meaning.
-6. **Check files, commit messages and PR text** with `node .korean-style/scripts/check-korean.mjs --target doc --stdin` or `--file <path>`. Fix every error. Reread each warning in context and fix the sentence when it is awkward. In this tool's own repository the path is `scripts/check-korean.mjs`. When you cannot run commands, skip this step without mentioning it.
-7. **Read it once as the reader.** The register and sentence endings stay the same throughout, every sentence has its predicate, and nothing depends on knowledge only you have.
+- 요청을 읽는 순간부터 한국어로 생각합니다. 무엇을 쓸지 정하는 생각도 한국어로 합니다. 영어로 계획을 세운 뒤 문장마다 옮기면 영어 문장 구조가 그대로 남습니다.
+- 영어 자료, 코드, 로그를 읽었어도 요점을 한국어로 정리한 뒤 씁니다.
+- 영어로 이름 붙인 개념은 독자가 화면에서 보는 말로 풀어 씁니다.
 
-## Patterns to rewrite
+## 쓰는 순서
 
-### Words
+1. **내용을 정합니다.** 누가 무엇을 어떤 조건에서 하는지, 아직 모르는 것은 무엇인지 정합니다. 사실, 숫자, 부정, 가능성(`~할 수 있다`), 시제를 그대로 지킵니다. 원문이나 직접 확인한 결과에 없는 내용은 넣지 않습니다.
+2. **한국어 순서로 씁니다.** 배경과 조건을 앞에, 서술어를 끝에 둡니다. 한 문장에는 행위자를 하나만 두고, 행위자가 바뀌면 문장을 나눕니다. 서술어 하나에 정보가 셋 넘게 몰리면 문장을 나눕니다.
+3. **독자가 아는 말을 씁니다.** 제품의 기능과 메뉴는 그 제품의 한국어 화면에 나오는 말로 부르거나, 화면에 영어로 나오는 이름을 백틱으로 감싸 그대로 씁니다. 영어를 낱말 단위로 옮겨 새 용어를 만들지 않습니다.
+4. **아래 고칠 표현을 찾아 모두 고칩니다.**
+5. **영어로 되옮겨 봅니다.** 문장마다 영어로 옮겨 보아 낱말과 구조가 그대로 맞으면 뜻을 살려 다시 씁니다. `것`, `의`, `그것`, `가지다`, `대하다`, `의하다`, `-고 있다`가 한 문단에 몰려도 영어 구조를 따라 쓴 신호입니다.
+6. **파일, 커밋 메시지, PR 설명은 검사기로 확인합니다.** `node .korean-style/scripts/check-korean.mjs --target doc --stdin`이나 `--file <경로>`로 검사하고 오류를 모두 고칩니다. 경고는 문맥을 다시 읽고 어색할 때만 고칩니다. 이 도구의 저장소에서는 경로가 `scripts/check-korean.mjs`입니다. 명령을 실행할 수 없으면 이 단계를 말없이 건너뜁니다.
+7. **독자가 되어 한 번 읽습니다.** 말투와 문장 끝이 처음부터 끝까지 같은지, 문장마다 서술어가 있는지, 나만 아는 맥락에 기대는 곳이 없는지 봅니다. 답을 마친 뒤에 붙인 제안이나 질문, `-고`, `-며`, `-어서` 뒤에 습관처럼 찍은 쉼표, 같은 대상을 여러 이름으로 부른 곳이 남았는지도 봅니다.
 
-- English words rendered one by one. Chrome shows `확장 프로그램`, while VS Code shows `확장`; follow the screen of the product you mean. `Profile 11에서 확장을 새로고침해 주십시오` → `Chrome의 Profile 11에서 확장 프로그램을 새로고침해 주십시오`; `예전 build입니다` → `예전 빌드입니다`; `사이트 접근 허용` → `사이트 액세스 허용`.
-- On-screen terms whose Korean spelling varies stay in English: `셸`, `훅`, `스킬` → `shell`, `hook`, `skill`. Established loanwords such as `파일`, `디렉터리`, `커밋`, `빌드` are fine.
-- Terms coined from English. `실모델 비교` → `실제 모델로 비교`; `검토 후보로 알려 줍니다` → `hook이 Claude에게 알려 다시 살펴보게 합니다`; `표시 줄` → `이 도구가 넣은 주석 줄`; `엔진 자체 검사` → `자체 검사`.
-- Stock English frames. `API를 통해 받습니다` → `API로 받습니다`; `세 개의 컴포넌트를 가지고 있습니다` → `컴포넌트가 셋입니다`; `설정하는 것이 가능합니다` → `설정할 수 있습니다`; `확인할 필요가 있습니다` → `확인해야 합니다`; `성능에 대해 개선했습니다` → `성능을 개선했습니다`.
-- Nouns glued with 의 or stacked. `데이터베이스 연결의 관리를 담당합니다` → `데이터베이스 연결을 관리합니다`; `확인 완료 의미를 유지합니다` → `확인을 마쳤다는 뜻을 유지합니다`; `검사기의 설정 원본` → `검사기가 설정을 읽는 곳`.
-- Verbs that do not fit their object. `서버를 세웁니다` → `서버를 띄웁니다`; `결정을 만듭니다` → `결정합니다`; `습관을 셉니다` → `자주 쓰는 표현이 몇 번 나오는지 셉니다`.
-- Things doing a person's action. `이 기능은 사용자가 데이터를 내보내는 것을 허용합니다` → `이 기능을 쓰면 데이터를 내보낼 수 있습니다`; `실모델 비교는 요청을 묶어 실행합니다` → `평가 스크립트는 요청을 묶어 보냅니다`.
+## 고칠 표현
 
-### Sentences
+### 낱말
 
-- Notes instead of sentences. `질문을 세 번씩` has no verb, and `(Claude Sonnet 5.5, 세 번씩)` is English shorthand → `Claude Sonnet 5.5에 같은 질문을 세 번씩 했습니다`.
-- List items in different forms. `합니다체에 ~하세요 섞임, 반말, 해요체` → `첫 번째는 합니다체에 ~하세요를 섞었고, 두 번째는 반말로, 세 번째는 해요체로 썼습니다`.
-- A clause chained to a bare noun phrase or to a new actor. `합니다체였고 검사기 오류 0건, Stop hook이 요구하지 않음` → `합니다체였고 검사기가 잡은 오류도 없었습니다. Stop hook은 다시 쓰라고 요구하지 않았습니다.`
-- A predicate whose actor the reader cannot see. `재설치해도 기존 규칙을 유지합니다` → `재설치해도 기존 규칙이 그대로 남습니다`.
-- Labels and counts left as fragments. `문장 길이 112자, 기준 110자입니다` → `문장이 112자로 기준 110자보다 깁니다`.
-- Endings or final periods that change within one passage.
+- 한국어로 굳은 말을 영어로 쓴 것. `connection pool`, `pipeline`, `alert`, `checkout 요청` → `커넥션 풀`, `파이프라인`, `알림`, `결제 요청`. 요청이나 원문에 나온 한국어 용어는 그대로 받아 씁니다. 코드, 명령, 경로, 제품 이름, 화면에 영어로 나오는 이름은 영어로 둡니다.
+- 화면에 영어로 나오고 한글 표기가 흔들리는 말을 음차한 것. `셸`, `훅`, `스킬` → `shell`, `hook`, `skill`. 파일, 디렉터리, 커밋, 빌드처럼 굳은 외래어는 한글로 씁니다.
+- 영어 낱말을 하나씩 옮긴 말. Chrome 화면은 `확장 프로그램`, VS Code 화면은 `확장`이라고 하므로 말하는 제품의 화면을 따릅니다. `Profile 11에서 확장을 새로고침해 주십시오` → `Chrome의 Profile 11에서 확장 프로그램을 새로고침해 주십시오`; `사이트 접근 허용` → `사이트 액세스 허용`.
+- 영어에서 만든 용어. `실모델 비교` → `실제 모델로 비교`; `검토 후보로 알려 줍니다` → `hook이 Claude에게 알려 다시 살펴보게 합니다`; `엔진 자체 검사` → `자체 검사`; `동시 실행 자리가 찼습니다` → `한 번에 돌릴 수 있는 수를 다 채웠습니다`. 도구나 워크플로의 상태를 설명할 때는 내부 용어를 옮겨 쓰지 말고, 화면에 보이는 것과 실제로 일어난 일을 씁니다.
+- 영어 전치사를 옮긴 조사. `API를 통해 받습니다` → `API로 받습니다`; `서버로부터 응답을 받지 못했습니다` → `서버에서 응답이 오지 않았습니다`; `성능에 대해 개선했습니다` → `성능을 개선했습니다`; `이 PR에 대한 리뷰를 부탁드립니다` → `이 PR을 리뷰해 주십시오`; `운영 환경에서의 부하 테스트` → `운영 환경 부하 테스트`; `API를 설계함에 있어` → `API를 설계할 때`; `토큰이 만료될 경우` → `토큰이 만료되면`.
+- 영어 틀을 그대로 옮긴 서술어. `세 개의 컴포넌트를 가지고 있습니다` → `컴포넌트가 셋입니다`; `점검 회의를 가졌습니다` → `점검 회의를 했습니다`; `설정하는 것이 가능합니다` → `설정할 수 있습니다`; `확인할 필요가 있습니다` → `확인해야 합니다`; `v2로 옮기게 되었습니다` → `v2로 옮깁니다`; `경고가 보여지지 않습니다` → `경고가 보이지 않습니다`; `설정 값은 서버에 의해 결정되어집니다` → `서버가 설정 값을 정합니다`; `캐시가 비었다는 것이 원인입니다` → `캐시가 비었기 때문입니다`; `효과가 확인된 것은 재시도입니다` → `재시도는 효과가 확인됐습니다`.
+- 명사를 쌓아 동작을 숨긴 것. `진행`, `수행`, `처리`, `완료`, `실시`, `제공`이 붙으면 누가 무엇을 하는지 동사로 씁니다. `코드 최적화 진행 후 배포 수행이 필요합니다` → `코드를 최적화한 뒤 배포해야 합니다`; `이 문서에서는 배포 파이프라인에 대한 개요를 제공합니다` → `이 문서는 배포 파이프라인을 간략하게 설명합니다`; `마이그레이션 수행에 실패했습니다` → `마이그레이션하지 못했습니다`.
+- 빼도 뜻이 같은 낱말. `인증 메일을 성공적으로 전송했습니다` → `인증 메일을 전송했습니다`; `세션 정보는 지속적으로 유지됩니다` → `세션 정보는 유지됩니다`; `설정 파일은 루트에 위치하고 있으며 반드시 필수입니다` → `설정 파일은 루트에 있어야 합니다`; `기술적인 문제로` → `기술 문제로`; `모든 테스트들이 통과된 것을 확인했습니다` → `테스트가 모두 통과했습니다`.
+- 어려운 한자어, 한자 관형사, 굳지 않은 외국어. `본 PR은 타 모듈의 동 함수 호출을 제거하여 성능을 제고합니다` → `이 PR은 다른 모듈에서 같은 함수를 부르던 코드를 지워 성능을 높입니다`; `컨펌 부탁드립니다` → `확인해 주십시오`.
+- `의`로 잇거나 쌓은 명사. `데이터베이스 연결의 관리를 담당합니다` → `데이터베이스 연결을 관리합니다`; `확인 완료 의미를 유지합니다` → `확인을 마쳤다는 뜻을 유지합니다`.
+- 같은 대상을 여러 이름으로 부르는 것. 한 글에서 `추가`, `첨부`, `넣다`나 `재설치`, `다시 설치`를 섞지 않고 하나로 정해 씁니다.
+- 목적어와 맞지 않는 동사. `서버를 세웁니다` → `서버를 띄웁니다`; `결정을 만듭니다` → `결정합니다`.
+- 사람이 할 일을 하는 사물. `이 기능은 사용자가 데이터를 내보내는 것을 허용합니다` → `이 기능을 쓰면 데이터를 내보낼 수 있습니다`.
+- 같은 뜻을 두 번 쓴 것. `알림이 오도록 alert를 추가합니다` → `알림을 추가합니다`; `[안내] 결제 서비스 점검 안내` → `[안내] 결제 서비스 점검`; `결제(checkout) 요청` → `결제 요청`.
+- 읽는 소리와 맞지 않는 조사. `connection나` → `connection이나`. `${name}을`처럼 바뀌는 값 뒤에 받침을 정해 둔 조사는 `${name} 파일을`처럼 범주 명사를 붙여 고칩니다.
+- 영어 복수형을 그대로 붙인 것. `여러 PRs를 병합했습니다` → `PR 여러 개를 병합했습니다`.
+- 말투를 가리키는 말. `어투`, `다나까체` → `말투`, `합니다체`. 처음 보는 독자에게는 `~합니다로 끝나는 말투`처럼 실제 어미를 보여 줍니다. 해요체와 하십시오체는 사전에 있는 말이므로 따옴표 없이 붙여 씁니다.
 
-### AI writing habits
+### 문장
 
-- Lead with the answer. No greeting, no praise of the question, no recap of what you just said, no account of your own edits.
-- No unrequested offer at the end, such as `원하시면 ~해 드리겠습니다` or `제가 직접 열어서 점검해 드릴 수 있어요`. Ask only for information you need.
-- Use headings, bold labels and lists only when the content has that shape. A few sentences need no heading, and items that are not parallel belong in a paragraph.
-- No slogans or staged contrasts: `핵심은 ~입니다`, `단순히 ~를 넘어`, `A가 아니라 B입니다` used for effect, rhetorical questions.
-- One hedge at most. Say what is known, and say once what is not.
-- No emoji, middle dots (U+00B7), em dashes (U+2014) or en dashes in prose. Use commas, 와/과, parentheses or separate sentences.
+- 서술어 하나에 정보를 몰아넣은 문장. `같은 요청 열두 가지를 이 도구가 없는 프로젝트와 설치한 프로젝트에서 Claude Opus 5.5에 두 번씩 보냈습니다.` → `요청 열두 가지를 Claude Opus 5.5에 보냈습니다. 요청마다 이 도구를 설치한 프로젝트에서 두 번, 설치하지 않은 프로젝트에서 두 번 보냈습니다.`
+- 무엇을 가리키는지 흐린 지시어. `그렇게 받은 답변 24개씩을 비교했습니다` → `이 도구를 설치한 프로젝트의 답변 24개와 설치하지 않은 프로젝트의 답변 24개를 비교했습니다`. `그렇게`, `이렇게`, `해당`, `이것`이 앞 문장 전체를 받으면 가리키는 것을 직접 씁니다. 무엇마다인지 흐린 `~씩`도 기준을 씁니다.
+- 남의 말을 옮기는 관형절을 용어 앞에 붙인 것. `슬랙에 붙여 넣을 수 있게 썼다는 해요체 머리말로 시작해` → `답변은 "슬랙에 바로 붙여넣을 수 있게 슬랙 서식(...)으로 썼어요."라는 해요체 문장으로 시작합니다`. 남이 한 말은 큰따옴표로 직접 인용합니다.
+- 새 정보를 앞세운 문장. 이미 아는 대상을 앞에, 새로 알려 줄 내용을 서술어 쪽에 둡니다. 문장 앞에 놓인 긴 `~하기 위해` 목적절도 뒤로 돌립니다. `인증을 간편하게 처리하기 위해 카카오 로그인을 사용할 수 있습니다` → `카카오 로그인을 쓰면 인증을 간편하게 처리할 수 있습니다`.
+- 단정할 자리에 붙인 `~할 수 있습니다`와 막연한 말. 정해진 동작은 단정하고, `많은`, `일부`, `~등` 대신 수치와 목록을 씁니다. 해야 하는 일은 `~해야 합니다`, 골라서 하는 일은 `~할 수 있습니다`, 하면 안 되는 일은 `~하면 안 됩니다`로 나눠 씁니다. `데이터가 많을 때는 성능이 저하될 수 있습니다` → `데이터가 10,000건을 넘으면 응답에 1초 넘게 걸립니다`. 수치는 원문이나 직접 확인한 결과에 있을 때만 씁니다.
+- 이중 부정. `출처가 명확하지 않은 APK는 설치하지 않습니다` → `출처가 명확한 APK만 설치합니다`.
+- 메모처럼 끊은 문장. `질문을 세 번씩`에는 서술어가 없고, `(Claude Sonnet 5.5, 세 번씩)`은 영어식 괄호 약식입니다. → `Claude Sonnet 5.5에 질문마다 세 번씩 물었습니다`. `~할 것`, `~바람`으로 끝낸 지시도 메모입니다. `로컬에서 테스트 후 PR 올릴 것` → `로컬에서 테스트한 뒤 PR을 올려 주십시오`.
+- 형식이 섞인 목록 항목. `합니다체에 ~하세요 섞임, 반말, 해요체` → `첫 번째는 합니다체에 ~하세요를 섞었고, 두 번째는 반말로, 세 번째는 해요체로 썼습니다`.
+- 서술어 없는 명사구나 다른 행위자를 이어 붙인 절. `합니다체였고 검사기 오류 0건, Stop hook이 요구하지 않음` → `합니다체였고 검사기가 잡은 오류도 없었습니다. Stop hook은 다시 쓰라고 요구하지 않았습니다.`
+- 행위자가 보이지 않는 서술어. `재설치해도 기존 규칙을 유지합니다` → `다시 설치해도 기존 규칙이 그대로 남습니다`.
+- 사물에 붙인 높임. `설정 파일이 생성되셨습니다` → `설정 파일을 만들었습니다`. `-시-`는 사람이 주어일 때만 붙입니다.
+- 라벨과 숫자만 남긴 조각. `문장 길이 112자, 기준 110자입니다` → `문장이 112자로 기준 110자보다 깁니다`.
+- 한 글 안에서 바뀌는 문장 끝과 마침표.
+- 영어처럼 콜론이나 세미콜론으로 끝낸 문장. `다음 환경 변수를 설정해야 합니다:` → `다음 환경 변수를 설정해야 합니다.`; `0을 넣으면 오류가 납니다; 값은 양수여야 합니다` → `0을 넣으면 오류가 납니다. 값은 양수여야 합니다.` 콜론은 `일시: 10월 24일`처럼 항목 이름 뒤에 쓰고 문장 끝에는 쓰지 않습니다.
 
-## Commit messages and PR text
+### AI가 자주 쓰는 습관
 
-- Subject: the conventional prefix plus a short noun phrase, such as `fix: 설치 스크립트의 symlink 검사 수정`.
-- Body, bullets and the closing `검증:` part: complete sentences in the register above, saying what changed and why.
+- 답부터 씁니다. 인사, 질문 칭찬, 방금 한 말 요약, 고친 과정 설명을 붙이지 않습니다. 문단도 핵심을 첫 문장에 씁니다.
+- 글 자체를 두고 하는 말을 쓰지 않습니다. 흐름을 알리는 `앞서 설명했듯이`, `이제 알아보겠습니다`, 쓸데없이 힘을 주는 `사실은`, `결론적으로`, 독자의 반응을 끌어내는 `아시다시피`가 그런 예입니다.
+- 끝에 묻지 않은 제안을 붙이지 않습니다. `원하시면 ~해 드리겠습니다`, `코드를 붙여 주시면 다시 써 드릴게요` 같은 문장입니다. 꼭 필요한 정보만 묻습니다.
+- 요청이나 원문에 없는 내용을 채우지 않습니다. 연도, 요일, 담당자, 테스트 목록, 예시 코드, `(예정)` 같은 덧붙임과 `더 안정적인 서비스를 위해` 같은 상투적 문구가 그런 예입니다.
+- 제목, 굵은 글씨, 목록은 내용 구조에 맞을 때만 씁니다. 몇 문장짜리 답에는 제목이 필요 없고, 나란하지 않은 항목은 문단으로 씁니다.
+- 구호와 꾸민 대비를 쓰지 않습니다. `핵심은 ~입니다`, `단순히 ~를 넘어`, 효과를 노린 `A가 아니라 B입니다`, 수사 의문문이 그런 예입니다.
+- 조심스러운 표현은 한 번만 씁니다. 아는 것은 단정하고, 모르는 것은 한 번만 밝힙니다.
+- 산문에 emoji, 가운뎃점(U+00B7), 줄표(U+2014), en dash를 쓰지 않습니다. 쉼표, `와/과`, 괄호를 쓰거나 문장을 나눕니다.
+- 쉼표를 습관처럼 찍지 않습니다. `그리고`, `하지만` 같은 접속 부사 뒤와 `-고`, `-며` 같은 연결 어미 뒤에는 끊어 읽지 않으면 뜻이 헷갈릴 때만 찍습니다.
 
-## Translating and editing
+## 글 종류별 관례
 
-- Translate the meaning in Korean order. Restate `allow`, `as X`, `make sure`, passives and inanimate subjects as who does what. `This feature allows users to export data` → `이 기능을 쓰면 데이터를 내보낼 수 있습니다`.
-- When editing someone else's Korean, change only what is awkward. Keep natural sentences, quotes, code and paths as they are. A planned action must not become a finished one: `배포할 수 있습니다` is not `배포했습니다`.
+- 커밋 메시지: 제목은 conventional prefix와 짧은 명사구로 씁니다(`fix: 설치 스크립트의 symlink 검사 수정`). 본문, 목록, 마지막 `검증:` 부분은 위 말투로 쓴 완결된 문장으로 무엇을 왜 바꿨는지 씁니다.
+- PR 설명: 해결하려는 문제와 바꾼 내용을 나눠 씁니다. 메모나 diff에 없는 테스트 목록, 배경, 리뷰 포인트를 지어 넣지 않습니다.
+- 리뷰 코멘트: 무엇이 문제인지와 왜 바꿔야 하는지, 고칠 방향을 씁니다. 보지 못한 코드를 가정한 예시 코드는 넣지 않습니다.
+- 장애 공유와 공지: 발생 시각, 영향 범위, 원인, 조치, 후속 일정처럼 받은 사실만 씁니다. 원인을 추정했으면 추정이라고 밝히고, 받지 못한 연도, 요일, 연락처는 채우지 않습니다.
+- 커밋과 PR 공통: `Co-Authored-By: Claude ...`나 `🤖 Generated with [Claude Code](...)` 같은 생성 표시를 넣지 않습니다. 공동 작성자를 밝혀야 하면 사용자가 정한 이름과 주소를 씁니다.
+
+## 옮기거나 고칠 때
+
+- 영어를 옮길 때는 뜻을 잡아 한국어 순서로 씁니다. `allow`, `as X`, `make sure`, 수동태, 사물 주어는 누가 무엇을 하는지로 풀어 씁니다. `This feature allows users to export data` → `이 기능을 쓰면 데이터를 내보낼 수 있습니다`.
+- 남이 쓴 한국어를 고칠 때는 어색한 곳만 고칩니다. 자연스러운 문장, 인용, 코드, 경로는 그대로 둡니다. 영어에서 왔다는 이유만으로 고치지 않습니다. `원인이 밝혀졌습니다`나 `~를 통해`가 경로를 뜻하는 `VPN을 통해 사내망에 접속합니다`처럼 뜻이 정확하고 자연스러운 표현은 그대로 둡니다. 할 일을 한 일로 바꾸지 않습니다. `배포할 수 있습니다`는 `배포했습니다`가 아닙니다.

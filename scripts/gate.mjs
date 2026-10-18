@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* 명령 하나로 모든 검사를 실행합니다. */
+/* 명령 하나로 자체 검사와 파일 검사, 테스트를 실행합니다. */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, relative } from 'node:path';
@@ -13,7 +13,7 @@ const TOOL = toolRoot();
 
 /* `--self-check`가 없어도 되는 진입점과 그 이유입니다. */
 const SELF_CHECK_EXEMPT = {
-  'gate.mjs': 'gate 자신입니다. gate를 검사하는 단계를 gate가 실행하면 자기가 자기를 검사하는 셈이 됩니다.',
+  'gate.mjs': 'gate는 이 검사를 실행하는 스크립트이므로 --self-check를 두면 자기 자신을 검사하게 됩니다.',
 };
 
 /* hook은 Claude Code가 stdin으로 주는 JSON이나 Git이 넘겨 주는 메시지 파일을 받으므로 `--self-check` 옵션이 없습니다. */
@@ -103,7 +103,7 @@ function main() {
     const doc = relative(ROOT, rulesDocPath(ROOT));
     results.push(['규칙 문서 검사', run('규칙 문서 검사', [script('check-korean.mjs'), '--file', doc])]);
     results.push(['전체 파일 검사', run('전체 파일 검사', [script('check-korean.mjs'), '--all'])]);
-    /* 파일 이름을 손으로 적지 않습니다. */
+    /* 테스트 파일 이름을 하나씩 적지 않고 test/에서 찾습니다. */
     const tests = testFiles();
     if (tests === null) {
       /* 건너뛰었다는 사실을 반드시 출력합니다. */

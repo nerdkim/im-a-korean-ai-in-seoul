@@ -14,6 +14,7 @@ import {
   currentTurn,
   hangulCount,
   needsSkill,
+  skillRequest,
   usedSkill,
 } from '../scripts/lib/skill.mjs';
 import { loadRules, parseRuleBlock } from '../scripts/lib/rules.mjs';
@@ -60,7 +61,7 @@ test('규칙 문서에서 `writing-skill`과 `writing-skill-min-hangul`을 읽�
   assert.equal(off.writingSkill, '', '값을 비우면 skill을 요구하지 않습니다');
 });
 
-test('두 키가 없는 예전 규칙에서도 korean-rewrite skill을 요구한다', () => {
+test('`writing-skill`과 `writing-skill-min-hangul`이 없는 예전 규칙에서도 korean-rewrite skill을 요구한다', () => {
   /* 직접 고친 규칙은 다시 설치해도 바뀌지 않으므로 새 키가 들어가지 않습니다. */
   const old = parseRuleBlock('register: 다나까체\nbanned-address: 당신\n');
   assert.equal(old.writingSkill, 'korean-rewrite');
@@ -86,14 +87,14 @@ test('한국어를 쓰는 turn에 skill을 부르지 않았으면 skill을 요�
   assert.ok(!needsSkill(context(transcript([prompt('질문입니다'), ...SKILL_CALL]))));
 });
 
-test('한글이 기준보다 적거나 영어로만 쓰면 skill을 요구하지 않는다', () => {
+test('한글이 기준보다 적은 글이나 영어로만 쓴 글에는 skill을 요구하지 않는다', () => {
   const path = transcript([prompt('질문입니다')]);
   assert.equal(hangulCount('확인했습니다.'), 6);
   assert.ok(!needsSkill(context(path, { text: '확인했습니다.' })));
   assert.ok(!needsSkill(context(path, { text: 'The installer finished and every hook is in place.' })));
 });
 
-test('skill이 설치되지 않았거나 꺼져 있거나 기록을 읽지 못하면 요구하지 않는다', () => {
+test('skill이 설치되지 않았거나 규칙에서 꺼져 있거나 기록을 읽을 수 없으면 skill을 요구하지 않는다', () => {
   const path = transcript([prompt('질문입니다')]);
   assert.ok(!needsSkill(context(path, { projectRoot: scratch() })), 'skill 파일이 없는 프로젝트입니다');
   assert.ok(!needsSkill(context(path, { rules: { ...RULES, writingSkill: '' } })));
@@ -102,7 +103,8 @@ test('skill이 설치되지 않았거나 꺼져 있거나 기록을 읽지 못�
 
 test('같은 turn에서 정해 둔 횟수만큼 막았으면 더 막지 않는다', () => {
   /* Skill 도구를 쓸 수 없는 환경에서 끝없이 막히는 일을 막습니다. */
-  const denied = Array.from({ length: MAX_SKILL_DENIALS }, () => result(`이 turn에서 아직 korean-rewrite ${SKILL_MISSING}.`));
+  /* 실제로 막을 때 쓰는 문구로 기록을 만들어야 세는 쪽과 막는 쪽이 어긋날 때 이 테스트가 실패합니다. */
+  const denied = Array.from({ length: MAX_SKILL_DENIALS }, () => result(skillRequest('korean-rewrite', '다시 쓰십시오.')));
   assert.ok(needsSkill(context(transcript([prompt('질문입니다'), ...denied.slice(1)]))));
   assert.ok(!needsSkill(context(transcript([prompt('질문입니다'), ...denied]))));
 });
@@ -157,6 +159,14 @@ test('skill을 부르지 않고 한국어 커밋 메시지로 커밋하면 막�
   const denied = runHook('pretooluse.mjs', { tool_name: 'Bash', tool_input: { command }, transcript_path: transcript([prompt('커밋해 주십시오')]) });
   assert.ok(denied.hookSpecificOutput.permissionDecisionReason.includes('다시 커밋하십시오'));
   const allowed = runHook('pretooluse.mjs', { tool_name: 'Bash', tool_input: { command }, transcript_path: transcript([prompt('커밋해 주십시오'), ...SKILL_CALL]) });
+  assert.equal(allowed, null);
+});
+
+test('skill을 부르지 않고 한국어 PR 설명을 올리면 막는다', () => {
+  const command = `gh pr create --title "설치 안내 정리" --body "${KOREAN}"`;
+  const denied = runHook('pretooluse.mjs', { tool_name: 'Bash', tool_input: { command }, transcript_path: transcript([prompt('PR을 올려 주십시오')]) });
+  assert.ok(denied.hookSpecificOutput.permissionDecisionReason.includes(SKILL_MISSING));
+  const allowed = runHook('pretooluse.mjs', { tool_name: 'Bash', tool_input: { command }, transcript_path: transcript([prompt('PR을 올려 주십시오'), ...SKILL_CALL]) });
   assert.equal(allowed, null);
 });
 

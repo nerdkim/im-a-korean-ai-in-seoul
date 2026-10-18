@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-/* turn이 끝나는 시점에 AI가 사용자에게 한 답변을 검사합니다. */
+/* Claude가 요청 하나에 답을 마칠 때(turn이 끝날 때) 사용자에게 한 답변을 검사합니다. */
 import { readFileSync } from 'node:fs';
-import { isEntryPoint, projectRoot, rulesDocPath } from '../lib/paths.mjs';
+import { join, relative, sep } from 'node:path';
+import { isEntryPoint, projectRoot, rulesDocPath, toolRoot } from '../lib/paths.mjs';
 import { currentTurn, needsSkill, skillRequest } from '../lib/skill.mjs';
 import { loadRules } from '../lib/rules.mjs';
 import { checkText, blockingViolations } from '../lib/check.mjs';
@@ -54,7 +55,7 @@ function run() {
     process.exit(0);
   }
 
-  /* Stop hook 때문에 이미 이어진 turn이면 재작성을 다시 요구하지 않습니다. */
+  /* Stop hook이 이미 한 번 다시 쓰게 한 답변이면 또 요구하지 않습니다. */
   if (input.stop_hook_active === true) process.exit(0);
 
   /* Stop은 마지막 메시지가 transcript에 기록되기 전에 실행될 수 있습니다. */
@@ -70,10 +71,12 @@ function run() {
   const parts = [];
   if (skipped) parts.push(skillRequest(rules.writingSkill, '답변을 다시 쓰십시오.'));
   if (violations.length > 0) {
+    /* 설치한 프로젝트에서는 검사기 경로가 `.korean-style/scripts/check-korean.mjs`가 됩니다. */
+    const checker = relative(PROJECT_ROOT, join(toolRoot(), 'scripts', 'check-korean.mjs')).split(sep).join('/');
     parts.push(
-      `${skipped ? '다시 쓸 때 아래 표현도 고치십시오.' : '아래 표현을 고쳐 답변을 한 번 다시 작성하십시오.'}\n` +
+      `${skipped ? '다시 쓸 때 아래 표현도 고치십시오.' : '아래 표현을 고쳐 답변을 다시 쓰십시오.'}\n` +
       violations.slice(0, 3).map(v => `[${v.rule}] ${v.line}줄: ${v.detail}`).join('\n') +
-      `\n규칙: ${RULES_DOC}\n규칙 설명은 check-korean.mjs --explain <규칙 이름>으로 볼 수 있습니다.`,
+      `\n규칙 문서: ${RULES_DOC}\n규칙 설명은 \`node ${checker} --explain <규칙 이름>\` 명령으로 볼 수 있습니다.`,
     );
   }
   block(`${parts.join('\n\n')}\n내용은 그대로 두고, 무엇을 고쳤는지는 답변에 적지 마십시오.`);

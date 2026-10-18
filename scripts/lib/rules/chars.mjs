@@ -19,9 +19,9 @@ export const CHAR_CLASSES = {
 };
 
 /* 콜론으로 감싼 Slack shortcode입니다. */
-const SHORTCODE_RE = /(^|[\s(])(:[a-z0-9_+-]{2,}:)(?=[\s.,!?)\]]|$)/u;
+export const SHORTCODE_RE = /(^|[\s(])(:[a-z0-9_+-]{2,}:)(?=[\s.,!?)\]]|$)/u;
 
-/* 금지된 글자를 찾습니다. */
+/* 금지한 문자를 찾습니다. */
 export function charViolations(text, rules) {
   const out = [];
   for (const name of rules.bannedChar) {
@@ -31,7 +31,7 @@ export function charViolations(text, rules) {
     if (m === null) continue;
     out.push({
       rule: 'banned-char',
-      detail: `금지된 글자를 썼습니다: ${spec.label} ${JSON.stringify(m[0])}. 부호라면 쉼표, 괄호, 빗금, 하이픈 가운데 하나로 바꾸십시오. 글자 자체를 인용할 때는 백틱으로 감싸십시오.`,
+      detail: `금지한 문자를 썼습니다: ${spec.label} ${JSON.stringify(m[0])}. 부호라면 쉼표, 괄호, 빗금, 하이픈 가운데 하나로 바꾸십시오. 문자 자체를 인용할 때는 백틱으로 감싸십시오.`,
       line: lineOf(text, m.index),
     });
   }
@@ -41,7 +41,7 @@ export function charViolations(text, rules) {
     if (m !== null && !asked) {
       out.push({
         rule: 'banned-char',
-        detail: `Slack emoji shortcode를 썼습니다: ${JSON.stringify(m[2])}. 반응 이름처럼 글자 그대로 써야 하는 값이라면 백틱으로 감싸십시오. 산문에서는 쓰지 않습니다.`,
+        detail: `Slack emoji shortcode를 썼습니다: ${JSON.stringify(m[2])}. 산문에서는 shortcode를 쓰지 않습니다. 반응 이름처럼 글자 그대로 써야 하는 값이라면 백틱으로 감싸십시오.`,
         line: lineOf(text, m.index),
       });
     }

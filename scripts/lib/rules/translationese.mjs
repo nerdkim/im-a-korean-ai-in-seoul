@@ -1,7 +1,7 @@
 /* 영어식 표현을 찾는 규칙입니다. */
 import { lineOf } from '../text.mjs';
 
-/* `@latin:` 규칙에서 목적어로 인정하는 영어 낱말입니다. */
+/* `@latin:` 규칙에서 목적어로 보는 영어 낱말입니다. */
 const LATIN_WORD = "[A-Za-z][A-Za-z0-9'’]*(?:[-.][A-Za-z0-9]+)*";
 
 /* 목적어에 붙는 조사입니다. */
@@ -36,7 +36,7 @@ export function translationeseViolations(text, rules) {
     if (idx === -1) continue;
     out.push({
       rule: 'translationese',
-      detail: `영어식 표현 후보입니다: ${JSON.stringify(wrong)}.${advise(right)}`,
+      detail: `영어식 표현일 수 있습니다: ${JSON.stringify(wrong)}.${advise(right)}`,
       line: lineOf(text, idx),
     });
   }

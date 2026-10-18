@@ -1,5 +1,9 @@
 {
   "outputStyle": "korean-style",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -7,7 +11,7 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/userprompt.mjs\"",
-            "statusMessage": "한국어 작성 skill 안내 중"
+            "statusMessage": "Claude에게 skill을 먼저 부르라고 알리는 중"
           }
         ]
       }

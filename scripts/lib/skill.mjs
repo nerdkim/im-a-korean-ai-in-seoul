@@ -1,11 +1,11 @@
-/* 한국어를 쓰는 turn마다 Claude가 규칙 문서에 적은 skill을 거쳤는지 확인합니다. */
+/* Claude가 요청(turn)에 답하면서 한국어를 쓸 때마다 규칙 문서에 적힌 skill을 불렀는지 확인합니다. */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /* skill을 부르지 않아 hook이 막을 때 넣는 문구입니다. 같은 turn에서 몇 번 막았는지 셀 때도 씁니다. */
 export const SKILL_MISSING = 'skill을 부르지 않았습니다';
 
-/* 같은 turn에서 이만큼 막았는데도 skill을 부르지 않으면 Skill 도구를 쓸 수 없는 환경으로 보고 더 막지 않습니다. */
+/* hook이 같은 turn에서 이만큼 막았는데도 Claude가 skill을 부르지 않으면, hook은 Skill 도구를 쓸 수 없는 환경으로 보고 더 막지 않습니다. */
 export const MAX_SKILL_DENIALS = 2;
 
 /* 글에 든 한글 음절 수입니다. */
@@ -50,7 +50,7 @@ export function currentTurn(transcriptPath) {
   return entries.reverse();
 }
 
-/* subagent가 도구를 부르면 hook은 메인 세션의 transcript 경로를 받으므로, subagent의 transcript 경로를 따로 만듭니다. */
+/* subagent가 도구를 불러도 hook은 메인 세션의 transcript 경로를 받습니다. 그래서 이 함수가 subagent의 transcript 경로를 따로 계산합니다. */
 export function agentTranscriptPath(transcriptPath, agentId) {
   if (typeof transcriptPath !== 'string' || !transcriptPath.endsWith('.jsonl')) return null;
   if (typeof agentId !== 'string' || !/^[\w-]+$/.test(agentId)) return null;
@@ -91,6 +91,7 @@ export function skillDenials(entries) {
 /*
  * 한국어를 쓰기 전에 skill을 불러야 하는지 판단합니다.
  * skill이 꺼져 있거나 설치되지 않았거나, 한글이 기준보다 적거나, transcript를 읽지 못하면 요구하지 않습니다.
+ * Claude가 이번 turn에 이미 skill을 불렀거나 hook이 같은 turn에서 정해 둔 횟수만큼 막았을 때도 요구하지 않습니다.
  */
 export function needsSkill({ text, rules, projectRoot, transcriptPath, agentId }) {
   const name = rules.writingSkill;
@@ -105,5 +106,5 @@ export function needsSkill({ text, rules, projectRoot, transcriptPath, agentId }
 
 /* skill을 부르라고 요구하는 문구입니다. */
 export function skillRequest(name, retry) {
-  return `이 turn에서 아직 ${name} ${SKILL_MISSING}. 한국어를 쓰기 전에 Skill 도구로 ${name} skill을 부르고, 그 절차대로 글을 다듬은 뒤 ${retry}`;
+  return `이번 요청에 답하면서 아직 ${name} ${SKILL_MISSING}. 한국어를 쓰기 전에 Skill 도구로 ${name} skill을 부르고, 그 절차를 따라 ${retry}`;
 }

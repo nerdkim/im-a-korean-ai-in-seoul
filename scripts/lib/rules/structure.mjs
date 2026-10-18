@@ -1,4 +1,4 @@
-/* 문장이 어떻게 만들어졌는지 봅니다. */
+/* 문장을 어떻게 썼는지 봅니다. */
 import { hangulLength, isKoreanProse, lineOf, LIST_MARK, overDensity, sentencesOf } from '../text.mjs';
 
 /* 앞에 오면 `~적`이 접미사가 아니라 낱말의 일부가 되는 음절입니다. */
@@ -34,11 +34,11 @@ export function structureViolations(text, rules) {
     const re = new RegExp(`${escape(stem)}(?=[${JIDA_SYLLABLES}])`, 'u');
     const m = re.exec(text);
     if (m === null) continue;
-    /* 보고에는 실제로 쓴 형태를 담습니다. */
-    const written = text.slice(m.index, Math.min(text.length, m.index + stem.length + 3));
+    /* 보고에는 실제로 쓴 형태를 담습니다. 어절이 끝나면 거기서 자릅니다. */
+    const written = text.slice(m.index, Math.min(text.length, m.index + stem.length + 3)).split(/\s/)[0];
     out.push({
       rule: 'double-passive',
-      detail: `이중피동 후보입니다: ${JSON.stringify(written)}.${right.length > 0 ? ` 어간을 ${JSON.stringify(right)}로 고치십시오.` : ""}`,
+      detail: `이중피동입니다: ${JSON.stringify(written)}.${right.length > 0 ? ` 대신 쓸 어간은 ${JSON.stringify(right)}입니다.` : ""}`,
       line: lineOf(text, m.index),
     });
   }
@@ -64,7 +64,7 @@ export function structureViolations(text, rules) {
     const hits = [];
     for (const m of text.matchAll(re)) {
       const line = text.slice(0, m.index).split('\n').pop() ?? '';
-      /* 목록 항목과 표 줄과 제목은 개조식이 정상입니다. */
+      /* 목록 항목과 표 줄과 제목은 개조식으로 써도 됩니다. */
       if (LIST_MARK.test(line) || line.trimStart().startsWith('|') || line.trimStart().startsWith('#')) continue;
       if (REAL_NOUNS_IN_M.has(m[1])) continue;
       hits.push(m);
@@ -140,7 +140,7 @@ export function structureViolations(text, rules) {
     if (m === null) continue;
     out.push({
       rule: 'redundant-plural',
-      detail: `수량 표현 뒤의 복수형입니다: ${JSON.stringify(m[0].trim())}.`,
+      detail: `수량 표현 뒤에 오는 명사에 복수 접미사 "~들"을 붙였습니다: ${JSON.stringify(m[0].trim())}.`,
       line: lineOf(text, m.index),
     });
   }

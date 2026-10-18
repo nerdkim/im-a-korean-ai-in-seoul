@@ -44,7 +44,7 @@ export function rulesDocPath(root = projectRoot()) {
   return join(root, 'docs', 'rules.md');
 }
 
-/* 보고에 쓸 짧은 이름입니다. */
+/* 보고에 쓸 규칙 문서의 짧은 경로입니다. */
 export function rulesDocLabel(root = projectRoot()) {
   const full = rulesDocPath(root);
   return full.startsWith(root) ? full.slice(root.length + 1) : full;
