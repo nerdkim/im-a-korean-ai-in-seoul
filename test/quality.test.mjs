@@ -100,7 +100,8 @@ test('저장된 평가 결과에서 프로필마다 항목을 세어 README에 �
     { profile: 'installed', skills: ['korean-rewrite'], costUsd: 0.1, seconds: 17, hookResponses: [{ event: 'PreToolUse', output: '{"decision":"block"}', exitCode: 0 }], answers: [{ id: 'b', text: '`확인해요`라는 문장을 지웠습니다.' }] },
   ];
   const summary = summarize(rows, rules);
-  assert.deepEqual(summary.baseline, { answers: 2, skill: 0, rewritten: 0, errors: 2, register: 1, emoji: 1, middot: 1, attribution: 1, chars: [...rows[0].answers[0].text].length + [...rows[1].answers[0].text].length, costUsd: 0.1, seconds: 22 });
+  assert.deepEqual(summary.baseline, { answers: 2, skill: 0, rewritten: 0, errors: 2, register: 1, emoji: 1, middot: 1, attribution: 1, chars: [...rows[0].answers[0].text].length + [...rows[1].answers[0].text].length, costUsd: 0.1, seconds: 22,
+    firstAnswers: 2, firstCostUsd: 0.1, repeatAnswers: 0, repeatCostUsd: 0 });
   assert.equal(summary.installed.skill, 2);
   assert.equal(summary.installed.rewritten, 1, 'Stop hook이 다시 쓰게 한 기록만 셉니다');
   assert.equal(summary.installed.errors, 0, '인라인 코드로 감싼 해요체 예문은 세지 않습니다');
@@ -111,7 +112,25 @@ test('저장된 평가 결과에서 프로필마다 항목을 세어 README에 �
   assert.match(table, /^\| Stop hook이 다시 쓰게 한 답변 \| 2개 중 0개 \| 2개 중 1개 \|$/m);
   assert.match(table, /^\| 검사기가 오류를 찾은 답변 \| 2개 중 2개 \| 2개 중 0개 \|$/m);
   assert.match(table, /^\| 답변 하나에 든 평균 비용 \| 0\.050달러 \| 0\.090달러 \|$/m);
+  assert.doesNotMatch(table, /처음 보낸 요청|다시 보냈을 때/, '같은 요청을 다시 보낸 기록이 없으면 비용을 나누지 않습니다');
   assert.match(table, /^\| 답변 하나를 받는 데 걸린 평균 시간 \| 11\.0초 \| 16\.0초 \|$/m);
+});
+
+test('같은 요청을 다시 보낸 결과가 있으면 처음 보낸 요청과 다시 보낸 요청의 비용을 나눠 표에 싣는다', () => {
+  /* 같은 요청을 다시 보내면 캐시에 저장한 입력을 읽으므로 비용이 줄어야 합니다. 평가 도중 Claude Code의 시스템 프롬프트가 바뀌면 캐시를 쓰지 못해 비용이 줄지 않습니다. */
+  const rows = [
+    { profile: 'baseline', run: 1, skills: [], costUsd: 0.04, seconds: 10, answers: [{ id: 'a', text: '확인했습니다.' }] },
+    { profile: 'baseline', run: 2, skills: [], costUsd: 0.01, seconds: 9, answers: [{ id: 'a', text: '확인했습니다.' }] },
+    { profile: 'installed', run: 1, skills: ['korean-rewrite'], costUsd: 0.12, seconds: 14, answers: [{ id: 'a', text: '확인했습니다.' }] },
+    { profile: 'installed', run: 2, skills: ['korean-rewrite'], costUsd: 0.11, seconds: 13, answers: [{ id: 'a', text: '확인했습니다.' }] },
+  ];
+  const table = formatSummary(summarize(rows, rules));
+  assert.match(table, /^\| 처음 보낸 요청에서 답변 하나에 든 평균 비용 \| 0\.040달러 \| 0\.120달러 \|$/m);
+  assert.match(table, /^\| 같은 요청을 다시 보냈을 때 답변 하나에 든 평균 비용 \| 0\.010달러 \| 0\.110달러 \|$/m);
+  assert.doesNotMatch(table, /^\| 답변 하나에 든 평균 비용 \|/m, '비용을 나눠 실었으면 합친 평균은 싣지 않습니다');
+  /* 같은 요청을 다시 보낸 결과가 한 프로필에만 있으면 다른 프로필의 칸에는 `-` 기호를 씁니다. */
+  const partial = formatSummary(summarize(rows.slice(0, 3), rules));
+  assert.match(partial, /^\| 같은 요청을 다시 보냈을 때 답변 하나에 든 평균 비용 \| 0\.010달러 \| - \|$/m);
 });
 
 test('평가 결과를 셀 때 답변이 없는 프로필과 잘못된 입력을 그대로 표에 싣지 않고 프로필 이름이 `__proto__`여도 다른 객체를 건드리지 않는다', () => {

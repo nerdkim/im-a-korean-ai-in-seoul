@@ -40,9 +40,18 @@ export function summarize(rows, rules) {
     if (!Array.isArray(row?.answers) || row.answers.some((answer) => typeof answer?.text !== 'string')) {
       throw new Error(`answers 배열이 없거나 답변 글(text)이 빠진 행입니다: ${JSON.stringify(row?.profile ?? null)}`);
     }
-    const t = (out[row.profile] ??= { answers: 0, skill: 0, rewritten: 0, errors: 0, register: 0, emoji: 0, middot: 0, attribution: 0, chars: 0, costUsd: 0, seconds: 0 });
+    const t = (out[row.profile] ??= { answers: 0, skill: 0, rewritten: 0, errors: 0, register: 0, emoji: 0, middot: 0, attribution: 0, chars: 0, costUsd: 0, seconds: 0,
+      firstAnswers: 0, firstCostUsd: 0, repeatAnswers: 0, repeatCostUsd: 0 });
     t.costUsd += row.costUsd ?? 0;
     t.seconds += row.seconds ?? 0;
+    /* 같은 요청을 다시 보내면 API가 처음 요청 때 캐시에 저장해 둔 입력을 다시 읽어 비용이 줄어듭니다. 그래서 다시 보낸 요청의 비용은 따로 셉니다. `run`이 없는 행은 처음 보낸 요청으로 봅니다. */
+    if ((row.run ?? 1) > 1) {
+      t.repeatAnswers += row.answers.length;
+      t.repeatCostUsd += row.costUsd ?? 0;
+    } else {
+      t.firstAnswers += row.answers.length;
+      t.firstCostUsd += row.costUsd ?? 0;
+    }
     const rewritten = stopBlocked(row.hookResponses);
     for (const answer of row.answers) {
       const found = checkText(answer.text, rules, 'chat');
@@ -58,7 +67,9 @@ export function summarize(rows, rules) {
       t.chars += [...answer.text].length;
     }
   }
-  for (const t of Object.values(out)) t.costUsd = Math.round(t.costUsd * 1e6) / 1e6;
+  for (const t of Object.values(out)) {
+    for (const key of ['costUsd', 'firstCostUsd', 'repeatCostUsd']) t[key] = Math.round(t[key] * 1e6) / 1e6;
+  }
   return out;
 }
 
@@ -67,8 +78,14 @@ export function formatSummary(summary) {
   const profiles = Object.keys(summary);
   if (profiles.length === 0) throw new Error('셀 답변이 없습니다');
   /* 답변이 없는 프로필은 평균을 낼 수 없으므로 `-` 기호를 씁니다. */
-  const average = (p, key, digits, unit) => (summary[p].answers === 0 ? '-' : `${(summary[p][key] / summary[p].answers).toFixed(digits)}${unit}`);
+  const ratio = (p, key, answers, digits, unit) => (summary[p][answers] === 0 ? '-' : `${(summary[p][key] / summary[p][answers]).toFixed(digits)}${unit}`);
+  const average = (p, key, digits, unit) => ratio(p, key, 'answers', digits, unit);
   const count = (key) => profiles.map((p) => `${summary[p].answers}개 중 ${summary[p][key]}개`);
+  /* 같은 요청을 다시 보낸 결과가 있으면 비용을 두 줄로 나눕니다. 그러면 캐시를 쓰지 못해 다시 보낸 요청의 비용이 줄지 않은 경우를 표에서 바로 알아볼 수 있습니다. */
+  const cost = profiles.some((p) => summary[p].repeatAnswers > 0)
+    ? [['처음 보낸 요청에서 답변 하나에 든 평균 비용', profiles.map((p) => ratio(p, 'firstCostUsd', 'firstAnswers', 3, '달러'))],
+      ['같은 요청을 다시 보냈을 때 답변 하나에 든 평균 비용', profiles.map((p) => ratio(p, 'repeatCostUsd', 'repeatAnswers', 3, '달러'))]]
+    : [['답변 하나에 든 평균 비용', profiles.map((p) => average(p, 'costUsd', 3, '달러'))]];
   const lines = [
     ['skill을 거친 답변', count('skill')],
     ['Stop hook이 다시 쓰게 한 답변', count('rewritten')],
@@ -78,7 +95,7 @@ export function formatSummary(summary) {
     ['가운뎃점이 들어간 답변', count('middot')],
     ['Claude Code 생성 표시가 들어간 답변', count('attribution')],
     ['답변 길이 합계', profiles.map((p) => `${summary[p].chars.toLocaleString('en-US')}자`)],
-    ['답변 하나에 든 평균 비용', profiles.map((p) => average(p, 'costUsd', 3, '달러'))],
+    ...cost,
     ['답변 하나를 받는 데 걸린 평균 시간', profiles.map((p) => average(p, 'seconds', 1, '초'))],
   ];
   return [
