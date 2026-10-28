@@ -84,6 +84,7 @@ banned-transliteration:
 banned-translation:
 required-spelling:
 known-typos: 됬=됐, 어떻해=어떡해, 할께=할게, 갈께=갈게, 있읍니다=있습니다, 없슴=없음, 알겠슴=알겠음, 바꼈=바뀌었, 바뀜었=바뀌었
+calques: 비멱등=멱등하지 않은, 미추적=추적하지 않는
 needs-gloss:
 negation-prefixes: 비, 논, 무, 미, 반
 max-bound-english-per-sentence: 0
@@ -145,6 +146,7 @@ banned-attribution: Generated with [Claude Code], Generated with Claude Code, no
 | `banned-translation`  | 뜻을 대강 옮긴 기술 용어와 대신 쓸 영어입니다. |
 | `required-spelling`  | 틀리지는 않았지만 팀이 쓰지 않는 표기입니다. |
 | `known-typos`  | 한국어 낱말이 아닌 철자입니다. |
+| `calques`  | 영어를 낱말 단위로 옮겨 만든 말과 대신 쓸 표현입니다. 코드 블록, 인라인 코드, 같은 줄에서 닫은 따옴표 안에 옮겨 적은 말은 잡지 않습니다. 앞에 한글이 붙어 있으면 다른 낱말의 일부로 보고 잡지 않습니다. |
 | `needs-gloss`  | 처음 나올 때 설명해야 하는 용어입니다. |
 | `negation-prefixes`  | 영어 어간에 붙이면 안 되는 한글 부정 접두사입니다. |
 | `max-bound-english-per-sentence`  | 한국어 문장 하나에 조사를 붙여 쓸 수 있는 영어 낱말 수입니다. |
@@ -172,6 +174,7 @@ banned-attribution: Generated with [Claude Code], Generated with Claude Code, no
 | `double-passive` | 목록에 있는 이중피동입니다. |
 | `loanword-spelling` | 프로젝트가 정한 외래어 표기와 다른 표기입니다. |
 | `known-typo` | 목록에 있는 오타입니다. |
+| `calque` | 영어를 낱말 단위로 옮겨 만든 말입니다. |
 | `translationese` | 영어식 표현일 수 있는 구절입니다. 문맥에 맞는 표현이면 그대로 둡니다. |
 | `literal-verb` | 영어 동사를 그대로 옮겼을 수 있는 동사입니다. 실제 동작을 나타낸 문장이면 그대로 둡니다. |
 | `comma-per-sentence` | 한 문장에 쓴 쉼표 수입니다. 나열에 쓴 쉼표는 세지 않습니다. |

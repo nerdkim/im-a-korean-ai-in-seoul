@@ -123,6 +123,20 @@ export function vocabularyViolations(text, rules, target) {
     }
   }
 
+  /* 9) 영어를 낱말 단위로 옮겨 만든 말입니다. 따옴표 안에 옮겨 적은 남의 말은 보지 않습니다. 앞 글자가 한글이면 다른 낱말의 일부로 보고 건너뜁니다. 코드 블록 안쪽을 다시 볼 때는 `fenceRules`가 이 목록을 비웁니다. */
+  if (rules.calques.size > 0) {
+    const unquoted = stripQuoted(text);
+    for (const [wrong, right] of rules.calques) {
+      const m = new RegExp(`(?<![\\uAC00-\\uD7A3])${escapeRe(wrong)}`, 'u').exec(unquoted);
+      if (m === null) continue;
+      out.push({
+        rule: 'calque',
+        detail: `영어를 낱말 단위로 옮겨 만든 말입니다: ${JSON.stringify(wrong)} → ${JSON.stringify(right)}. 독자가 영어로 되옮겨야 뜻을 아는 말은 풀어 씁니다.`,
+        line: lineOf(unquoted, m.index),
+      });
+    }
+  }
+
   out.sort((a, b) => a.line - b.line);
   return out;
 }

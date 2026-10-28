@@ -46,6 +46,8 @@ const MAP_KEYS = {
   'literal-verbs': 'literalVerbs',
   'translationese-patterns': 'translationesePatterns',
   'known-typos': 'knownTypos',
+  /* 영어를 낱말 단위로 옮겨 만든 말과 대신 쓸 표현입니다. */
+  calques: 'calques',
   'inclusive-terms': 'inclusiveTerms',
 };
 
@@ -159,6 +161,7 @@ const FALLBACK = {
   literalVerbs: new Map(),
   translationesePatterns: new Map(),
   knownTypos: new Map(),
+  calques: new Map(),
   inclusiveTerms: new Map(),
   chatToolFields: new Map(),
   agentToolFields: new Map(),
@@ -228,6 +231,7 @@ function freshRules() {
     literalVerbs: new Map(),
     translationesePatterns: new Map(),
     knownTypos: new Map(),
+    calques: new Map(),
     inclusiveTerms: new Map(),
     chatToolFields: new Map(),
     agentToolFields: new Map(),
@@ -348,6 +352,7 @@ export function fenceRules(rules) {
     imperativeEndings: [],
     needsGloss: [],
     negationPrefixes: [],
+    calques: new Map(),
     conjunctiveAdverbs: [],
     connectiveEndings: [],
     demonstratives: [],

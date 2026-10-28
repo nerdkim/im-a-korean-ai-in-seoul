@@ -30,6 +30,34 @@ test('실제 표기 오류와 이중피동은 계속 막는다', () => {
   assert.ok(blockingViolations(checkText('결과가 보여집니다.', rules)).some(v => v.rule === 'double-passive'));
 });
 
+test('영어를 낱말 단위로 옮겨 만든 말은 답변, 문서, 커밋 메시지에서 막고 풀어 쓴 말과 굳은 말, 코드나 따옴표로 감싼 말은 답변에서 막지 않는다', () => {
+  /* 이 도구를 설치하고 skill을 부른 세션에서 Claude가 `untracked`를 `미추적`으로 옮겨 썼습니다. 사용자는 Claude가 `비멱등`이라고 쓴 답변을 보았다고 알려 왔습니다. */
+  for (const target of ['chat', 'doc', 'commit']) {
+    for (const text of ['비멱등 요청은 다시 보내면 안 됩니다.', 'POST는 비멱등이라 재시도하지 않습니다.', 'main checkout의 미추적 file 2개를 지웠습니다.']) {
+      assert.ok(blockingViolations(checkText(text, rules, target)).some(v => v.rule === 'calque'), `${target}: ${text}`);
+    }
+  }
+  for (const text of [
+    '멱등하지 않은 요청은 다시 보내면 안 됩니다.',
+    '멱등성 키를 확인해야 합니다.',
+    '추적하지 않는 파일 2개가 남았습니다.',
+    '비동기 호출과 비활성화 버튼을 고쳤습니다.',
+    "'비멱등'이라는 말은 사전에 없습니다.",
+    '`미추적` 대신 추적하지 않는 파일이라고 씁니다.',
+    '사용자가 보낸 로그입니다.\n\n```text\n비멱등 요청은 재시도하지 않습니다.\n```',
+  ]) {
+    assert.ok(!checkText(text, rules).some(v => v.rule === 'calque'), text);
+  }
+});
+
+test('`calques`에 적은 말 앞에 한글이 붙어 있거나 규칙에 값이 없으면 막지 않는다', () => {
+  const own = parseRuleBlock('calques: 비목표=하지 않을 일');
+  assert.ok(checkText('4절 비목표를 다시 읽었습니다.', own).some(v => v.rule === 'calque'));
+  assert.ok(!checkText('준비목표를 다시 정했습니다.', own).some(v => v.rule === 'calque'), '비목표 앞에 한글이 붙은 준비목표는 다른 낱말입니다');
+  assert.ok(!checkText('비멱등 요청입니다.', parseRuleBlock('calques:')).some(v => v.rule === 'calque'), '값을 비운 규칙에서는 잡으면 안 됩니다');
+  assert.ok(!checkText('비멱등 요청입니다.', parseRuleBlock('register: 합니다체')).some(v => v.rule === 'calque'), '키가 없는 예전 규칙에서는 잡으면 안 됩니다');
+});
+
 test('영어 기술 용어가 많아도 용어 수를 줄이라고 요구하지 않는다', () => {
   const text = 'React가 API를 호출하고 Redis를 조회하며 worker가 PostgreSQL을 쓰고 Docker로 실행합니다.';
   assert.ok(!checkText(text, rules).some(v => v.rule === 'bound-english'));
