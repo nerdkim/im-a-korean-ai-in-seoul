@@ -12,6 +12,7 @@ import { INSTALLED_DIR, rulesDocPath } from '../scripts/lib/paths.mjs';
 import { loadRules, withRegister } from '../scripts/lib/rules.mjs';
 import { checkText } from '../scripts/lib/check.mjs';
 import { REGISTER_FRAGMENTS, mergeOutputStyle } from '../scripts/install.mjs';
+import { MISSING_SCRIPTS_NOTICE, hookCommand } from '../scripts/lib/setup.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -685,22 +686,24 @@ test('이 도구 경로를 직접 적어 둔 gitignore는 손대지 않는다', 
   assert.equal(readFileSync(join(target, '.gitignore'), 'utf-8'), mine);
 });
 
-test('git 저장소가 아니면 gitignore를 만들지 않는다', () => {
+test('git 저장소가 아니면 gitignore와 .worktreeinclude를 만들지 않는다', () => {
   /* 아무것도 막지 못하는 파일을 남기면 사용자는 이 도구가 무언가를 보장한다고 오해합니다. */
   const target = scratch();
   const r = install(target);
 
   assert.equal(r.status, 0, r.stderr);
   assert.ok(!existsSync(join(target, '.gitignore')));
+  assert.ok(!existsSync(join(target, '.worktreeinclude')));
   assert.match(r.stdout, /\.git이 없어서/);
 });
 
-test('--dry-run을 주면 gitignore도 만들지 않는다', () => {
+test('--dry-run을 주면 gitignore와 .worktreeinclude도 만들지 않는다', () => {
   const target = gitScratch();
   const r = install(target, ['--dry-run']);
 
   assert.equal(r.status, 0, r.stderr);
   assert.ok(!existsSync(join(target, '.gitignore')));
+  assert.ok(!existsSync(join(target, '.worktreeinclude')));
 });
 
 test('설치된 검사기가 자체 검사를 통과한다', () => {
@@ -961,6 +964,86 @@ test('나중에 git init한 뒤 다시 설치해도 동작하고 clone한 프로
   assert.equal(install(cloned).status, 0);
   assert.equal(doctor(cloned).status, 0);
   assert.equal(runInstalled(cloned, ['--text', '확인했어요.']).status, 0);
+});
+
+/* settings.json에 적힌 hook 명령을 Claude Code처럼 shell로 실행합니다. */
+function runHookCommand(target, event, input = {}) {
+  const command = jsonAt(join(target, '.claude', 'settings.json')).hooks[event][0].hooks[0].command;
+  return spawnSync('sh', ['-c', command], { input: JSON.stringify(input), encoding: 'utf-8', cwd: target, env: envFor(target) });
+}
+
+test('회귀: clone한 직후 설치 명령을 실행하기 전에도 hook이 실패하지 않고 다시 설치하라는 안내를 남긴다', () => {
+  /* 설치 스크립트가 복사한 hook 스크립트는 Git에서 제외되므로 새로 clone한 저장소에는 없습니다. 예전에는 hook 셋이 이벤트마다 "Cannot find module"로 실패했습니다. */
+  const target = gitScratch();
+  assert.equal(install(target).status, 0);
+  assert.equal(git(target, ['add', '.gitignore', '.worktreeinclude', '.korean-style/rules.md', '.korean-style/defaults.sha256', '.claude/settings.json']).status, 0);
+  assert.equal(git(target, ['commit', '-q', '-m', '설치했습니다.']).status, 0);
+  const cloned = join(scratch(), 'clone');
+  assert.equal(git(target, ['clone', '-q', target, cloned]).status, 0);
+  assert.ok(!existsSync(join(cloned, INSTALLED_DIR, 'scripts')));
+
+  for (const event of ['UserPromptSubmit', 'PreToolUse', 'Stop']) {
+    const r = runHookCommand(cloned, event);
+    assert.equal(r.status, 0, `${event} hook의 종료 코드가 ${r.status}입니다: ${r.stderr}`);
+    assert.doesNotMatch(r.stderr, /Cannot find module/);
+    assert.equal(r.stdout.trim(), event === 'UserPromptSubmit' ? MISSING_SCRIPTS_NOTICE : '');
+  }
+});
+
+test('hook 스크립트가 있으면 hook 명령이 스크립트를 실행하고 그 결과를 그대로 넘긴다', () => {
+  const target = scratch();
+  install(target);
+
+  const r = runHookCommand(target, 'PreToolUse', {
+    tool_name: 'Write',
+    tool_input: { file_path: join(target, 'docs', 'bad.md'), content: '# 제목\n\n결과가 보여집니다.\n' },
+    cwd: target,
+  });
+
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision, 'deny');
+});
+
+test('0.3.3까지 설치한 hook 명령은 다시 설치하면 새 명령으로 바뀌고 이벤트마다 하나만 남는다', () => {
+  const target = scratch();
+  const old = name => `node "$CLAUDE_PROJECT_DIR/${INSTALLED_DIR}/scripts/hooks/${name}.mjs"`;
+  saveJson(join(target, '.claude', 'settings.json'), { hooks: {
+    UserPromptSubmit: [{ hooks: [{ type: 'command', command: old('userprompt') }] }],
+    PreToolUse: [{ matcher: 'Write|Edit', hooks: [{ type: 'command', command: old('pretooluse') }] }],
+    Stop: [{ hooks: [{ type: 'command', command: old('stop') }] }],
+  } });
+
+  assert.equal(install(target).status, 0);
+  const settings = jsonAt(join(target, '.claude', 'settings.json'));
+  for (const [event, name] of [['UserPromptSubmit', 'userprompt'], ['PreToolUse', 'pretooluse'], ['Stop', 'stop']]) {
+    assert.deepEqual(settings.hooks[event].flatMap(entry => entry.hooks.map(h => h.command)), [hookCommand(name)]);
+  }
+  assert.equal(doctor(target).status, 0);
+});
+
+test('git 저장소에 설치하면 작업 트리에 복사할 설치 파일을 .worktreeinclude에 적고 다시 설치해도 줄이 쌓이지 않는다', () => {
+  /* Claude Code는 `claude --worktree`로 작업 트리를 만들 때 Git에서 제외된 파일 가운데 .worktreeinclude의 패턴에 맞는 파일만 복사합니다. */
+  const target = gitScratch();
+  writeFileSync(join(target, '.worktreeinclude'), '.env\n');
+  assert.equal(install(target).status, 0);
+  assert.equal(install(target).status, 0);
+
+  const text = readFileSync(join(target, '.worktreeinclude'), 'utf-8');
+  assert.ok(text.startsWith('.env\n'), '프로젝트에 있던 줄이 지워졌습니다');
+  assert.equal(text.split('\n').filter(line => line === `${INSTALLED_DIR}/*`).length, 1);
+
+  const listed = args => git(target, ['ls-files', '--others', '--ignored', ...args]).stdout.split('\n').filter(Boolean);
+  const included = new Set(listed([`--exclude-from=${join(target, '.worktreeinclude')}`]));
+  const copied = listed(['--exclude-standard']).filter(path => included.has(path));
+  for (const path of [
+    `${INSTALLED_DIR}/scripts/hooks/userprompt.mjs`,
+    `${INSTALLED_DIR}/scripts/hooks/pretooluse.mjs`,
+    `${INSTALLED_DIR}/scripts/hooks/stop.mjs`,
+    '.claude/skills/korean-rewrite/SKILL.md',
+    '.claude/skills/korean-style/SKILL.md',
+    '.claude/output-styles/korean-style.md',
+  ]) assert.ok(copied.includes(path), `작업 트리에 복사되지 않는 파일입니다: ${path}`);
+  assert.ok(!copied.includes(`${INSTALLED_DIR}/rules.md`));
 });
 
 test('README의 shell 설치 명령을 새 프로젝트와 기존 프로젝트에서 그대로 실행한다', () => {

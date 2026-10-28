@@ -47,9 +47,12 @@ Node.js 20 이상과 npm, Git, Claude Code가 필요합니다. 명령은 macOS, 
 | `.claude/output-styles/korean-style.md` | 작성 지침 | 제외 |
 | `.claude/settings.json` | hook 세 개, `outputStyle`, `attribution` 설정 | 커밋 |
 | `.gitignore` | 위에서 제외로 표시한 항목 | 커밋 |
+| `.worktreeinclude` | `claude --worktree`로 만든 작업 트리에 복사할 제외 항목 | 커밋 |
 | `.git/hooks/commit-msg` | 커밋 메시지 검사 | 해당 없음 |
 
 제외로 표시한 파일은 설치할 때마다 새로 만듭니다. 그래서 저장소를 clone한 팀원도 설치 명령을 한 번 실행해야 합니다.
+설치 명령을 실행하기 전에는 hook이 검사를 하지 않습니다. 대신 프롬프트를 보낼 때마다 Claude에게 안내를 남겨, 사용자에게 설치 명령을 다시 실행해 달라고 알리게 합니다.
+`claude --worktree`로 작업 트리를 만들면 Claude Code가 `.worktreeinclude`에 적힌 제외 파일을 복사합니다. 그래서 그 작업 트리에서는 다시 설치하지 않아도 됩니다. `git worktree add`로 만든 작업 트리에서는 설치 명령을 다시 실행해야 합니다.
 
 설치 스크립트는 `.claude/settings.json`에 hook 세 개를 더합니다. `attribution`에 `commit`이나 `pr` 값이 없으면 빈 값을 넣어 Claude Code가 `Co-Authored-By: Claude` 줄과 `Generated with [Claude Code]` 줄을 붙이지 않게 합니다. 프로젝트가 이미 정해 둔 `attribution` 값은 그대로 둡니다. `outputStyle`은 위 `--activate` 설명대로 바꿉니다.
 기존 `CLAUDE.md`, 다른 hook, 권한, MCP 설정, 다른 output-style 파일, 사용자 전역 설정, `.claude/settings.local.json`은 바꾸지 않습니다.

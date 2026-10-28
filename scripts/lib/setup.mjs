@@ -1,6 +1,22 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
+import { INSTALLED_DIR } from './paths.mjs';
+
+/* hook 스크립트가 없는 작업 트리에서 UserPromptSubmit hook이 Claude에게 전하는 안내입니다. hook 명령이 이 안내를 작은따옴표로 감싸므로 안내에는 작은따옴표를 넣지 않습니다. */
+export const MISSING_SCRIPTS_NOTICE =
+  '이 작업 트리에는 한국어 작성 도구의 hook 스크립트(.korean-style/scripts/)가 없어서 한국어 검사가 동작하지 않습니다. ' +
+  '이 스크립트는 Git에서 제외되므로 저장소를 새로 clone하거나 git worktree로 작업 트리를 만들면 설치 명령을 다시 실행해야 생깁니다. ' +
+  '사용자에게 프로젝트 루트에서 처음 설치할 때 쓴 설치 명령을 다시 실행해 달라고 알려 주십시오. ' +
+  '예: npx -y github:nerdkim/im-a-korean-ai-in-seoul --target .';
+
+/* settings.json에 넣을 hook 명령을 만듭니다. 설치한 프로젝트에서는 hook 스크립트를 Git에서 제외하므로 저장소를 새로 clone하면 스크립트가 없습니다. 이때 node가 "Cannot find module"로 실패하지 않도록 스크립트가 있을 때만 실행합니다. 스크립트가 없으면 UserPromptSubmit hook만 안내를 남깁니다. 다른 hook은 아무것도 하지 않습니다. 이 도구의 저장소는 스크립트를 커밋하므로 스크립트를 바로 실행합니다. */
+export function hookCommand(name, installed = true) {
+  const script = `$CLAUDE_PROJECT_DIR/${installed ? `${INSTALLED_DIR}/` : ''}scripts/hooks/${name}.mjs`;
+  if (!installed) return `node "${script}"`;
+  const notice = name === 'userprompt' ? `; else echo '${MISSING_SCRIPTS_NOTICE}'` : '';
+  return `f="${script}"; if [ -f "$f" ]; then node "$f"${notice}; fi`;
+}
 
 export function readSettings(path) {
   if (!existsSync(path)) return null;

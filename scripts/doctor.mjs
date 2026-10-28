@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { loadRules, REGISTER_BANNED_ENDINGS } from './lib/rules.mjs';
 import { CHAR_CLASSES } from './lib/rules/chars.mjs';
 import { attributionViolations } from './lib/rules/attribution.mjs';
-import { readSettings, localSettingsPaths, commitHookState, installCommitHook, reportCommitHook } from './lib/setup.mjs';
+import { readSettings, localSettingsPaths, commitHookState, installCommitHook, reportCommitHook, hookCommand } from './lib/setup.mjs';
 
 const tool = dirname(dirname(fileURLToPath(import.meta.url)));
 const installed = basename(tool) === '.korean-style';
@@ -68,7 +68,7 @@ for (const [key, label] of [['commit', '커밋 메시지'], ['pr', 'PR 설명']]
   }
 }
 for (const [event, name] of [['UserPromptSubmit', 'userprompt'], ['PreToolUse', 'pretooluse'], ['Stop', 'stop']]) {
-  const command = `node "$CLAUDE_PROJECT_DIR/${installed ? '.korean-style/' : ''}scripts/hooks/${name}.mjs"`;
+  const command = hookCommand(name, installed);
   const entries = sources.flatMap(s => s.settings.hooks?.[event] ?? []).filter(e => e.hooks.some(h =>
     h.type === 'command' && h.command === command && h.async !== true));
   if (!existsSync(join(tool, 'scripts/hooks', `${name}.mjs`))) bad(`${name} 파일이 없습니다`);
