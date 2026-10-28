@@ -183,3 +183,14 @@ test('작성 지침에는 처음부터 한국어로 생각하라는 지시와 �
   assert.match(style, /한국어로 생각합니다/);
   assert.match(style, /Generated with \[Claude Code\]/);
 });
+
+test('작성 지침과 skill에는 독자에게 필요한 내용만 고르고 공개하는 글에 내부 정보와 개인 정보를 넣지 말라는 지시가 들어 있다', () => {
+  /* 이 도구를 설치한 프로젝트에서도 Claude는 개인정보 처리방침에 사이트 주인의 실명과 개발 서버 주소를 넣었습니다. 검사기는 이런 내용을 잡지 못하므로 지시가 빠지면 안 됩니다. */
+  const style = readFileSync(new URL('../output-styles/korean-style.md', import.meta.url), 'utf8');
+  const skill = readFileSync(new URL('../skill/korean-rewrite/SKILL.md', import.meta.url), 'utf8');
+  assert.match(style, /누가 읽는지 정하고/);
+  assert.match(style, /공개하는 글에 넣지 않습니다/);
+  assert.match(skill, /^## 내용 고르기$/m);
+  assert.match(skill, /공개하는 글에는 내부 정보와 개인 정보를 넣지 않습니다/);
+  assert.ok(skill.indexOf('## 내용 고르기') < skill.indexOf('## 쓰는 순서'), '내용을 고른 뒤에 문장을 씁니다');
+});

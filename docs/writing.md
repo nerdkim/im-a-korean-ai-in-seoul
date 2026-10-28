@@ -1,7 +1,7 @@
 # 한국어 작성 원칙
 
-`korean-rewrite` skill에 들어 있는 원칙과 그 근거를 모은 문서입니다. 원칙은 국립국어원 자료, 국내 회사들이 공개한 글쓰기 가이드, 소프트웨어 현지화 스타일 가이드, 언어 모델을 다룬 연구에서 가져왔습니다. 출처는 문서 끝에 있습니다. 출처에 없는 규칙은 이 저장소가 정했다고 밝힙니다.
-예문 가운데 출처 번호를 붙인 것은 그 자료의 원문입니다. 번호가 없는 예문 가운데 고칠 문장은 Claude가 이 저장소에서 실제로 쓴 문장이고 고친 문장은 이 저장소에서 다듬은 것입니다.
+`korean-rewrite` skill에 들어 있는 원칙과 그 근거를 모은 문서입니다. 원칙은 국립국어원 자료, 국내외 회사들이 공개한 글쓰기 가이드, 소프트웨어 현지화 스타일 가이드, 법령과 기관 지침, 웹 보안 자료, 언어 모델을 다룬 연구에서 가져왔습니다. 출처는 문서 끝에 있습니다. 출처에 없는 규칙은 이 저장소가 정했다고 밝힙니다.
+예문 가운데 출처 번호를 붙인 것은 그 자료의 원문입니다. 번호가 없는 예문 가운데 고칠 문장은 Claude가 이 저장소나 이 도구를 설치한 프로젝트에서 실제로 쓴 문장이고 고친 문장은 이 저장소에서 다듬은 것입니다. 다른 프로젝트에서 가져온 문장은 사람 이름과 사이트 주소를 바꿔 적었습니다.
 
 ## 처음부터 한국어로 쓰기
 
@@ -18,6 +18,31 @@ Microsoft 한국어 현지화 스타일 가이드는 문장과 문단, 페이지
 
 모델에게 자기 번역을 다시 다듬게 하는 단계는 효과가 확인됐습니다. 자연스럽게 옮기라는 요구를 지시문에 더했을 때는 직역 문체가 조건에 따라 줄기도 하고 늘기도 했습니다. 반면 GPT-3.5와 GPT-4에게 자기 번역을 다시 다듬게 하자 영어를 중국어로 옮길 때와 독일어를 영어로 옮길 때 모두 직역 문체가 줄었습니다. 직역 문체는 GPT-4가 영어를 중국어로 옮긴 번역에서 가장 많이 줄었습니다. 직역 문체가 드러난 부분이 글의 20%를 넘는 번역문의 비율이 43%에서 25%로 낮아졌습니다[25].
 이 도구에서도 검사기가 오류를 찾으면 hook이 Claude에게 글을 다시 쓰게 합니다. 다만 이 연구는 검사기 없이 모델에게 자기 번역 전체를 다듬게 했고 검사기가 찾은 오류를 고치게 하는 방식은 시험하지 않았습니다.
+
+## 내용 고르기
+
+이 도구를 설치한 다른 프로젝트에서 Claude는 개인 웹사이트의 개인정보 처리방침을 쓰면서 첫 문단을 다음처럼 썼습니다.
+
+`example.com은 홍길동의 개인 profile page이며 회원 가입과 입력 양식이 없습니다. 오류를 찾고 page를 어떻게 쓰는지 알아보려고 아래 두 도구로 방문 기록을 모읍니다. 시험용 사본인 dev.example.com도 같은 방식으로 기록합니다.`
+
+사이트 주인은 이 문단에서 세 가지를 지적했습니다. 첫째, `시험용 사본`은 어색한 한국어입니다. 둘째, 공개하면 안 되는 개발 서버 주소가 들어갔습니다. 셋째, 처리방침에서 아무도 궁금해하지 않는 사이트 주인 소개가 들어가 개인 정보가 드러났습니다.
+이 문단은 같은 페이지에 있는 영어 문단과 내용 순서가 같습니다. Claude는 영어 문단의 `test copy`를 `시험용 사본`으로 옮겼고 `profile page`는 영어로 두었습니다. 이 도구의 검사기는 이 문단에서 오류도 경고도 찾지 못합니다. `시험용 사본`과 `page`는 검사기 규칙에 없는 말입니다. 개발 서버 주소와 사이트 주인 소개는 문장을 쓰기 전에 무엇을 쓸지 고르는 단계에서 생긴 문제라 검사기가 판단할 수 없습니다. 그래서 skill에는 문장을 쓰기 전에 독자와 쓸 내용을 정하는 절차가 들어 있습니다.
+
+**독자와 목적부터 정합니다.** 국립국어원은 행정 문서를 쓰기 전에 읽을 사람이 누구인지 구체적으로 파악하고 문서를 쓰는 목적을 정하라고 합니다. 문서에 담을 내용은 독자에게 필요한 정보여야 하므로 내용을 계획할 때부터 독자가 무엇을 알아야 하는지 파악하라고 합니다[1]. 토스는 문서를 쓰는 사람이 읽는 사람 입장보다 자기가 말하고 싶은 내용을 중심으로 구조를 짜기 쉽다고 지적합니다. 정보 구조 만들기 페이지에서는 기술 문서가 주로 문제 해결, 학습, 참조에 쓰이므로 독자가 어떤 목표로 그 문서를 찾았을지 생각하며 쓰라고 합니다[11]. 카카오엔터프라이즈는 글이 모호해지는 문제가 대부분 읽을 사람이 누구인지 제대로 파악하지 못해서 생긴다고 봅니다[15].
+
+**독자에게 필요한 내용만 고릅니다.** 국립국어원은 글 종류에 따라 먼저 확인해야 할 내용과 반드시 필요한 내용이 달라진다고 합니다. 무엇을 소개해 알려 주는 안내문은 읽는 사람이 궁금해하는 내용을 중심으로 쓰라고 합니다[1]. Google은 독자에게 필요하지만 독자가 아직 모르는 정보를 문서에 담으라고 합니다. 설명은 쓰는 사람이 아니라 독자의 궁금증을 풀어 줘야 한다고 합니다. 초고를 검토할 때는 문서 첫머리에 밝힌 범위를 다루는 데 보탬이 되지 않는 절을 지우라고 합니다[29]. Microsoft는 독자가 자신 있게 결정할 만큼만 알려 주라고 합니다[5].
+대화, 설정 파일, 작업 메모에서 알게 된 사실을 글감으로만 보고 문장마다 독자에게 필요한지 따지는 것은 이 저장소의 규칙입니다. 고르면서 뺀 내용을 설명하는 문단을 덧붙이지 않는 것도 이 저장소의 규칙입니다.
+
+**공개하는 글에는 내부 정보와 개인 정보를 넣지 않습니다.** OWASP 웹 보안 점검 가이드는 점검하는 사람이 검색 엔진으로 찾아볼 민감한 정보의 예로 공개하지 않은 개발, 테스트, 스테이징 사이트를 듭니다. DNS 기록과 인증서 투명성 로그에서 개발, 스테이징, 테스트 호스트를 찾아내는 방법도 다룹니다[30]. 공개하는 글에 개발 서버 주소를 적으면 이렇게 찾아낼 필요도 없이 주소를 알려 주는 셈입니다.
+MITRE의 CWE-200은 누구나 볼 수 있게 공개한 자원에 넣지 말았어야 할 민감한 정보를 넣는 경우를 정보 노출의 한 유형으로 듭니다. 민감한 정보의 예로는 연락처 같은 개인 정보와 네트워크 구성을 듭니다[31]. 한국인터넷진흥원도 웹 서비스에서 불필요한 정보가 드러나지 않게 하라고 합니다. 드러난 정보가 2차 공격에 쓰일 수 있기 때문입니다[32].
+다만 CWE-200과 한국인터넷진흥원 자료는 페이지 소스, 주석, 오류 메시지처럼 프로그램이 내보내는 정보를 다룹니다. OWASP는 관리자와 주요 직원이 남긴 게시물과 이메일도 찾아볼 정보로 들지만 공개하는 글을 쓸 때 무엇을 빼야 하는지는 다루지 않습니다. 공개하는 글의 본문에도 같은 기준을 적용하는 것은 이 저장소의 규칙입니다. 이 저장소는 공개 저장소라서 CLAUDE.md에도 개인 설정, 비공개 프로젝트 이름, 로컬 경로를 Git이 추적하는 파일에 넣지 말라고 적어 두었습니다.
+사용자나 사이트 주인의 실명과 소개를 사용자가 넣으라고 하지 않았으면 쓰지 않는 것도 이 저장소의 규칙입니다. 개인정보 보호법은 처리방침에 개인정보 보호책임자의 성명이나 담당 부서와 연락처를 넣으라고 정합니다[33]. 이런 법정 항목은 사용자가 준 값으로 채웁니다. skill이 쓰지 말라고 하는 것은 독자가 찾지 않는 곳에서 사이트 주인을 소개하는 문장입니다.
+
+**법령과 기관 지침이 항목을 정한 글은 그 항목 이름과 용어를 씁니다.** 개인정보 보호법 제30조 제1항과 시행령 제31조 제1항은 처리방침에 넣을 사항을 정합니다. 처리 목적, 처리 및 보유 기간, 제3자 제공, 처리 위탁, 정보주체의 권리와 행사 방법, 개인정보 보호책임자, 개인정보를 자동으로 수집하는 장치의 설치와 운영 및 거부, 처리하는 개인정보의 항목, 국외 이전이 여기에 듭니다. 표준 개인정보 보호지침 제18조 제1항은 이 사항을 명시적으로 구분하되 알기 쉬운 용어로 구체적이고 명확하게 쓰라고 합니다[33]. 개인정보보호위원회 작성지침은 이 조항을 근거로 전문용어에 쉬운 설명을 덧붙이라고 권합니다[34].
+작성지침의 작성 예시는 개인정보를 받는 쪽을 `제공받는 자`, `수탁자`, `이전받는 자`로 부릅니다[34]. 앞의 예문이 나온 페이지에서 Claude는 영어 표 머리글 `Recipient`를 `받는 곳`으로 옮겼습니다. 법령과 지침이 정한 말이 있는 글에서 영어를 옮겨 새 말을 만들지 않고 그 말을 쓰는 것은 이 저장소의 규칙입니다.
+
+**두 언어로 쓰는 글은 언어마다 따로 씁니다.** 웨일스 정부의 두 언어 서비스 지침은 웨일스어 콘텐츠를 영어 콘텐츠의 번역에 그치게 하지 말고 영어와 나란히 쓰라고 합니다. 바로 다음 문장에서는 두 언어를 늘 나란히 쓰기는 어려울 수 있다고 덧붙입니다[35]. WordPress 번역 지침은 번역문이 영어 문장 구조를 따를 필요가 없다고 합니다. 원문이 전하는 생각을 옮기는 언어에서 자연스러운 문장으로 새로 쓰라고 합니다. 말투를 맞추려고 emoji처럼 원문에 없는 요소를 넣으면 뜻이 바뀔 수 있으니 되도록 피하라고도 합니다[36]. Mozilla는 뜻을 더하거나 빼지 말고 직역은 무슨 일이 있어도 피하라고 합니다[7].
+그래서 skill은 Claude가 두 언어로 처음 쓰는 글에서 한국어 문단을 정한 내용으로 따로 쓰게 합니다. 사용자가 준 글을 옮길 때는 원문의 사실을 빼거나 더하지 않습니다. 독자를 위한 설명도 덧붙이지 않는 것은 이 저장소의 규칙입니다. WordPress는 독자에게 더 맞게 고칠 재량도 인정합니다[36].
 
 ## 문장
 
@@ -102,6 +127,12 @@ skill에는 요청이나 원문에 나온 한국어 용어를 답변에서도 �
 shell, hook, skill처럼 자료마다 표기가 갈리는 말은 한 문서 안에서 하나로 정해 씁니다. 외래어 표기법 규칙대로 적으면 shell은 `셸`입니다[4]. Microsoft와 쿠버네티스도 `셸`로 적습니다[5][6]. Pro Git은 Git Hooks 절에서 `쉘`로 적지만 책 전체로는 `쉘`과 `셸`을 섞어 씁니다[9]. hook은 Microsoft가 `후크`로 적습니다[5]. 쿠버네티스와 Pro Git은 `훅`으로 적습니다[6][9]. Claude Code 한국어 문서는 한 페이지 안에서 `hook`과 `훅`, `skill`과 `스킬`을 섞어 씁니다[10]. 이 저장소는 Claude Code 화면과 설정에 나오는 대로 `shell`, `hook`, `skill`을 영어로 씁니다.
 특정 제품을 말할 때는 그 제품의 한국어 화면에 나오는 말을 씁니다. extension을 Chrome은 `확장 프로그램`, VS Code는 `확장`이라고 부릅니다.
 
+**일반 독자가 읽는 글에서는 사전에 오른 외래어를 한글로 씁니다.** 표준국어대사전에는 `페이지`, `브라우저`, `쿠키`, `클릭`, `스크롤`이 정보 통신 분야의 뜻으로 올라 있습니다[2]. 개인정보보호위원회 작성지침의 작성 예시도 `쿠키`와 `브라우저`를 한글로 씁니다[34]. 국립국어원은 문서를 읽는 사람의 관점에서 용어를 쓰는 것이 좋다고 합니다[1].
+앞의 개인정보 처리방침 예문이 나온 프로젝트는 개발 문서에 `page`, `file`, `deploy`를 영어로 적습니다. Claude는 방문자가 읽는 처리방침에서도 `page`, `browser`, `cookie`를 영어로 적었습니다. 그래서 skill에는 프로젝트 문서가 이런 말을 영어로 적어도 공개하는 글은 독자의 말을 따르라는 지시가 들어 있습니다.
+
+**이름을 붙일 때는 한국 독자가 실제로 부르는 말을 씁니다.** 표준국어대사전은 `사본`을 원본을 그대로 베끼거나 사진으로 찍거나 복사해 만든 책이나 서류로 풀이합니다[2]. 웹사이트를 가리키는 뜻은 없습니다. 운영 서버에 올리기 전에 확인하려고 따로 띄운 환경을 Microsoft와 AWS의 한국어 문서는 `스테이징 환경`이라고 부릅니다[5][37]. 국내 회사의 기술 블로그에는 `테스트 서버`, `개발 서버`, `스테이징 환경`이 나옵니다[12][17][38].
+영어로 떠오른 개념에 한국어 이름을 붙일 때 다루는 제품의 한국어 화면과 문서, 법령과 기관 지침, 국내 개발 문서에서 본 적이 있는 말인지 따지는 것은 이 저장소의 규칙입니다. 어디서도 본 적이 없으면 `시험용 사본`처럼 영어 낱말을 하나씩 옮겨 만든 말일 가능성이 큽니다.
+
 **영어는 처음 한 번만 함께 적고 약어는 처음 한 번만 풀어 씁니다.** 쿠버네티스와 카카오디벨로퍼스는 용어가 처음 나올 때 괄호에 영어를 적고 그 뒤로는 한국어만 씁니다[6][14]. 토스는 약어를 처음 한 번 풀어 쓰고 그 뒤로는 약어만 씁니다[11]. 카카오디벨로퍼스는 처음에 본문에 쓸 용어를 적고 괄호에 약어나 풀어 쓴 말을 덧붙입니다. 그 뒤로는 본문에 적은 용어를 일관되게 씁니다[14].
 이 저장소는 독자가 이미 아는 말에는 영어를 함께 적지 않습니다. `결제(checkout) 요청`은 `결제 요청`으로 충분합니다. Microsoft는 영어 약어에 복수형 `s`를 붙이지 말라고 합니다[5]. 그래서 이 저장소는 `PRs`가 아니라 `PR 여러 개`라고 씁니다.
 
@@ -145,27 +176,29 @@ Microsoft는 영어 원문이 쌍점이나 쌍반점으로 끝나도 한국어 �
 - **PR 설명:** 우아한형제들 공통시스템개발팀은 MR 템플릿에 `해결하려는 문제가 무엇인가요?`와 `어떻게 해결했나요?` 항목을 따로 두었습니다[17]. 메모나 diff에 없는 테스트 목록과 배경을 지어 넣지 않는 것은 이 저장소의 규칙입니다.
 - **리뷰 코멘트:** 카카오의 2022년 신입 공채 기술 온보딩 교육은 코드스쿼드가 주관했습니다. 이 교육에서 코드 리뷰를 맡은 개발자는 코드스쿼드에서 받은 리뷰 규칙 다섯 가지를 소개합니다. 그 가운데 처음 두 규칙은 개선이 필요한 이유를 충분히 설명하라는 것과, 답을 알려 주기보다 리뷰받는 사람이 스스로 고민해 개선 방법을 고르게 하라는 것입니다[18]. Claude는 무엇이 문제이고 왜 바꿔야 하는지 씁니다. 보지 못한 코드를 가정한 예시 코드를 넣지 않는 것은 이 저장소의 규칙입니다.
 - **장애 공유:** 데브시스터즈는 장애 발생 공지에 서비스 이름, 발생 시각, 영향 범위, 대응 채널을 넣습니다. 종료 공지에는 종료 시각, 추정 원인, 조치 내역, 포스트모템 회의 일시를 넣습니다[19]. LINE은 장애 원인이나 예방책을 아직 모르면 보고서에 TBD라고 적어 두고 1차 이메일로 먼저 공유해도 된다고 합니다[20]. 받은 사실만 쓰고 원인을 추정했으면 추정이라고 밝히는 것은 이 저장소의 규칙입니다.
+- **개인정보 처리방침:** 법령과 작성지침이 정한 항목 이름을 씁니다[33][34]. 방문자가 이용하는 사이트만 다루는 것과 개인이 운영하는 사이트에서 운영자를 사이트 이름으로 부르는 것은 이 저장소의 규칙입니다.
+- **릴리스 노트와 README:** 릴리스 노트와 업데이트 소식에는 이용자가 겪는 변화와 할 일만 씁니다. 사내 이슈 번호, 담당자, 내부 원인, 테스트 환경은 쓰지 않습니다. 공개 저장소의 README에는 글쓴이의 로컬 경로와 사내 주소를 쓰지 않습니다. 앞의 세 문장은 모두 이 저장소의 규칙입니다.
 - **생성 표시:** 커밋 메시지와 PR 설명에 `Co-Authored-By: Claude`나 `Generated with [Claude Code]`를 넣지 않습니다. 설치 스크립트는 프로젝트 설정(`.claude/settings.json`)의 `attribution`에 `commit`이나 `pr` 값이 없으면 빈 값을 넣어 Claude Code가 두 줄을 붙이지 않게 합니다. 검사기도 두 줄을 오류로 잡습니다.
 
 ## 출처
 
 1. 국립국어원, [한눈에 알아보는 공공언어 바로 쓰기](https://www.korean.go.kr/front/etcData/etcDataView.do?mn_id=208&etc_seq=699&pageIndex=1)(개정판, 2022), [쉬운 공문서 쓰기 길잡이](https://www.korean.go.kr/front/etcData/etcDataView.do?mn_id=208&etc_seq=700&pageIndex=1)(2022), [쉬운 공공언어 쓰기 길잡이](https://www.korean.go.kr/front/etcData/etcDataView.do?mn_id=208&etc_seq=399&pageIndex=1)(문화체육관광부와 함께 펴냄, 2014), [보도 자료 쓰기 길잡이](https://www.korean.go.kr/front/etcData/etcDataView.do?mn_id=208&etc_seq=334&pageIndex=1), [개선이 필요한 공공언어 30선](https://www.korean.go.kr/front/etcData/etcDataView.do?mn_id=208&etc_seq=735&pageIndex=1)(2026)
-2. 국립국어원, 표준국어대사전 [-씩](https://stdict.korean.go.kr/search/searchResult.do?pageSize=10&searchKeyword=%EC%94%A9), [말투](https://stdict.korean.go.kr/search/searchView.do?word_no=420322&searchKeywordTo=3), [어투](https://stdict.korean.go.kr/search/searchView.do?word_no=225260&searchKeywordTo=3), [하십시오체](https://stdict.korean.go.kr/search/searchView.do?word_no=518159&searchKeywordTo=3), [해요체](https://stdict.korean.go.kr/search/searchView.do?word_no=499236&searchKeywordTo=3), [-습니다](https://stdict.korean.go.kr/search/searchView.do?word_no=451593&searchKeywordTo=3), 우리말샘 [다나까체](https://opendict.korean.go.kr/dictionary/view?sense_no=925724&viewType=confirm), 표준국어대사전 검색 결과 [`멱등`](https://stdict.korean.go.kr/search/searchResult.do?pageSize=10&searchKeyword=%EB%A9%B1%EB%93%B1), [`비멱등`](https://stdict.korean.go.kr/search/searchResult.do?pageSize=10&searchKeyword=%EB%B9%84%EB%A9%B1%EB%93%B1), [`미추적`](https://stdict.korean.go.kr/search/searchResult.do?pageSize=10&searchKeyword=%EB%AF%B8%EC%B6%94%EC%A0%81), [`비동기`](https://stdict.korean.go.kr/search/searchResult.do?pageSize=10&searchKeyword=%EB%B9%84%EB%8F%99%EA%B8%B0), 우리말샘 검색 결과 [`멱등`](https://opendict.korean.go.kr/search/searchResult?query=%EB%A9%B1%EB%93%B1), [`비멱등`](https://opendict.korean.go.kr/search/searchResult?query=%EB%B9%84%EB%A9%B1%EB%93%B1), [`미추적`](https://opendict.korean.go.kr/search/searchResult?query=%EB%AF%B8%EC%B6%94%EC%A0%81)(두 사전 모두 2026년 10월 28일 검색), [현대 국어 사용 빈도 조사 2](https://www.korean.go.kr/front/reportData/reportDataView.do?mn_id=207&report_seq=1&pageIndex=1)(2005), [표준 언어 예절](https://www.korean.go.kr/front/reportData/reportDataView.do?mn_id=207&report_seq=767&pageIndex=1)(2011)
+2. 국립국어원, 표준국어대사전 [-씩](https://stdict.korean.go.kr/search/searchResult.do?pageSize=10&searchKeyword=%EC%94%A9), [말투](https://stdict.korean.go.kr/search/searchView.do?word_no=420322&searchKeywordTo=3), [어투](https://stdict.korean.go.kr/search/searchView.do?word_no=225260&searchKeywordTo=3), [하십시오체](https://stdict.korean.go.kr/search/searchView.do?word_no=518159&searchKeywordTo=3), [해요체](https://stdict.korean.go.kr/search/searchView.do?word_no=499236&searchKeywordTo=3), [-습니다](https://stdict.korean.go.kr/search/searchView.do?word_no=451593&searchKeywordTo=3), [사본](https://stdict.korean.go.kr/search/searchView.do?word_no=441855&searchKeywordTo=3), [페이지](https://stdict.korean.go.kr/search/searchView.do?word_no=351900&searchKeywordTo=3), [브라우저](https://stdict.korean.go.kr/search/searchView.do?word_no=437031&searchKeywordTo=3), [쿠키](https://stdict.korean.go.kr/search/searchView.do?word_no=339386&searchKeywordTo=3), [클릭](https://stdict.korean.go.kr/search/searchView.do?word_no=497584&searchKeywordTo=3), [스크롤](https://stdict.korean.go.kr/search/searchView.do?word_no=446898&searchKeywordTo=3), 우리말샘 [다나까체](https://opendict.korean.go.kr/dictionary/view?sense_no=925724&viewType=confirm), 표준국어대사전 검색 결과 [`멱등`](https://stdict.korean.go.kr/search/searchResult.do?pageSize=10&searchKeyword=%EB%A9%B1%EB%93%B1), [`비멱등`](https://stdict.korean.go.kr/search/searchResult.do?pageSize=10&searchKeyword=%EB%B9%84%EB%A9%B1%EB%93%B1), [`미추적`](https://stdict.korean.go.kr/search/searchResult.do?pageSize=10&searchKeyword=%EB%AF%B8%EC%B6%94%EC%A0%81), [`비동기`](https://stdict.korean.go.kr/search/searchResult.do?pageSize=10&searchKeyword=%EB%B9%84%EB%8F%99%EA%B8%B0), 우리말샘 검색 결과 [`멱등`](https://opendict.korean.go.kr/search/searchResult?query=%EB%A9%B1%EB%93%B1), [`비멱등`](https://opendict.korean.go.kr/search/searchResult?query=%EB%B9%84%EB%A9%B1%EB%93%B1), [`미추적`](https://opendict.korean.go.kr/search/searchResult?query=%EB%AF%B8%EC%B6%94%EC%A0%81)(두 사전 모두 2026년 10월 28일 검색), [현대 국어 사용 빈도 조사 2](https://www.korean.go.kr/front/reportData/reportDataView.do?mn_id=207&report_seq=1&pageIndex=1)(2005), [표준 언어 예절](https://www.korean.go.kr/front/reportData/reportDataView.do?mn_id=207&report_seq=767&pageIndex=1)(2011)
 3. 국립국어원 온라인가나다, [하십시오체와 해요체를 섞어서 작문하는 것](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&qna_seq=318384&pageIndex=1)(2025년 7월 17일 답변), [영어투의 표현](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&qna_seq=334318&pageIndex=1)(2026년 7월 31일 답변), [이중 피동 관련 문의](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&qna_seq=315483&pageIndex=1)(2025년 5월 28일 답변)
 4. 국립국어원, [한글 맞춤법](https://korean.go.kr/kornorms/regltn/regltnView.do?regltn_code=0001)의 부록 문장 부호, [외래어 표기법](https://korean.go.kr/kornorms/regltn/regltnView.do?regltn_code=0003)
-5. Microsoft, [Korean Localization Style Guide](https://download.microsoft.com/download/5/b/6/5b62389f-4e3b-4c77-bc18-94efba2fa7bb/kor-kor-StyleGuide.pdf), [Microsoft Terminology](https://learn.microsoft.com/en-us/globalization/reference/microsoft-terminology)
+5. Microsoft, [Korean Localization Style Guide](https://download.microsoft.com/download/5/b/6/5b62389f-4e3b-4c77-bc18-94efba2fa7bb/kor-kor-StyleGuide.pdf), [Microsoft Terminology](https://learn.microsoft.com/en-us/globalization/reference/microsoft-terminology), Microsoft Writing Style Guide의 [Top 10 tips for Microsoft style and voice](https://learn.microsoft.com/en-us/style-guide/top-10-tips-style-voice), Microsoft Learn 한국어 문서 [스테이징 환경 설정 - Azure App Service](https://learn.microsoft.com/ko-kr/azure/app-service/deploy-staging-slots)
 6. 쿠버네티스 문서 한글화 팀, [쿠버네티스 문서 한글화 가이드](https://kubernetes.io/ko/docs/contribute/localization_ko/), [한글화 모범 사례](https://kubernetes.io/ko/docs/contribute/localization_ko_best_practice/)
-7. Mozilla, [한국어 문서 번역 스타일 가이드](https://mozilla-l10n.github.io/styleguides/ko/)
+7. Mozilla, [한국어 문서 번역 스타일 가이드](https://mozilla-l10n.github.io/styleguides/ko/), [Mozilla general style guide](https://mozilla-l10n.github.io/styleguides/mozilla_general/)
 8. MDN, [한국어 번역 안내서](https://github.com/mdn/translated-content/blob/main/docs/ko/guides/translation-guide.md)
 9. Pro Git 한국어 번역팀, [번역 노트](https://github.com/progit/progit2-ko/blob/master/TRANSLATION_NOTES.asc), [Git Hooks 절](https://github.com/progit/progit2-ko/blob/master/book/08-customizing-git/sections/hooks.asc), [수정하고 저장소에 저장하기 절](https://github.com/progit/progit2-ko/blob/master/book/02-git-basics/sections/recording-changes.asc)
 10. Anthropic, Claude Code 한국어 문서 [Hooks 참조](https://code.claude.com/docs/ko/hooks), [Claude를 skills로 확장하기](https://code.claude.com/docs/ko/skills)
-11. 토스, [테크니컬 라이팅 가이드](https://technical-writing.dev/overview.html)의 [구체적으로 쓰기](https://technical-writing.dev/sentence/concreteness.html), [필요한 정보만 남기기](https://technical-writing.dev/sentence/compactness.html), [자연스러운 한국어 표현 쓰기](https://technical-writing.dev/sentence/natural-kor-expression.html), [일관되게 쓰기](https://technical-writing.dev/sentence/consistency.html), [문장의 주체를 분명하게 하기](https://technical-writing.dev/sentence/subject.html), [가치를 먼저 제공하기](https://technical-writing.dev/architecture/value-first-cost-later.html)
-12. 토스, [토스의 8가지 라이팅 원칙들](https://toss.tech/article/8-writing-principles-of-toss)
+11. 토스, [테크니컬 라이팅 가이드](https://technical-writing.dev/overview.html)의 [구체적으로 쓰기](https://technical-writing.dev/sentence/concreteness.html), [필요한 정보만 남기기](https://technical-writing.dev/sentence/compactness.html), [자연스러운 한국어 표현 쓰기](https://technical-writing.dev/sentence/natural-kor-expression.html), [일관되게 쓰기](https://technical-writing.dev/sentence/consistency.html), [문장의 주체를 분명하게 하기](https://technical-writing.dev/sentence/subject.html), [가치를 먼저 제공하기](https://technical-writing.dev/architecture/value-first-cost-later.html), [정보 구조 만들기](https://technical-writing.dev/architecture/index.html)
+12. 토스, [토스의 8가지 라이팅 원칙들](https://toss.tech/article/8-writing-principles-of-toss), [SSR 서버 최적화로 비용 아끼기](https://toss.tech/article/ssr-server)(2024)
 13. 토스 앱인토스 개발자센터, [UI/UX 가이드](https://developers-apps-in-toss.toss.im/design/consumer-ux-guide.html)
 14. 카카오, [카카오디벨로퍼스 문서 스타일 가이드](https://developers.kakao.com/docs/ko/documentation-guideline/document-style-open), [카카오디벨로퍼스 내용 작성 가이드](https://developers.kakao.com/docs/ko/documentation-guideline/document-content-open)
 15. 카카오엔터프라이즈 테크니컬라이팅팀, [테크니컬 라이팅 4대 원칙](https://web.archive.org/web/20231130101355/https://tech.kakaoenterprise.com/102), [개발자들을 위한 테크니컬 라이팅 10계명](https://web.archive.org/web/20230928112021/https://tech.kakaoenterprise.com/110), [언어학 관점에서의 기술문서 가독성 향상 전략](https://web.archive.org/web/20240805021455/https://tech.kakaoenterprise.com/100), [올바른 동사 사용 가이드](https://web.archive.org/web/20231130115719/https://tech.kakaoenterprise.com/124). 원래 주소가 열리지 않아 인터넷 아카이브 사본을 걸었습니다.
 16. NHN Cloud, [좋은 git 커밋 메시지를 작성하기 위한 7가지 약속](https://meetup.nhncloud.com/posts/106)
-17. 우아한형제들, [공통시스템개발팀 코드 리뷰 문화 개선 이야기](https://techblog.woowahan.com/7152/)
+17. 우아한형제들, [공통시스템개발팀 코드 리뷰 문화 개선 이야기](https://techblog.woowahan.com/7152/), [별로 안 궁금했지만 막상 들어보니 은근 궁금했던 개발 이야기](https://techblog.woowahan.com/6042/)(2021)
 18. 카카오, [효과적인 코드리뷰를 위한 리뷰어의 자세](https://tech.kakao.com/posts/498)
 19. 데브시스터즈, [데브시스터즈의 장애 대응 원칙과 방법](https://tech.devsisters.com/posts/incident-management-principles/)
 20. LINE, [LINE의 장애 보고와 후속 절차 문화](https://engineering.linecorp.com/ko/blog/line-failure-reporting-and-follow-up-process-culture/)
@@ -177,3 +210,13 @@ Microsoft는 영어 원문이 쌍점이나 쌍반점으로 끝나도 한국어 �
 26. Park 외, [KatFishNet: Detecting LLM-Generated Korean Text through Linguistic Feature Analysis](https://arxiv.org/abs/2503.00032)(ACL 2025)
 27. 국립국어원 『새국어생활』의 [김순영](https://www.korean.go.kr/nkview/nklife/2012_1/22_0105.pdf), [강주헌](https://www.korean.go.kr/nkview/nklife/2012_1/22_0108.pdf), [김정우](https://www.korean.go.kr/nkview/nklife/2012_1/22_0104.pdf)의 글(22권 1호, 2012)과 [이한우](https://www.korean.go.kr/nkview/nklife/2002_4/2002_0412.pdf)의 글(12권 4호, 2002)
 28. Git, [한국어 메시지 번역 파일](https://github.com/git/git/blob/master/po/ko.po)
+29. Google, Technical Writing One의 [Audience](https://developers.google.com/tech-writing/one/audience), [Documents](https://developers.google.com/tech-writing/one/documents)
+30. OWASP, Web Security Testing Guide 최신판의 [WSTG-INFO-01](https://wstg.owasp.org/latest/4-Web_Application_Security_Testing/01-Information_Gathering/01-Conduct_Search_Engine_Reconnaissance_for_Information_Leakage), [WSTG-INFO-04](https://wstg.owasp.org/latest/4-Web_Application_Security_Testing/01-Information_Gathering/04-Attack_Surface_Identification)
+31. MITRE, [CWE-200: Exposure of Sensitive Information to an Unauthorized Actor](https://cwe.mitre.org/data/definitions/200.html)
+32. 한국인터넷진흥원, [주요정보통신기반시설 기술적 취약점 분석 평가 방법 상세가이드](https://www.kisa.or.kr/2060204/form?postSeq=12)(2021)의 웹 정보 누출 항목
+33. 국가법령정보센터, 개인정보 보호법 [제30조](https://www.law.go.kr/%EB%B2%95%EB%A0%B9/%EA%B0%9C%EC%9D%B8%EC%A0%95%EB%B3%B4%EB%B3%B4%ED%98%B8%EB%B2%95/%EC%A0%9C30%EC%A1%B0), 개인정보 보호법 시행령 [제31조](https://www.law.go.kr/%EB%B2%95%EB%A0%B9/%EA%B0%9C%EC%9D%B8%EC%A0%95%EB%B3%B4%EB%B3%B4%ED%98%B8%EB%B2%95%EC%8B%9C%ED%96%89%EB%A0%B9/%EC%A0%9C31%EC%A1%B0), [표준 개인정보 보호지침](https://www.law.go.kr/%ED%96%89%EC%A0%95%EA%B7%9C%EC%B9%99/%ED%91%9C%EC%A4%80%EA%B0%9C%EC%9D%B8%EC%A0%95%EB%B3%B4%EB%B3%B4%ED%98%B8%EC%A7%80%EC%B9%A8) 제18조(2026년 10월 28일 확인)
+34. 개인정보보호위원회, [개인정보 처리방침 작성지침](https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS217&mCode=D010030000&nttId=12018)(2026년 4월 개정)
+35. 웨일스 정부 Digital Public Services, [Designing bilingual user-centred services](https://digitalpublicservices.gov.wales/guidance-and-standards/meet-user-needs/designing-bilingual-user-centred-services)
+36. WordPress Polyglots, [General Expectations for Translators](https://make.wordpress.org/polyglots/handbook/translating/expectations/)
+37. AWS, [스테이징 환경 - AWS 권장 가이드](https://docs.aws.amazon.com/ko_kr/prescriptive-guidance/latest/choosing-git-branch-approach/staging-environment.html)
+38. 쏘카, [쏘카 QA는 무슨 일을 하고 어떻게 일하나요?](https://tech.socarcorp.kr/qa/2022/03/18/probationary-period_QA.html)(2022)
