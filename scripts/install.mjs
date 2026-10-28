@@ -17,7 +17,7 @@ import { createHash } from 'node:crypto';
 import { parseArgs } from 'node:util';
 import { INSTALLED_DIR, isEntryPoint } from './lib/paths.mjs';
 import { canonicalRegister } from './lib/rules.mjs';
-import { readSettings, localSettingsPaths, installCommitHook, reportCommitHook } from './lib/setup.mjs';
+import { readSettings, localSettingsPaths, installCommitHook, reportCommitHook, hookCommand } from './lib/setup.mjs';
 export { installCommitHook, reportCommitHook } from './lib/setup.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -61,8 +61,8 @@ export const GITIGNORE_LINES = [
   `${OUTPUT_STYLE_DIR_POSIX}/${OUTPUT_STYLE_NAME}.md`,
 ];
 
-/* 설치한 프로젝트에서 hook 스크립트가 있는 디렉터리입니다. hook 명령에 이 경로를 넣습니다. */
-const HOOK_BASE = `$CLAUDE_PROJECT_DIR/${INSTALLED_DIR}/scripts/hooks`;
+/* `claude --worktree`로 작업 트리를 만들 때 Claude Code가 복사할 파일 목록입니다. 형식은 .gitignore와 같습니다. */
+const WORKTREE_INCLUDE = '.worktreeinclude';
 
 /* settings.json에서 이 도구의 hook 명령을 알아볼 때 찾는 경로입니다. */
 const MARKER = `${INSTALLED_DIR}/scripts/hooks/`;
@@ -70,18 +70,18 @@ const MARKER = `${INSTALLED_DIR}/scripts/hooks/`;
 const HOOKS = {
   UserPromptSubmit: {
     script: 'userprompt.mjs',
-    command: `node "${HOOK_BASE}/userprompt.mjs"`,
+    command: hookCommand('userprompt'),
     statusMessage: 'Claude에게 skill을 먼저 부르라고 알리는 중',
   },
   PreToolUse: {
     script: 'pretooluse.mjs',
     matcher: 'Write|Edit|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMode|SendUserFile|Task|Agent|Bash',
-    command: `node "${HOOK_BASE}/pretooluse.mjs"`,
+    command: hookCommand('pretooluse'),
     statusMessage: '한국어 문체 검사 중',
   },
   Stop: {
     script: 'stop.mjs',
-    command: `node "${HOOK_BASE}/stop.mjs"`,
+    command: hookCommand('stop'),
     statusMessage: '최종 답변 문체 검사 중',
   },
 };
@@ -306,9 +306,13 @@ function main() {
   const ignoreBefore = existsSync(ignorePath) ? readFileSync(ignorePath, 'utf8') : '';
   const hasGit = existsSync(join(root, '.git'));
   const ignore = hasGit ? mergeGitignore(ignoreBefore) : { text: ignoreBefore, added: false };
+  /* Git에서 제외한 설치 파일은 새 작업 트리에 생기지 않습니다. 같은 줄을 .worktreeinclude에도 적어 두면 `claude --worktree`로 작업 트리를 만들 때 Claude Code가 이 파일들을 복사합니다. */
+  const includePath = join(root, WORKTREE_INCLUDE);
+  const includeBefore = existsSync(includePath) ? readFileSync(includePath, 'utf8') : '';
+  const include = hasGit ? mergeGitignore(includeBefore) : { text: includeBefore, added: false };
 
   for (const rel of [INSTALLED_DIR, '.claude/settings.json', ...SKILL_NAMES.map(skillDirPosixFor),
-    `${OUTPUT_STYLE_DIR_POSIX}/${OUTPUT_STYLE_NAME}.md`, ...(hasGit ? ['.gitignore'] : [])]) assertWritablePath(root, rel);
+    `${OUTPUT_STYLE_DIR_POSIX}/${OUTPUT_STYLE_NAME}.md`, ...(hasGit ? ['.gitignore', WORKTREE_INCLUDE] : [])]) assertWritablePath(root, rel);
   if (!before) {
     for (const rel of [...SKILL_NAMES.map(name => `${skillDirPosixFor(name)}/SKILL.md`), `${OUTPUT_STYLE_DIR_POSIX}/${OUTPUT_STYLE_NAME}.md`]) {
       if (existsSync(join(root, rel))) throw new Error(`같은 이름의 기존 파일은 덮어쓰지 않습니다: ${rel}`);
@@ -347,8 +351,9 @@ function main() {
   mkdirSync(dirname(settingsPath), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(style.settings, null, 2) + '\n');
   if (ignore.added) writeFileSync(ignorePath, ignore.text);
+  if (include.added) writeFileSync(includePath, include.text);
   console.log(`설치했습니다. 새 hook: ${added.join(', ') || '없음'}`);
-  if (!hasGit) console.log('.git이 없어서 .gitignore를 수정하지 않았습니다. git init 후 다시 설치하면 설치 스크립트가 필요한 항목을 추가합니다.');
+  if (!hasGit) console.log('.git이 없어서 .gitignore와 .worktreeinclude를 수정하지 않았습니다. git init 후 다시 설치하면 설치 스크립트가 필요한 항목을 추가합니다.');
   reportCommitHook(installCommitHook(root));
   console.log('설치한 프로젝트에서 Claude Code를 다시 시작해야 설치 내용이 적용됩니다. 그때부터 Claude는 한국어를 써야 하는 요청마다 먼저 korean-rewrite skill을 부릅니다.');
   const quoted = "'" + join(installDir, 'scripts/doctor.mjs').replaceAll("'", "'\\''") + "'";
