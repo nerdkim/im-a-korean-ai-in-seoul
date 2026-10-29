@@ -7,13 +7,10 @@ const LATIN_WORD = "[A-Za-z][A-Za-z0-9'’]*(?:[-.][A-Za-z0-9]+)*";
 /* 목적어에 붙는 조사입니다. */
 const OBJECT_PARTICLE = '[을를]';
 
-/* `@object:` 항목은 `효과는 재지 않았습니다`처럼 목적어를 `은`, `는`으로 앞에 내세운 문장도 봅니다. */
+/* `object-verbs` 항목은 `효과는 재지 않았습니다`처럼 목적어를 `은`, `는`으로 앞에 내세운 문장도 봅니다. */
 const OBJECT_OR_TOPIC_PARTICLE = '[을를은는]';
 
 const LATIN_PREFIX = '@latin:';
-
-/* `@object:` 항목은 목적어가 `>` 앞에 적은 낱말일 때만 뒤에 적은 동사를 잡습니다. 낱말 앞에 한글이 붙어 있으면 `목표`, `실행`처럼 다른 낱말의 일부로 보고 잡지 않습니다. */
-const OBJECT_PREFIX = '@object:';
 
 /* 목적어와 조사 사이에 넣은 괄호 설명입니다. `저장소(docs/wiki)를`처럼 씁니다. */
 const PAREN_NOTE = '(?:\\s*\\([^()\\n]{0,80}\\))?';
@@ -52,21 +49,6 @@ export function translationeseViolations(text, rules) {
 
   /* 2) 영어 동사를 직역한 동사입니다. */
   for (const [key, right] of rules.literalVerbs) {
-    if (key.startsWith(OBJECT_PREFIX)) {
-      const [nouns, verbs = ''] = key.slice(OBJECT_PREFIX.length).split('>');
-      const objects = alternation(nouns);
-      const stems = alternation(verbs);
-      if (objects.length === 0 || stems.length === 0) continue;
-      /* 적어 둔 낱말과 조사 뒤에 동사가 오는 문장을 찾습니다. `@latin:` 규칙처럼 조사와 동사 사이에 낱말이 두 개까지 올 수 있습니다. */
-      const m = new RegExp(`(?<![가-힣])(${objects})${PAREN_NOTE}\\s*${OBJECT_OR_TOPIC_PARTICLE}\\s+(?:\\S+\\s+){0,2}(?:${stems})`, 'u').exec(text);
-      if (m === null) continue;
-      out.push({
-        rule: 'literal-verb',
-        detail: `목적어 ${JSON.stringify(m[1])} 뒤에 직역 동사를 썼습니다: ${JSON.stringify(m[0].trim().slice(0, 40))}.${advise(right)}`,
-        line: lineOf(text, m.index),
-      });
-      continue;
-    }
     if (key.startsWith(LATIN_PREFIX)) {
       const stems = alternation(key.slice(LATIN_PREFIX.length));
       if (stems.length === 0) continue;
@@ -99,6 +81,22 @@ export function translationeseViolations(text, rules) {
     out.push({
       rule: 'literal-verb',
       detail: `직역 표현을 썼습니다: ${JSON.stringify(m[0])}.${advise(right)}`,
+      line: lineOf(text, m.index),
+    });
+  }
+
+  /* 3) 정해 둔 낱말이 목적어일 때만 잡는 직역 동사입니다. `>` 앞에 목적어 낱말을, 뒤에 동사 활용형을 적습니다. 낱말 앞에 한글이 붙어 있으면 `목표`, `실행`처럼 다른 낱말의 일부로 보고 잡지 않습니다. */
+  for (const [key, right] of rules.objectVerbs ?? []) {
+    const [nouns, verbs = ''] = key.split('>');
+    const objects = alternation(nouns);
+    const stems = alternation(verbs);
+    if (objects.length === 0 || stems.length === 0) continue;
+    /* 적어 둔 낱말과 조사 뒤에 동사가 오는 문장을 찾습니다. `literal-verbs`의 `@latin:` 항목처럼 조사와 동사 사이에 낱말이 두 개까지 올 수 있습니다. */
+    const m = new RegExp(`(?<![가-힣])(${objects})${PAREN_NOTE}\\s*${OBJECT_OR_TOPIC_PARTICLE}\\s+(?:\\S+\\s+){0,2}(?:${stems})`, 'u').exec(text);
+    if (m === null) continue;
+    out.push({
+      rule: 'literal-verb',
+      detail: `목적어 ${JSON.stringify(m[1])} 뒤에 직역 동사를 썼습니다: ${JSON.stringify(m[0].trim().slice(0, 40))}.${advise(right)}`,
       line: lineOf(text, m.index),
     });
   }

@@ -44,6 +44,8 @@ const MAP_KEYS = {
   'required-spelling': 'requiredSpelling',
   'loanword-spelling': 'loanwordSpelling',
   'literal-verbs': 'literalVerbs',
+  /* 정해 둔 낱말이 목적어일 때만 잡는 직역 동사입니다. 예전 검사기가 이 항목을 낱말 목록으로 잘못 읽지 않도록 `literal-verbs`와 다른 키에 둡니다. */
+  'object-verbs': 'objectVerbs',
   'translationese-patterns': 'translationesePatterns',
   'known-typos': 'knownTypos',
   /* 영어를 낱말 단위로 옮겨 만든 말과 대신 쓸 표현입니다. */
@@ -159,6 +161,7 @@ const FALLBACK = {
   requiredSpelling: new Map(),
   loanwordSpelling: new Map(),
   literalVerbs: new Map(),
+  objectVerbs: new Map(),
   translationesePatterns: new Map(),
   knownTypos: new Map(),
   calques: new Map(),
@@ -229,6 +232,7 @@ function freshRules() {
     requiredSpelling: new Map(),
     loanwordSpelling: new Map(),
     literalVerbs: new Map(),
+    objectVerbs: new Map(),
     translationesePatterns: new Map(),
     knownTypos: new Map(),
     calques: new Map(),
@@ -361,6 +365,7 @@ export function fenceRules(rules) {
     flatteryOpeners: [],
     translationesePatterns: new Map(),
     literalVerbs: new Map(),
+    objectVerbs: new Map(),
     maxCommaPerSentence: 0,
     maxCommaSegmentWords: 0,
     maxConnectiveCommaPer1k: 0,

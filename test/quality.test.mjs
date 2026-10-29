@@ -120,12 +120,18 @@ test('효과, 성능, 비용 같은 지표를 `재다`로 쓴 문장은 경고�
   }
 });
 
-test('`literal-verbs`의 `@object:` 항목은 적어 둔 낱말이 목적어일 때만 잡는다', () => {
-  const own = parseRuleBlock('advisory-rules: literal-verb\nliteral-verbs: @object:저장소|테스트>더하|더했=추가합니다');
+test('기본 규칙의 `literal-verbs`에는 `>`가 든 항목이 없다', () => {
+  /* 0.3.5까지의 검사기는 `literal-verbs`의 `목적어>동사` 항목을 `|`로 나눈 낱말 목록으로 읽습니다. 그러면 새 규칙 문서만 받은 프로젝트에서 `설정`, `성능` 같은 낱말에도 경고가 나옵니다. 그래서 이런 항목은 예전 검사기가 읽지 않는 `object-verbs`에 둡니다. */
+  assert.ok(rules.objectVerbs.size > 0);
+  assert.ok([...rules.literalVerbs.keys()].every(key => !key.includes('>')));
+});
+
+test('`object-verbs` 항목은 적어 둔 낱말이 목적어일 때만 잡는다', () => {
+  const own = parseRuleBlock('advisory-rules: literal-verb\nobject-verbs: 저장소|테스트>더하|더했=추가합니다');
   assert.ok(checkText('저장소를 하나 더했습니다.', own).some(v => v.rule === 'literal-verb'));
   assert.ok(!checkText('통합테스트를 더하고 배포합니다.', own).some(v => v.rule === 'literal-verb'), '앞에 한글이 붙은 목적어는 다른 낱말로 보고 잡지 않습니다');
   assert.ok(!checkText('파일을 더했습니다.', own).some(v => v.rule === 'literal-verb'), '적어 두지 않은 목적어는 잡지 않습니다');
-  assert.ok(!checkText('저장소를 더했습니다.', parseRuleBlock('literal-verbs: @object:저장소>')).some(v => v.rule === 'literal-verb'), '동사를 비운 항목은 잡지 않습니다');
+  assert.ok(!checkText('저장소를 더했습니다.', parseRuleBlock('object-verbs: 저장소>')).some(v => v.rule === 'literal-verb'), '동사를 비운 항목은 잡지 않습니다');
 });
 
 test('`calques`에 적은 말 앞에 한글이 붙어 있거나 규칙에 값이 없으면 막지 않는다', () => {
