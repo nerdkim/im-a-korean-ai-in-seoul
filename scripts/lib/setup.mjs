@@ -10,6 +10,20 @@ export const MISSING_SCRIPTS_NOTICE =
   '사용자에게 프로젝트 루트에서 처음 설치할 때 쓴 설치 명령을 다시 실행해 달라고 알려 주십시오. ' +
   '예: npx -y github:nerdkim/im-a-korean-ai-in-seoul --target .';
 
+/*
+ * Claude Code 2.1.310은 이 환경 변수에 값이 없으면 API 요청에 `thinking.display: "updates"`를 넣습니다.
+ * 그러면 서버는 Claude가 도구를 부르는 사이에 쓴 진행 보고 가운데 일부를 그대로 보내지 않고 요약한 문장으로 바꿔 보냅니다.
+ * 이 문장은 Claude가 쓴 글이 아니어서 skill과 작성 지침을 거치지 않습니다. hook도 이 문장을 검사하지 못합니다.
+ * 값을 0으로 두면 서버는 요약한 문장 대신 빈 블록을 보내고 화면에는 아무 문장도 나오지 않습니다.
+ */
+export const PROGRESS_SUMMARY_ENV = 'CLAUDE_CODE_THINKING_DISPLAY_UPDATES';
+
+/* 받은 값을 Claude Code가 끔으로 읽는지 봅니다. */
+export function isOffValue(value) {
+  if (value === undefined || value === null) return false;
+  return ['0', 'false', 'no', 'off'].includes(String(value).trim().toLowerCase());
+}
+
 /* settings.json에 넣을 hook 명령을 만듭니다. 설치한 프로젝트에서는 hook 스크립트를 Git에서 제외하므로 저장소를 새로 clone하면 스크립트가 없습니다. 이때 node가 "Cannot find module"로 실패하지 않도록 스크립트가 있을 때만 실행합니다. 스크립트가 없으면 UserPromptSubmit hook만 안내를 남깁니다. 다른 hook은 아무것도 하지 않습니다. 이 도구의 저장소는 스크립트를 커밋하므로 스크립트를 바로 실행합니다. */
 export function hookCommand(name, installed = true) {
   const script = `$CLAUDE_PROJECT_DIR/${installed ? `${INSTALLED_DIR}/` : ''}scripts/hooks/${name}.mjs`;

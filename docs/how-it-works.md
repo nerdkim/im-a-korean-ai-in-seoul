@@ -131,11 +131,18 @@ Claude가 `Bash` 도구에서 `>`, `>>`, `tee`, `sed -i`, `perl -i`로 검사하
 Claude Code가 답변을 마치면 `stop.mjs`가 hook 입력의 마지막 답변(`last_assistant_message`)을 `chat`으로 검사합니다. 구버전 Claude Code라 이 값을 주지 않으면 hook은 대화 기록에서 이번 요청의 답변을 모읍니다.
 skill을 부르지 않았거나 오류가 있으면 hook은 `decision: block`과 그 이유를 돌려줍니다. Claude는 내용을 유지한 채 답변을 다시 씁니다.
 Claude가 답변을 다시 쓰고 나면 hook이 한 번 더 실행되지만 이때는 `stop_hook_active`가 켜져 있으므로 검사하지 않고 끝납니다. 그래서 hook은 답변을 한 번만 다시 쓰게 합니다.
+Claude Code가 `last_assistant_message`를 넘겨 주면 Claude가 도구를 부르는 사이에 쓴 진행 보고는 어느 hook도 검사하지 않습니다. `last_assistant_message`에는 마지막 답변만 들어 있기 때문입니다. Claude Code 2.1.310에서는 PreToolUse hook이 실행될 때 Claude가 그 도구를 부르기 직전에 쓴 진행 보고가 아직 대화 기록에 없습니다. 진행 보고는 이미 화면에 나왔으므로 hook이 막을 수도 없습니다.
 
 설치 스크립트는 `git rev-parse --git-path hooks/commit-msg`가 가리키는 경로에 검사 스크립트를 실행하는 작은 Node.js 파일을 만듭니다.
 이 파일은 지금 커밋하는 작업 트리의 최상위 디렉터리를 찾아 그 안의 `.korean-style/scripts/hooks/commit-msg.mjs`를 실행합니다. 이 스크립트는 `#`으로 시작하는 줄을 뺀 메시지를 `commit`으로 검사하고 오류가 있으면 종료 코드 1로 커밋을 멈춥니다.
 
 hook은 실행될 때마다 규칙 문서를 새로 읽습니다. 규칙을 고치면 Claude Code를 다시 시작하지 않아도 다음 검사부터 반영됩니다.
+
+## 서버가 요약한 진행 보고
+
+Claude Code 2.1.310은 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES` 환경 변수에 값이 없으면 API 요청에 `thinking.display: "updates"`를 넣습니다. 그러면 서버는 Claude가 도구를 부르는 사이에 쓴 진행 보고 가운데 일부를 그대로 보내지 않고 요약한 문장으로 바꿔 보냅니다. Claude Code는 이 문장을 요약이라는 표시 없이 Claude가 쓴 답변과 똑같이 보여 줍니다.
+이 문장은 Claude가 쓴 글이 아니어서 skill과 작성 지침을 거치지 않습니다. 대화 기록에는 `signature` 값에 `narration`이 붙은 `thinking` 블록으로 남으므로 Stop hook도 검사하지 못합니다.
+설치 스크립트는 `.claude/settings.json`의 `env`에 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES` 값이 없으면 `0`을 넣습니다. 값을 `0`으로 두면 서버는 요약한 문장 대신 빈 블록을 보내고 화면에는 아무 문장도 나오지 않습니다. 프로젝트가 이미 값을 정해 두었으면 설치 스크립트는 그 값을 바꾸지 않습니다. 그 값이 요약을 끄는 값이 아니면 `doctor`가 주의 항목으로 표시합니다.
 
 ## 규칙 문서를 읽는 방식
 

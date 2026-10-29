@@ -4,6 +4,9 @@
     "commit": "",
     "pr": ""
   },
+  "env": {
+    "CLAUDE_CODE_THINKING_DISPLAY_UPDATES": "0"
+  },
   "hooks": {
     "UserPromptSubmit": [
       {

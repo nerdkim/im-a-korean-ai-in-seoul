@@ -12,7 +12,7 @@ import { INSTALLED_DIR, rulesDocPath } from '../scripts/lib/paths.mjs';
 import { loadRules, withRegister } from '../scripts/lib/rules.mjs';
 import { checkText } from '../scripts/lib/check.mjs';
 import { REGISTER_FRAGMENTS, mergeOutputStyle } from '../scripts/install.mjs';
-import { MISSING_SCRIPTS_NOTICE, hookCommand } from '../scripts/lib/setup.mjs';
+import { MISSING_SCRIPTS_NOTICE, PROGRESS_SUMMARY_ENV, hookCommand, isOffValue } from '../scripts/lib/setup.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -445,7 +445,48 @@ test('설치 스크립트가 settings.json에 output-style을 적고 남의 키�
 
   const settings = JSON.parse(readFileSync(join(target, '.claude', 'settings.json'), 'utf-8'));
   assert.equal(settings.outputStyle, 'korean-style');
-  assert.deepEqual(settings.env, { A: '1' }, '남의 키가 사라졌습니다');
+  assert.deepEqual(settings.env, { A: '1', [PROGRESS_SUMMARY_ENV]: '0' }, '남의 키가 사라졌거나 진행 보고 요약을 끄는 값이 들어가지 않았습니다');
+});
+
+test('설치하면 프로젝트 설정에 진행 보고 요약을 끄는 값을 넣는다', () => {
+  /* 이 값이 없으면 Claude가 쓴 진행 보고 일부가 서버가 요약한 문장으로 바뀌어 화면에 나옵니다. 이 문장은 skill과 검사기를 거치지 않습니다. */
+  const target = scratch();
+  assert.equal(install(target).status, 0);
+  assert.equal(jsonAt(join(target, '.claude', 'settings.json')).env[PROGRESS_SUMMARY_ENV], '0');
+  const r = doctor(target);
+  assert.equal(r.status, 0, r.stdout);
+  assert.match(r.stdout, /통과 {2}.*진행 보고가 화면에 나오지 않습니다/);
+  assert.doesNotMatch(r.stdout, /주의 {2}.*진행 보고/);
+});
+
+test('isOffValue는 Claude Code가 끔으로 읽는 값만 끄는 값으로 본다', () => {
+  for (const value of ['0', 'false', 'FALSE', ' no ', 'off', 0, false]) assert.ok(isOffValue(value), `끄는 값입니다: ${JSON.stringify(value)}`);
+  /* Claude Code는 이 밖의 값을 켜짐으로 읽거나 값이 없는 것으로 보고 기본값인 켜짐을 씁니다. */
+  for (const value of [undefined, null, '', '1', 'true', 'on', 'disabled', 1, true]) assert.ok(!isOffValue(value), `끄는 값이 아닙니다: ${JSON.stringify(value)}`);
+});
+
+test('설치 스크립트는 프로젝트가 켜 둔 진행 보고 요약을 끄지 않고 doctor는 주의를 출력한다', () => {
+  const target = scratch();
+  const path = join(target, '.claude', 'settings.json');
+  saveJson(path, { env: { [PROGRESS_SUMMARY_ENV]: '1' } });
+  const r = install(target);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /주의: env의 .*진행 보고가 화면에 나옵니다/);
+  assert.equal(jsonAt(path).env[PROGRESS_SUMMARY_ENV], '1');
+  const checked = doctor(target);
+  assert.equal(checked.status, 0, '진행 보고 요약이 켜진 것은 설치 실패가 아닙니다');
+  assert.match(checked.stdout, /주의 {2}.*요약을 끄는 값이 아니어서.*직접 0으로/);
+});
+
+test('doctor는 진행 보고 요약을 끄는 값이 없으면 주의를 출력하고 로컬 설정의 값을 우선한다', () => {
+  const target = scratch();
+  assert.equal(install(target).status, 0);
+  const path = join(target, '.claude', 'settings.json');
+  const { env, ...rest } = jsonAt(path);
+  saveJson(path, rest);
+  assert.match(doctor(target).stdout, /주의 {2}env에 .*값이 없어.*다시 실행/);
+  saveJson(join(target, '.claude', 'settings.local.json'), { env: { [PROGRESS_SUMMARY_ENV]: 'off' } });
+  assert.match(doctor(target).stdout, /통과 {2}.*진행 보고가 화면에 나오지 않습니다/);
 });
 
 test('설치하면 Claude Code가 커밋 메시지와 PR 설명에 붙이는 생성 표시를 끈다', () => {
@@ -861,7 +902,7 @@ test('--activate를 주면 프로젝트 설정의 outputStyle만 바꾸고 다�
   saveJson(local, { outputStyle: 'local-custom', disableAllHooks: true });
   assert.equal(install(target, ['--activate']).status, 0);
   assert.equal(jsonAt(path).outputStyle, 'korean-style');
-  assert.deepEqual(jsonAt(path).env, { KEEP: '1' });
+  assert.deepEqual(jsonAt(path).env, { KEEP: '1', [PROGRESS_SUMMARY_ENV]: '0' });
   assert.equal(jsonAt(local).outputStyle, 'local-custom');
   const r = doctor(target);
   assert.equal(r.status, 1);
@@ -1073,7 +1114,7 @@ test('README의 shell 설치 명령을 새 프로젝트와 기존 프로젝트�
     assert.equal(jsonAt(join(target, '.claude/settings.json')).outputStyle, 'korean-style');
     if (existing) {
       assert.equal(readFileSync(join(target, 'CLAUDE.md'), 'utf8'), '# 기존 지침입니다\n');
-      assert.deepEqual(jsonAt(join(target, '.claude/settings.json')).env, { KEEP: '1' });
+      assert.deepEqual(jsonAt(join(target, '.claude/settings.json')).env, { KEEP: '1', [PROGRESS_SUMMARY_ENV]: '0' });
     }
   }
 });

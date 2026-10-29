@@ -45,7 +45,7 @@ Node.js 20 이상과 npm, Git, Claude Code가 필요합니다. 명령은 macOS, 
 | `.claude/skills/korean-rewrite/SKILL.md` | 한국어 작성 skill | 제외 |
 | `.claude/skills/korean-style/SKILL.md` | 검사 규칙 skill | 제외 |
 | `.claude/output-styles/korean-style.md` | 작성 지침 | 제외 |
-| `.claude/settings.json` | hook 세 개, `outputStyle`, `attribution` 설정 | 커밋 |
+| `.claude/settings.json` | hook 세 개, `outputStyle`, `attribution`, `env` 설정 | 커밋 |
 | `.gitignore` | 위에서 제외로 표시한 항목 | 커밋 |
 | `.worktreeinclude` | `claude --worktree`로 만든 작업 트리에 복사할 제외 항목 | 커밋 |
 | `.git/hooks/commit-msg` | 커밋 메시지 검사 | 해당 없음 |
@@ -54,7 +54,7 @@ Node.js 20 이상과 npm, Git, Claude Code가 필요합니다. 명령은 macOS, 
 설치 명령을 실행하기 전에는 hook이 검사를 하지 않습니다. 대신 프롬프트를 보낼 때마다 Claude에게 안내를 남겨, 사용자에게 설치 명령을 다시 실행해 달라고 알리게 합니다.
 `claude --worktree`로 작업 트리를 만들면 Claude Code가 `.worktreeinclude`에 적힌 제외 파일을 복사합니다. 그래서 그 작업 트리에서는 다시 설치하지 않아도 됩니다. `git worktree add`로 만든 작업 트리에서는 설치 명령을 다시 실행해야 합니다.
 
-설치 스크립트는 `.claude/settings.json`에 hook 세 개를 더합니다. `attribution`에 `commit`이나 `pr` 값이 없으면 빈 값을 넣어 Claude Code가 `Co-Authored-By: Claude` 줄과 `Generated with [Claude Code]` 줄을 붙이지 않게 합니다. 프로젝트가 이미 정해 둔 `attribution` 값은 그대로 둡니다. `outputStyle`은 위 `--activate` 설명대로 바꿉니다.
+설치 스크립트는 `.claude/settings.json`에 hook 세 개를 추가합니다. `attribution`에 `commit`이나 `pr` 값이 없으면 빈 값을 넣어 Claude Code가 `Co-Authored-By: Claude` 줄과 `Generated with [Claude Code]` 줄을 붙이지 않게 합니다. `env`에 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES` 값이 없으면 `0`을 넣어 서버가 요약한 진행 보고가 화면에 나오지 않게 합니다. 설치 스크립트는 `attribution`과 `env`에서 프로젝트가 이미 정해 둔 값을 바꾸지 않습니다. `outputStyle`은 위 `--activate` 설명대로 바꿉니다.
 기존 `CLAUDE.md`, 다른 hook, 권한, MCP 설정, 다른 output-style 파일, 사용자 전역 설정, `.claude/settings.local.json`은 바꾸지 않습니다.
 설정 파일이 손상되었거나 설치 경로에 symlink가 있으면 아무것도 덮어쓰지 않고 멈춥니다. 처음 설치할 때 skill이나 작성 지침을 놓을 경로에 같은 이름의 파일이 있어도 멈춥니다.
 
@@ -122,7 +122,7 @@ Git 저장소가 아닌 프로젝트에 설치해도 Claude Code hook은 동작�
 ## 제거
 
 1. `.korean-style/`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`를 지웁니다.
-2. `.claude/settings.json`에서 명령에 `.korean-style/scripts/hooks/`가 든 hook 항목, `"outputStyle": "korean-style"`, 이 도구가 넣은 `attribution` 항목을 지웁니다.
+2. `.claude/settings.json`에서 명령에 `.korean-style/scripts/hooks/`가 든 hook 항목과 `"outputStyle": "korean-style"`을 지웁니다. `attribution` 항목과 `env`의 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES` 항목은 이 도구가 넣었으면 지웁니다.
 3. `.gitignore`에서 `# korean-style`로 시작하는 줄과 그 아래 여섯 줄(`.korean-style/*`, `!.korean-style/rules.md`, `!.korean-style/defaults.sha256`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`)을 지웁니다.
 4. `git rev-parse --git-path hooks/commit-msg`가 가리키는 파일에 `korean-style commit hook`이 든 줄이 있으면 그 파일을 지웁니다. 기존 hook에 검사기 호출을 직접 넣었다면 그 줄도 지웁니다.
 
@@ -132,7 +132,7 @@ Git 저장소가 아닌 프로젝트에 설치해도 Claude Code hook은 동작�
 
 - **skill, 작성 지침, hook이 적용되지 않을 때:** Claude Code를 다시 시작했는지 확인합니다. 그다음 `.claude/settings.local.json`의 `outputStyle`과 `disableAllHooks`를 확인합니다. worktree에서는 main worktree의 로컬 설정도 확인합니다. 어느 설정이 우선하는지는 Claude Code 문서의 [설정 우선순위](https://code.claude.com/docs/en/settings#settings-precedence)에 나와 있습니다.
 - **조직 정책, 세션 옵션, 사용자 전역 설정이 의심될 때:** `doctor`는 프로젝트 설정과 로컬 설정 파일만 읽습니다. 실제로 적용된 설정은 Claude Code의 `/status`로 확인합니다.
-- **주의 항목이 나올 때:** 다른 `commit-msg` hook을 쓰거나, 커밋해야 할 파일이 Git에서 빠져 있거나, 생성 표시가 켜져 있으면 `doctor`가 주의 항목으로 표시합니다.
+- **주의 항목이 나올 때:** 다른 `commit-msg` hook을 쓰거나, 커밋해야 할 파일이 Git에서 빠져 있거나, 생성 표시나 진행 보고 요약이 켜져 있으면 `doctor`가 주의 항목으로 표시합니다.
 - **설치가 멈출 때:** 손상된 설정 파일을 고치고 같은 이름의 기존 파일이나 설치 경로의 symlink를 옮기거나 지운 뒤 다시 설치합니다.
 
 ## 다른 코딩 agent

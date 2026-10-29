@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { loadRules, REGISTER_BANNED_ENDINGS } from './lib/rules.mjs';
 import { CHAR_CLASSES } from './lib/rules/chars.mjs';
 import { attributionViolations } from './lib/rules/attribution.mjs';
-import { readSettings, localSettingsPaths, commitHookState, installCommitHook, reportCommitHook, hookCommand } from './lib/setup.mjs';
+import { readSettings, localSettingsPaths, commitHookState, installCommitHook, reportCommitHook, hookCommand, isOffValue, PROGRESS_SUMMARY_ENV } from './lib/setup.mjs';
 
 const tool = dirname(dirname(fileURLToPath(import.meta.url)));
 const installed = basename(tool) === '.korean-style';
@@ -67,6 +67,11 @@ for (const [key, label] of [['commit', '커밋 메시지'], ['pr', 'PR 설명']]
     warn(`attribution의 ${key} 값에 생성 표시가 들어 있어 Claude Code가 ${label}에 이 값을 붙입니다. 설치 스크립트는 정해 둔 값을 바꾸지 않으므로 직접 빈 문자열로 바꿔야 합니다.`);
   }
 }
+/* 이 값이 요약을 끄는 값이 아니면 서버가 요약한 진행 보고가 화면에 나옵니다. 서버가 요약한 문장은 Claude가 쓴 글이 아니어서 skill과 검사기를 거치지 않습니다. */
+const summary = sources.map(s => s.settings.env?.[PROGRESS_SUMMARY_ENV]).filter(v => v !== undefined).at(-1);
+if (isOffValue(summary)) ok(`env의 ${PROGRESS_SUMMARY_ENV} 값이 요약을 끄는 값이어서 서버가 요약한 진행 보고가 화면에 나오지 않습니다`);
+else if (summary === undefined) warn(`env에 ${PROGRESS_SUMMARY_ENV} 값이 없어 서버가 요약한 진행 보고가 화면에 나옵니다. 서버가 요약한 문장은 skill과 검사기를 거치지 않습니다. 설치 명령을 다시 실행하면 설치 스크립트가 0을 넣습니다.`);
+else warn(`env의 ${PROGRESS_SUMMARY_ENV} 값(${JSON.stringify(summary)})은 요약을 끄는 값이 아니어서 서버가 요약한 진행 보고가 화면에 나옵니다. 설치 스크립트는 정해 둔 값을 바꾸지 않으므로 끄려면 직접 0으로 바꿔야 합니다.`);
 for (const [event, name] of [['UserPromptSubmit', 'userprompt'], ['PreToolUse', 'pretooluse'], ['Stop', 'stop']]) {
   const command = hookCommand(name, installed);
   const entries = sources.flatMap(s => s.settings.hooks?.[event] ?? []).filter(e => e.hooks.some(h =>

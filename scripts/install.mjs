@@ -17,7 +17,7 @@ import { createHash } from 'node:crypto';
 import { parseArgs } from 'node:util';
 import { INSTALLED_DIR, isEntryPoint } from './lib/paths.mjs';
 import { canonicalRegister } from './lib/rules.mjs';
-import { readSettings, localSettingsPaths, installCommitHook, reportCommitHook, hookCommand } from './lib/setup.mjs';
+import { readSettings, localSettingsPaths, installCommitHook, reportCommitHook, hookCommand, isOffValue, PROGRESS_SUMMARY_ENV } from './lib/setup.mjs';
 export { installCommitHook, reportCommitHook } from './lib/setup.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -135,6 +135,14 @@ export function mergeAttribution(settings) {
   return out;
 }
 
+/* 서버가 요약한 진행 보고가 화면에 나오지 않도록 프로젝트 설정의 `env`에 끄는 값을 넣습니다. 프로젝트가 이미 값을 정해 두었으면 그대로 둡니다. */
+export function mergeEnv(settings) {
+  const out = settings === null || typeof settings !== 'object' ? {} : { ...settings };
+  const current = out.env !== null && typeof out.env === 'object' && !Array.isArray(out.env) ? out.env : {};
+  out.env = { ...current, [PROGRESS_SUMMARY_ENV]: current[PROGRESS_SUMMARY_ENV] ?? '0' };
+  return out;
+}
+
 /* 프로젝트 설정에서 고른 output-style이 없을 때만 이 도구의 output-style을 기본값으로 둡니다. */
 export function mergeOutputStyle(settings, name = OUTPUT_STYLE_NAME) {
   const out = settings === null || typeof settings !== 'object' ? {} : { ...settings };
@@ -212,6 +220,14 @@ function selfCheck() {
     JSON.stringify(mergeAttribution({}).attribution) === JSON.stringify({ commit: '', pr: '' }) &&
       mergeAttribution({ attribution: { commit: '직접 정한 값' } }).attribution.commit === '직접 정한 값',
     '생성 표시 설정은 빠진 값만 빈 문자열로 채운다',
+  );
+
+  /* 진행 보고 요약을 끄는 값은 프로젝트가 값을 정하지 않았을 때만 넣습니다. */
+  report(
+    mergeEnv({}).env[PROGRESS_SUMMARY_ENV] === '0' &&
+      mergeEnv({ env: { [PROGRESS_SUMMARY_ENV]: '1' } }).env[PROGRESS_SUMMARY_ENV] === '1' &&
+      mergeEnv({ env: { FOO: 'bar' } }).env.FOO === 'bar',
+    '진행 보고 요약을 끄는 값은 프로젝트가 정하지 않았을 때만 넣는다',
   );
 
   /* gitignore 병합을 확인합니다. */
@@ -300,7 +316,7 @@ function main() {
   const existing = readSettings(settingsPath);
   const local = localSettingsPaths(root).map(path => ({ path, settings: readSettings(path) }));
   const { settings: hooked, added } = mergeHookSettings(existing);
-  const settings = mergeAttribution(hooked);
+  const settings = mergeEnv(mergeAttribution(hooked));
   const style = mergeOutputStyle(args.activate ? { ...settings, outputStyle: OUTPUT_STYLE_NAME } : settings);
   const ignorePath = join(root, '.gitignore');
   const ignoreBefore = existsSync(ignorePath) ? readFileSync(ignorePath, 'utf8') : '';
@@ -326,6 +342,9 @@ function main() {
   const effective = Object.assign({}, style.settings, ...local.map(x => x.settings));
   if (effective.disableAllHooks) console.log('주의: disableAllHooks가 켜져 있습니다. 이 설정을 꺼야 hook이 실행됩니다.');
   if (effective.outputStyle !== style.settings.outputStyle) console.log('주의: settings.local.json의 outputStyle이 프로젝트 설정보다 우선합니다.');
+  /* Claude Code는 설정 파일의 `env`를 키마다 합치고 같은 키는 로컬 설정의 값을 씁니다. 그래서 여기서도 프로젝트 설정, 로컬 설정 순서로 놓고 값이 있는 마지막 파일의 값을 봅니다. */
+  const summary = [style.settings, ...local.map(x => x.settings)].map(s => s?.env?.[PROGRESS_SUMMARY_ENV]).filter(v => v !== undefined).at(-1);
+  if (!isOffValue(summary)) console.log(`주의: env의 ${PROGRESS_SUMMARY_ENV} 값이 요약을 끄는 값이 아니어서 서버가 요약한 진행 보고가 화면에 나옵니다. 서버가 요약한 문장은 skill과 검사기를 거치지 않습니다.`);
   if (args['dry-run']) { reportCommitHook(installCommitHook(root, true)); console.log('--dry-run: 파일을 쓰지 않았습니다.'); return; }
 
   mkdirSync(installDir, { recursive: true });

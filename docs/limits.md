@@ -27,6 +27,9 @@
 - Stop hook은 답변이 화면에 나온 뒤에 실행되므로 이미 나온 답변을 되돌리지 못합니다. 그래서 첫 답변과 다시 쓴 답변이 함께 보입니다. 다시 쓴 답변은 검사하지 않으므로 고치지 못한 오류나 다시 쓰면서 생긴 오류는 그대로 남습니다.
 - 구버전 Claude Code는 Stop hook에 마지막 답변을 넘기지 않습니다. 이때 hook은 대화 기록을 읽으므로 hook이 실행되는 시점까지 기록된 답변만 검사합니다.
 - hook은 Write, Edit, MultiEdit, NotebookEdit 도구로 바꾼 문단에서 `review-rules`에 든 규칙의 경고만 Claude에게 알립니다. 같은 규칙에 걸린 같은 표현이 바뀌기 전 문단에도 있으면 알리지 않습니다. 그래서 이미 있던 표현을 같은 문단에 한 번 더 써도 알리지 않습니다. NotebookEdit 도구로 셀을 고칠 때는 바뀌기 전 셀과 비교하지 않으므로 원래 있던 경고도 알립니다.
+- Claude Code가 마지막 답변을 넘겨 주면 Stop hook은 그 답변만 검사합니다. 이때 Claude가 도구를 부르는 사이에 쓴 진행 보고는 어느 hook도 검사하지 않으므로 진행 보고에 든 오류는 그대로 남습니다.
+- 설치 스크립트가 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES=0`을 넣으면 서버가 요약한 문장이 화면에 나오지 않을 뿐이고 Claude가 쓴 원래 진행 보고가 대신 나오지는 않습니다. 그래서 서버가 요약 대상으로 고른 진행 보고는 화면에 나오지 않습니다. 이 동작은 Claude Code 2.1.310에서 확인했습니다. 다른 버전에서는 환경 변수 이름이나 동작이 다를 수 있습니다.
+- 사용자 설정에서 `showThinkingSummaries`를 켜면 Claude Code는 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES` 값과 관계없이 서버에 사고 요약을 요청합니다. 이때 화면에 나오는 요약도 skill과 검사기를 거치지 않습니다.
 - hook은 shell 명령이 파일에 쓰는 경우 가운데 redirection(`>`, `>>`)과 `tee`, `sed -i`, `perl -i`만 알아봅니다. 이 검사는 보안 장치가 아닙니다. 명령으로 실행한 프로그램이 직접 쓰는 파일은 찾아내지 못합니다.
 - hook은 `gh pr`과 `gh issue` 명령의 `--title`, `--body`, `--subject`, `-t`, `-b` 값과 `-F -`나 `--body-file -`로 넘긴 heredoc 본문만 검사합니다. 파이프로 넘긴 본문은 읽지 못합니다. `--body-file`로 넘긴 파일과 웹 화면에서 쓴 글은 검사하지 않습니다.
 - hook은 shell 문법을 다 해석하지는 못합니다. 변수에 담아 넘긴 메시지나 `$(...)`로 다른 명령의 출력을 넘긴 메시지는 읽지 못합니다. 다만 Claude가 여러 줄 메시지에 쓰는 `"$(cat <<'EOF' ... EOF)"` 형태에서는 heredoc 본문을 읽습니다. 커밋 메시지는 Git의 `commit-msg` hook이 다시 검사합니다.
@@ -35,7 +38,7 @@
 
 ## 설정과 설치
 
-- 설치 스크립트는 설정 파일 가운데 프로젝트 설정(`.claude/settings.json`)만 바꿉니다. 로컬 설정, 조직 정책, 세션 옵션은 프로젝트 설정보다 우선합니다. 그래서 이 가운데 한 곳에서 다른 output-style을 고르거나 hook을 끄거나 `attribution`을 바꾸면 이 도구의 설정이 적용되지 않습니다.
+- 설치 스크립트는 설정 파일 가운데 프로젝트 설정(`.claude/settings.json`)만 바꿉니다. 로컬 설정, 조직 정책, 세션 옵션은 프로젝트 설정보다 우선합니다. 그래서 이 가운데 한 곳에서 다른 output-style을 고르거나 hook을 끄거나 `attribution` 값이나 `env`의 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES` 값을 바꾸면 이 도구의 설정이 적용되지 않습니다.
 - doctor는 프로젝트 설정 파일과 로컬 설정 파일만 확인합니다. 세션에 실제로 적용된 설정은 Claude Code의 `/status`로 확인합니다.
 - 직접 고친 규칙은 다시 설치해도 바뀌지 않으므로 새로 생긴 `review-rules` 키도 들어가지 않습니다. 이 경우 doctor가 주의 항목으로 표시합니다. `calques` 키도 들어가지 않지만 doctor는 이 키가 없다고 알리지 않습니다. 새 기본 규칙으로 바꾸려면 `--force`를 붙여 다시 설치합니다. 그런 다음 `.korean-style/rules.backup-*.md`에 백업된 기존 규칙에서 필요한 내용을 직접 옮겨 옵니다.
 - 설치한 프로젝트의 gate는 이 도구 저장소의 테스트를 실행하지 않고 자체 검사, 규칙 문서 검사, 전체 파일 검사만 합니다.
