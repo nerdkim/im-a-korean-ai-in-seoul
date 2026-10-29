@@ -700,7 +700,7 @@ test('회귀: 예전 버전에서 gitignore에 쓰던 주석은 다시 설치하
     assert.ok(!lines.includes(old), `예전 주석이 남았습니다: ${old}`);
     assert.equal(lines.filter((line) => line.startsWith('# korean-style')).length, 1, '이 도구의 주석 줄이 정확히 하나여야 합니다');
     assert.equal(lines.filter((line) => line === `${INSTALLED_DIR}/*`).length, 1);
-    assert.ok(lines.includes(`!${INSTALLED_DIR}/rules.md`), '빠진 줄을 더하지 않았습니다');
+    assert.ok(lines.includes(`!${INSTALLED_DIR}/rules.md`), '빠진 줄을 추가하지 않았습니다');
   }
 });
 

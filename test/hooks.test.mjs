@@ -126,6 +126,17 @@ test('새로 쓴 문서에 영어식 표현으로 보이는 곳이 있으면 쓰
   assert.match(out.hookSpecificOutput.additionalContext, /\[translationese\] 1줄: .*를 통해/);
 });
 
+test('항목을 새로 넣는 일을 문서에 `더하다`로 쓰면 쓰기를 막지 않고 Claude에게 알린다', () => {
+  /* CLAUDE.md에 `버그를 고치면 회귀 테스트를 더합니다.`를 적어 둔 프로젝트에서 Claude는 같은 내용의 규칙을 쓸 때 `회귀 테스트를 더합니다`를 따라 썼습니다. hook은 Claude가 파일을 쓸 때 이런 표현이 있으면 Claude에게 알려 다시 살펴보게 합니다. */
+  const out = runHook('pretooluse.mjs', {
+    tool_name: 'Write',
+    tool_input: { file_path: join(ROOT, 'docs', '시험.md'), content: '버그를 고치면 회귀 테스트를 더합니다.' },
+  });
+  assert.ok(out !== null, 'Claude에게 알려야 합니다');
+  assert.equal(out.hookSpecificOutput.permissionDecision, undefined);
+  assert.match(out.hookSpecificOutput.additionalContext, /\[literal-verb\] 1줄: .*테스트/);
+});
+
 test('바뀌기 전 파일에 있던 경고는 Edit로 그 줄을 고쳐도 다시 알리지 않는다', () => {
   /* 실제 파일이 있어야 바뀌기 전 내용과 비교할 수 있으므로 임시 프로젝트에서 hook을 띄웁니다. */
   const project = scratch();
@@ -231,7 +242,7 @@ test('인용 구간 안에 옮겨 적은 글의 경고는 Claude에게 알리지
   assert.deepEqual(rulesOf('# 예시\n\n예시입니다.\n', '# 예시\n\n로그를 통해 예시입니다.\n'), ['translationese']);
 });
 
-test('규칙 블록의 영어식 표현 목록에 항목을 더해도 Claude에게 알리지 않는다', () => {
+test('규칙 블록의 영어식 표현 목록에 항목을 추가해도 Claude에게 알리지 않는다', () => {
   /* 규칙 문서를 고치는 것은 설치한 프로젝트에서 규칙을 바꾸는 정상 절차입니다. */
   const before = '# 규칙\n\n```korean-style-rules\ntranslationese-patterns: 를 통해=~해\n```\n';
   assert.deepEqual(rulesOf(before, before.replace('=~해', '=~해, 문서를 통하여서=로'), 'doc', '.korean-style/rules.md'), []);

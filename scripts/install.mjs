@@ -51,7 +51,7 @@ const OLD_GITIGNORE_MARKERS = [
   '# korean-style이 설치한 파일입니다. 이 가운데 직접 고치는 파일은 rules.md뿐입니다.',
 ];
 
-/* 설치할 프로젝트의 .gitignore에 더할 줄입니다. */
+/* 설치할 프로젝트의 .gitignore에 추가할 줄입니다. */
 export const GITIGNORE_LINES = [
   GITIGNORE_MARKER,
   `${INSTALLED_DIR}/*`,
@@ -173,8 +173,8 @@ function selfCheck() {
     process.stdout.write(`${ok ? '  성공' : '  실패'} ${label}\n`);
   };
 
-  report(mergeHookSettings({}).added.length === 3, '빈 설정에 hook 셋을 더한다');
-  report(mergeHookSettings(null).added.length === 3, '설정 파일이 없어도 hook 셋을 더한다');
+  report(mergeHookSettings({}).added.length === 3, '빈 설정에 hook 셋을 추가한다');
+  report(mergeHookSettings(null).added.length === 3, '설정 파일이 없어도 hook 셋을 추가한다');
 
   /* 두 번 합쳐도 항목은 하나여야 합니다. */
   const once = mergeHookSettings({}).settings;
@@ -232,8 +232,8 @@ function selfCheck() {
 
   /* gitignore 병합을 확인합니다. */
   const ignoreOnce = mergeGitignore('');
-  report(ignoreOnce.added && ignoreOnce.text.includes(`${INSTALLED_DIR}/*`), '빈 gitignore에 줄을 더한다');
-  report(mergeGitignore(ignoreOnce.text).added === false, '두 번 더해도 줄이 쌓이지 않는다');
+  report(ignoreOnce.added && ignoreOnce.text.includes(`${INSTALLED_DIR}/*`), '빈 gitignore에 줄을 추가한다');
+  report(mergeGitignore(ignoreOnce.text).added === false, '두 번 추가해도 줄이 쌓이지 않는다');
 
   /* 규칙 문서를 Git에서 빼면 저장소를 새로 clone한 사람은 그 프로젝트에서 고친 값을 받지 못합니다. */
   report(ignoreOnce.text.includes(`!${INSTALLED_DIR}/rules.md`), '규칙 문서는 Git에서 제외하지 않는다');

@@ -311,7 +311,7 @@ export function parseRuleBlock(body) {
     }
   }
 
-  /* 예전 이름으로 적은 말투를 이 도구가 쓰는 이름으로 바꾸고 그 말투에 맞는 금지 어미를 더합니다. */
+  /* 예전 이름으로 적은 말투를 이 도구가 쓰는 이름으로 바꾸고 그 말투에 맞는 금지 어미를 추가합니다. */
   rules.register = canonicalRegister(rules.register);
   for (const ending of REGISTER_BANNED_ENDINGS[rules.register] ?? []) {
     if (!rules.bannedRegisterEndings.includes(ending)) rules.bannedRegisterEndings.push(ending);

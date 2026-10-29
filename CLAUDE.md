@@ -20,7 +20,7 @@ Claude Code, Codex, Gemini CLI가 이 파일을 함께 읽습니다. `AGENTS.md`
 - Claude Code hook은 파일 쓰기와 답변을 자동으로 검사합니다. 다른 agent에서는 Claude Code hook이 실행되지 않으므로 일을 마치기 전에 `node scripts/check-korean.mjs --file <경로>`나 `--stdin`으로 한국어를 확인합니다. Git의 `commit-msg` hook은 `npm run doctor -- --install-commit-hook`으로 설치하면 어느 agent로 커밋하든 실행됩니다.
 - 검사 규칙과 그 가운데 무엇을 막을지는 `docs/rules.md`에서 정합니다. 정책 값을 코드에 숨기지 않습니다.
 - 뜻이 모호할 수 있는 표현은 경고로만 알립니다. hook은 오류만 막고 답변을 다시 쓰라는 요구는 한 번만 합니다.
-- 동작을 바꾸면 회귀 테스트를 더하고 `npm run gate`를 통과시킵니다. 회귀 테스트에는 검사기가 잡으면 안 되는 문장도 넣습니다.
+- 동작을 바꾸면 회귀 테스트를 추가하고 `npm run gate`를 통과시킵니다. 회귀 테스트에는 검사기가 잡으면 안 되는 문장도 넣습니다.
 
 ## 문서와 측정
 
@@ -34,7 +34,7 @@ Claude Code, Codex, Gemini CLI가 이 파일을 함께 읽습니다. `AGENTS.md`
 
 - 커밋 메시지와 릴리스 노트도 문서와 같은 한국어 규칙을 따릅니다. 제목은 짧은 명사구로 쓰고 본문은 목록까지 완결된 합니다체 문장으로 씁니다. 서술어 없는 조각, 괄호 약식, 형식이 섞인 목록을 남기지 않습니다.
 - 커밋과 PR에 `Co-Authored-By: Claude`나 `Generated with [Claude Code]` 같은 생성 표시를 넣지 않습니다.
-- 한국어 산문(문서, 메시지, 주석, 테스트 제목, 릴리스 노트)을 더하거나 고쳤으면 커밋하기 전에 `korean-reviewer` agent로 diff와 커밋 메시지를 검토합니다. 지적은 모두 반영합니다. `.claude/agents`를 쓰지 못하는 agent는 `.claude/agents/korean-reviewer.md`의 점검 목록으로 직접 검토합니다.
+- 한국어 산문(문서, 메시지, 주석, 테스트 제목, 릴리스 노트)을 새로 쓰거나 고쳤으면 커밋하기 전에 `korean-reviewer` agent로 diff와 커밋 메시지를 검토합니다. 지적은 모두 반영합니다. `.claude/agents`를 쓰지 못하는 agent는 `.claude/agents/korean-reviewer.md`의 점검 목록으로 직접 검토합니다.
 
 설치 스크립트는 `scripts/install.mjs`, 검사 엔진은 `scripts/lib/`, hook은 `scripts/hooks/`에 있습니다.
 사용법은 `README.md`와 `docs/usage.md`에, 제약은 `docs/limits.md`에 있습니다. 평가 입력은 `test/fixtures/eval/`에 두고 결과는 `.eval/`에만 둡니다.

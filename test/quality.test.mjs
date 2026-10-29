@@ -50,6 +50,84 @@ test('영어를 낱말 단위로 옮겨 만든 말은 답변, 문서, 커밋 메
   }
 });
 
+test('항목을 새로 넣는 일을 `더하다`로 쓴 문장은 경고로 알리고 다른 뜻으로 쓴 `더하다`는 알리지 않는다', () => {
+  /* 첫 문장은 사용자가 알려 온 답변과 같은 꼴로 만든 문장입니다. 나머지 세 문장은 Claude가 이 도구를 설치한 세션에서 쓰거나 이 저장소의 지침에 쓴 문장입니다. */
+  for (const text of [
+    '검색 대상에 사내 위키 저장소(docs/wiki)를 더하면 장애 대응 절차까지 답할 수 있습니다.',
+    '같은 방식으로 회귀 테스트 두 개를 더합니다.',
+    '이제 이 동작을 검증하는 test를 더하겠습니다.',
+    '동작을 바꾸면 회귀 테스트를 더하고 `npm run gate`를 통과시킵니다.',
+  ]) {
+    const found = checkText(text, rules);
+    assert.ok(found.some(v => v.rule === 'literal-verb' && v.severity === 'warning'), text);
+    assert.equal(blockingViolations(found).length, 0, text);
+  }
+  for (const text of [
+    '상품 가격에 배송비를 더하면 총액이 됩니다.',
+    '답변 24개의 길이를 모두 더하면 19,271자입니다.',
+    '공통 규칙에 더해 호칭 규칙도 검사합니다.',
+    '밀도 규칙이 한도에 더하는 여유입니다.',
+    '3주택 이상은 20%p를 더하고 키에는 3cm를 더합니다.',
+    '접미사는 앞말에 뜻을 더합니다.',
+    '이번 분기 목표를 더하면 열 개입니다.',
+    '실행을 한 번 더하면 결과가 바뀝니다.',
+    '물에 열을 더하면 끓습니다.',
+    '회귀 테스트를 추가하고 사내 위키 저장소를 추가할지 정해 주십시오.',
+  ]) {
+    assert.ok(!checkText(text, rules).some(v => v.rule === 'literal-verb'), text);
+  }
+});
+
+test('영어를 낱말 단위로 옮긴 `반랙`, `응답 모양`, `바깥 접속`은 막고 `코드 밖에서`, `어떤 모양으로`, run을 옮긴 `돌다`, test를 옮긴 `시험`은 경고로 알린다', () => {
+  /* 사용자는 Claude가 `반랙`과 `코드 밖에서 만든`을 쓴 답변을 보았다고 알려 왔습니다. 아래 문장은 같은 말을 넣어 새로 만든 문장입니다. `응답 모양`은 이 도구를 설치한 세션의 답변에서 여러 번 나왔습니다. */
+  for (const target of ['chat', 'doc']) {
+    for (const text of ['반랙 하나에 서버 네 대를 넣었습니다.', '공개 sample key로 응답 모양을 확인했습니다.', '바깥 접속을 켜고 다시 확인했습니다.']) {
+      assert.ok(blockingViolations(checkText(text, rules, target)).some(v => v.rule === 'calque'), `${target}: ${text}`);
+    }
+  }
+  const found = checkText('코드 밖에서 만든 보안 그룹을 어떤 모양으로 정리할지 정해야 합니다.', rules, 'chat');
+  assert.deepEqual(found.filter(v => v.rule === 'translationese').map(v => v.severity), ['warning', 'warning']);
+  assert.equal(blockingViolations(found).length, 0);
+  /* 이 도구를 설치한 세션의 답변에는 run을 옮긴 `돌다`와 test를 옮긴 `시험`도 여러 번 나왔습니다. */
+  for (const text of ['PR #25의 check가 돌고 있습니다.', '지금 prod 배포가 돕니다.', '문서만 바뀌어 deploy는 돌지 않습니다.', '시험용 APK를 올렸습니다.']) {
+    const warned = checkText(text, rules, 'chat');
+    assert.ok(warned.some(v => v.rule === 'translationese' && v.severity === 'warning'), text);
+    assert.equal(blockingViolations(warned).length, 0, text);
+  }
+  for (const text of [
+    'half-rack 하나에 서버 네 대를 넣었습니다.',
+    '코드가 아니라 사용자가 직접 만든 보안 그룹을 어떤 순서로 정리할지 정해야 합니다.',
+    '공개 sample key로 응답 형식을 확인했습니다.',
+    '함수 밖에서 선언한 변수는 모듈이 처음 읽힐 때 만들어집니다.',
+    '버튼을 둥근 모양으로 바꿨습니다.',
+    '빌드와 테스트를 돌려 확인합니다.',
+    'check가 실행 중이고 deploy는 실행되지 않습니다.',
+    '테스트용 APK와 외부 접속 주소를 올렸습니다.',
+  ]) {
+    assert.ok(!checkText(text, rules, 'chat').some(v => v.rule === 'calque' || v.rule === 'translationese'), text);
+  }
+});
+
+test('효과, 성능, 비용 같은 지표를 `재다`로 쓴 문장은 경고로 알리고 도구로 재는 길이와 시간, `재검토`나 `더하기`처럼 글자만 겹치는 낱말은 알리지 않는다', () => {
+  /* 사용자는 Claude가 지표를 `재다`로 쓴 답변을 보았다고 알려 왔습니다. 아래 문장은 같은 꼴로 새로 만든 문장입니다. */
+  for (const text of ['캐시를 켠 효과는 재지 않았습니다.', '이번 배포의 성능을 잴 방법이 없습니다.', '트래픽은 다음 주에 재 보겠습니다.']) {
+    const found = checkText(text, rules, 'chat');
+    assert.ok(found.some(v => v.rule === 'literal-verb' && v.severity === 'warning'), text);
+    assert.equal(blockingViolations(found).length, 0, text);
+  }
+  for (const text of ['빌드 시간을 쟀습니다.', '글자 폭을 재서 맞췄습니다.', '캐시를 켠 효과는 측정하지 않았습니다.', '비용을 재검토했습니다.', '재고를 확인했습니다.', '이 저장소는 더하기 기능을 제공합니다.', '테스트는 더할 나위 없이 잘 짜였습니다.']) {
+    assert.ok(!checkText(text, rules, 'chat').some(v => v.rule === 'literal-verb'), text);
+  }
+});
+
+test('`literal-verbs`의 `@object:` 항목은 적어 둔 낱말이 목적어일 때만 잡는다', () => {
+  const own = parseRuleBlock('advisory-rules: literal-verb\nliteral-verbs: @object:저장소|테스트>더하|더했=추가합니다');
+  assert.ok(checkText('저장소를 하나 더했습니다.', own).some(v => v.rule === 'literal-verb'));
+  assert.ok(!checkText('통합테스트를 더하고 배포합니다.', own).some(v => v.rule === 'literal-verb'), '앞에 한글이 붙은 목적어는 다른 낱말로 보고 잡지 않습니다');
+  assert.ok(!checkText('파일을 더했습니다.', own).some(v => v.rule === 'literal-verb'), '적어 두지 않은 목적어는 잡지 않습니다');
+  assert.ok(!checkText('저장소를 더했습니다.', parseRuleBlock('literal-verbs: @object:저장소>')).some(v => v.rule === 'literal-verb'), '동사를 비운 항목은 잡지 않습니다');
+});
+
 test('`calques`에 적은 말 앞에 한글이 붙어 있거나 규칙에 값이 없으면 막지 않는다', () => {
   const own = parseRuleBlock('calques: 비목표=하지 않을 일');
   assert.ok(checkText('4절 비목표를 다시 읽었습니다.', own).some(v => v.rule === 'calque'));
@@ -182,6 +260,26 @@ test('작성 지침에는 처음부터 한국어로 생각하라는 지시와 �
   const style = readFileSync(new URL('../output-styles/korean-style.md', import.meta.url), 'utf8');
   assert.match(style, /한국어로 생각합니다/);
   assert.match(style, /Generated with \[Claude Code\]/);
+});
+
+test('skill에는 사용자가 알려 온 영어식 표현을 고치라는 지시가 들어 있다', () => {
+  /* 사용자는 Claude가 항목을 새로 넣는 일을 `더하다`로, 지표를 구하는 일을 `재다`로 쓴 답변을 보았다고 알려 왔습니다. `반랙`, `코드 밖에서 만든`, 항목 이름에 할 일을 몰아넣고 콜론 뒤에 누가 하는지만 쓴 목록도 보았다고 알려 왔습니다. 검사기는 이 가운데 일부만 잡으므로 지시가 빠지면 안 됩니다. */
+  const skill = readFileSync(new URL('../skill/korean-rewrite/SKILL.md', import.meta.url), 'utf8');
+  assert.match(skill, /영어 `add`, `measure`를 옮긴 `더하다`, `재다`/);
+  assert.match(skill, /항목을 새로 넣는 일은 `추가하다`로 쓰고/);
+  assert.match(skill, /지표를 구하는 일은 `측정하다`로 씁니다/);
+  assert.match(skill, /`half-rack`을 `반랙`으로/);
+  assert.match(skill, /영어 전치사구와 비유를 낱말 그대로 옮긴 말/);
+  assert.match(skill, /항목 이름에 할 일을 몰아넣고 콜론 뒤에 누가 하는지만 쓴 목록/);
+});
+
+test('skill에는 흔한 한자어 동사는 그대로 쓰고 프로젝트 지침에 든 고칠 표현은 따라 쓰지 말라는 지시가 들어 있다', () => {
+  /* 한때 skill의 한자어 항목 예시는 `호출`, `제거`까지 고유어로 바꾼 문장이었습니다. 그 무렵 이 도구를 설치한 세션에서 Claude는 `더하다`, `재다`를 자주 썼습니다. 이 예시가 원인인지는 확인하지 못했습니다. */
+  const skill = readFileSync(new URL('../skill/korean-rewrite/SKILL.md', import.meta.url), 'utf8');
+  assert.match(skill, /개발 문서에서 흔히 쓰는 한자어 동사는 그대로 씁니다/);
+  assert.doesNotMatch(skill, /같은 함수를 부르던 코드를 지워/);
+  /* CLAUDE.md에 `버그를 고치면 회귀 테스트를 더합니다.`를 적어 둔 프로젝트에서 Claude는 같은 내용의 규칙을 쓸 때 `회귀 테스트를 더합니다`를 따라 썼습니다. */
+  assert.match(skill, /프로젝트 지침, 기존 문서, 앞선 답변에 아래 고칠 표현이 있어도 표현을 맞추려고 따라 쓰지 않습니다/);
 });
 
 test('작성 지침과 skill에는 독자에게 필요한 내용만 고르고 공개하는 글에 내부 정보와 개인 정보를 넣지 말라는 지시가 들어 있다', () => {

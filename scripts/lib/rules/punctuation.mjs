@@ -76,7 +76,7 @@ export function punctuationViolations(text, rules) {
       const segments = commaSegments(sentence.masked);
       if (segments.length < 2) continue;
       if (looksLikeEnumeration(segments, rules.enumerationWordMax, rules)) continue;
-      /* 마지막 구간은 재지 않습니다. */
+      /* 마지막 구간은 어절 수를 검사하지 않습니다. */
       const over = segments
         .slice(0, -1)
         .find((s) => s.words > rules.maxCommaSegmentWords && !isClause(s, rules));

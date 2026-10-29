@@ -107,7 +107,7 @@ export const SELF_CHECK_CASES = [
 
   /* --- 한국어 산문 문장으로 볼 범위 ---  검사기는 `comma-per-sentence`, `comma-segment-length`, `sentence-too-long` 세 규칙을 적용하기 전에 한국어 산문 문장인지부터 따집니다. */
   [
-    '영어 문장은 한국어 쉼표 규칙으로 재지 않는다',
+    '영어 문장에는 한국어 쉼표 규칙을 적용하지 않는다',
     'The scheduler stores the rendered plan document in the durable queue, and then waits for approval.',
     false,
     'doc',
@@ -224,6 +224,16 @@ export const SELF_CHECK_CASES = [
   /* `literal-verb-exempt`에 든 낱말이 목적어와 동사 사이에 부사어로 낀 경우입니다. */
   ['목적어와 동사 사이에 예외 낱말이 끼어 있으면 통과', 'VPN을 plan으로 세웠습니다.', false, 'doc'],
   ['가설을 세우다는 통과', '원인을 설명하는 가설을 세웠습니다.', false, 'doc'],
+  /* 항목을 새로 넣는 일을 영어 `add`를 옮겨 `더하다`라고 쓴 문장입니다. */
+  ['영어 목적어 뒤의 더하다', '이 동작을 확인하는 test를 더하겠습니다.', true, 'doc'],
+  ['정해 둔 목적어 뒤의 더하다', '같은 방식으로 회귀 테스트 두 개를 더합니다.', true, 'doc'],
+  ['목적어와 조사 사이에 괄호 설명이 있는 더하다', '사내 위키 저장소(docs/wiki)를 더하면 장애 대응 절차까지 답할 수 있습니다.', true, 'doc'],
+  ['수를 합치는 더하다는 통과', '상품 가격에 배송비를 더하면 총액이 됩니다.', false, 'doc'],
+  ['숫자 뒤 단위가 목적어인 더하다는 통과', '3주택 이상은 20%p를 더합니다.', false, 'doc'],
+  ['`~에 더해`는 통과', '공통 규칙에 더해 호칭 규칙도 검사합니다.', false, 'doc'],
+  /* 지표를 구하는 일을 영어 `measure`를 옮겨 `재다`라고 쓴 문장입니다. */
+  ['지표 뒤의 재다', '캐시를 켠 효과는 재지 않았습니다.', true, 'doc'],
+  ['도구로 재는 시간은 통과', '빌드 시간을 쟀습니다.', false, 'doc'],
 
   ['외래어 표기가 틀렸다', '워크플로우를 다시 확인했습니다.', true, 'doc'],
   ['옳은 외래어 표기는 통과', '워크플로를 다시 확인했습니다.', false, 'doc'],
