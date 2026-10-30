@@ -120,6 +120,18 @@ test('효과, 성능, 비용 같은 지표를 `재다`로 쓴 문장은 경고�
   }
 });
 
+test('`승인을 묻다`는 경고로 알리고 승인 여부를 묻거나 승인을 요청하는 문장은 알리지 않는다', () => {
+  /* 사용자는 이 도구를 설치한 다른 환경에서 Claude가 쓴 문단을 보여 주며 말이 이상하다고 알려 왔습니다. 경고가 나와야 하는 세 문장 가운데 첫 문장은 그 문단의 첫 문장이고 나머지 두 문장은 `묻다`의 다른 활용형으로 새로 만든 문장입니다. */
+  for (const text of ['미리 계산하지 못한 unit이 있으면 승인을 묻습니다.', '관리자에게 승인을 물었습니다.', '승인을 물어보고 배포합니다.']) {
+    const found = checkText(text, rules, 'chat');
+    assert.ok(found.some(v => v.rule === 'translationese' && v.severity === 'warning'), text);
+    assert.equal(blockingViolations(found).length, 0, text);
+  }
+  for (const text of ['배포 전에 승인을 요청합니다.', '승인을 요청할지 묻습니다.', '배포하기 전에 승인 여부를 묻습니다.', '사용자에게 승인할지 묻습니다.', '장애 원인을 묻고 책임은 묻지 않습니다.', '승인은 물론 배포까지 마쳤습니다.']) {
+    assert.ok(!checkText(text, rules, 'chat').some(v => v.rule === 'translationese'), text);
+  }
+});
+
 test('기본 규칙의 `literal-verbs`에는 `>`가 든 항목이 없다', () => {
   /* 0.3.5까지의 검사기는 `literal-verbs`의 `목적어>동사` 항목을 `|`로 나눈 낱말 목록으로 읽습니다. 그러면 새 규칙 문서만 받은 프로젝트에서 `설정`, `성능` 같은 낱말에도 경고가 나옵니다. 그래서 이런 항목은 예전 검사기가 읽지 않는 `object-verbs`에 둡니다. */
   assert.ok(rules.objectVerbs.size > 0);
@@ -277,6 +289,14 @@ test('skill에는 사용자가 알려 온 영어식 표현을 고치라는 지�
   assert.match(skill, /`half-rack`을 `반랙`으로/);
   assert.match(skill, /영어 전치사구와 비유를 낱말 그대로 옮긴 말/);
   assert.match(skill, /항목 이름에 할 일을 몰아넣고 콜론 뒤에 누가 하는지만 쓴 목록/);
+});
+
+test('skill에는 프로그램이 하는 일과 Claude가 할 일을 행위자 없이 이은 문장을 고치라는 지시가 들어 있다', () => {
+  /* 사용자는 이 도구를 설치한 다른 환경에서 Claude가 쓴 문단을 보여 주며 말이 이상하다고 알려 왔습니다. 그 문단에는 무엇에서 지우는지와 무엇의 이유인지가 빠져 있었습니다. 검사기는 이런 문장을 잡지 못하므로 지시가 빠지면 안 됩니다. */
+  const skill = readFileSync(new URL('../skill/korean-rewrite/SKILL.md', import.meta.url), 'utf8');
+  assert.match(skill, /프로그램이 하는 일과 내가 할 일을 행위자 없이 이은 문장/);
+  assert.match(skill, /내가 할 일에는 무엇을 어디에서 바꾸는지 쓰고/);
+  assert.match(skill, /`승인을 묻습니다` → `승인을 요청합니다` 또는 `승인할지 묻습니다`/);
 });
 
 test('skill에는 흔한 한자어 동사는 그대로 쓰고 프로젝트 지침에 든 고칠 표현은 따라 쓰지 말라는 지시가 들어 있다', () => {
