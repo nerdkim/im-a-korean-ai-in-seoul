@@ -2,15 +2,18 @@
 
 README와 [설치와 사용](usage.md)에서 다루지 않는 내부 동작을 설명합니다.
 
-Claude는 한국어를 쓰기 전에 `korean-rewrite` skill을 부릅니다. skill에는 처음부터 한국어로 생각해 쓰는 순서가 들어 있습니다. Claude가 글을 쓴 뒤에는 검사기가 그 글을 프로젝트 규칙과 대조합니다. hook은 skill을 거치지 않았거나 검사기가 오류를 찾은 글이 파일, 커밋, PR에 남지 않게 막고 이런 글이 답변이면 한 번 다시 쓰게 합니다.
+Claude는 한국어를 쓰기 전에 `korean-rewrite` skill을 부릅니다. skill에는 처음부터 한국어로 생각해 쓰는 순서가 들어 있습니다. Claude가 글을 쓴 뒤에는 검사기가 그 글을 프로젝트 규칙과 대조합니다. hook은 skill을 거치지 않았거나 검사기가 오류를 찾은 글이 파일, 커밋, PR에 남지 않게 막고 이런 글이 답변이면 한 번 다시 쓰게 합니다. Claude가 요청을 마치면 검토 hook이 그 요청에서 쓴 한국어를 검토 모델에게 따로 다시 읽힙니다.
 검사기는 Node.js 프로그램이고 규칙 문서에 적힌 목록과 한도에 따라 글을 검사합니다. 모델을 호출하거나 네트워크에 접속하지 않으므로 같은 글을 같은 규칙으로 검사하면 결과도 늘 같습니다.
 
 ```mermaid
 flowchart LR
   prompt["사용자 프롬프트"] --> ups["UserPromptSubmit hook"]
-  ups -- "skill을 먼저 부르라는 안내" --> claude["Claude"]
+  ups -- "skill과 작성 agent 안내" --> claude["Claude"]
   skill["korean-rewrite skill"] --> claude
   guide["작성 지침 (output-style)"] --> claude
+  skill --> writer["korean-writer agent"]
+  claude -- "메모" --> writer
+  writer -- "완성한 글" --> claude
   claude -- "도구 호출" --> pre["PreToolUse hook"]
   claude -- "최종 답변" --> stop["Stop hook"]
   commit["git commit"] --> msg["commit-msg hook"]
@@ -18,6 +21,11 @@ flowchart LR
   stop --> engine
   msg --> engine
   rules[".korean-style/rules.md"] --> engine
+  claude -- "요청을 마칠 때" --> review["검토 hook (백그라운드)"]
+  rules --> review
+  review -- "한국어 글" --> reviewer["검토 모델"]
+  reviewer -- "고칠 표현" --> review
+  review -- "지적 (종료 코드 2)" --> claude
 ```
 
 ## skill을 건너뛰지 못하게 하는 방식
@@ -34,7 +42,7 @@ Claude가 같은 요청에서 skill을 부르지 않은 채 한국어를 쓰려 
 | `git commit`으로 커밋하거나 `gh pr`, `gh issue`로 글을 올리기 직전(`Bash`) | 커밋 메시지, PR과 이슈의 제목과 설명 | 명령을 막고 skill을 부른 뒤 다시 실행하라고 안내합니다 |
 | 답변을 마칠 때(Stop) | 최종 답변 | skill을 부른 뒤 답변을 다시 쓰라고 요구합니다 |
 
-hook은 대화 기록 파일(transcript)에서 이번 요청을 찾아 Skill 도구를 불렀는지 봅니다. 이번 요청은 사용자가 직접 보낸 마지막 메시지 뒤에서 시작합니다. Claude Code는 도구 결과와 skill 본문도 사용자 메시지로 기록하지만 hook은 이런 줄을 사용자가 보낸 메시지로 보지 않습니다.
+hook은 대화 기록 파일(transcript)에서 이번 요청을 찾아 Skill 도구를 불렀는지 봅니다. 이번 요청은 사용자가 직접 보낸 마지막 메시지 뒤에서 시작합니다. Claude Code는 도구 결과, skill 본문, 백그라운드 agent가 끝났다는 알림도 사용자 메시지로 기록하지만 hook은 이런 줄을 사용자가 보낸 메시지로 보지 않습니다.
 subagent가 도구를 불러도 Claude Code는 hook에 메인 세션의 대화 기록 경로를 넘깁니다. 그래서 hook은 `agent_id`로 `<세션 ID>/subagents/agent-<agent_id>.jsonl`을 찾아 그 subagent가 skill을 불렀는지 봅니다.
 
 hook은 다음 경우에도 skill을 요구하지 않습니다.
@@ -47,10 +55,97 @@ hook은 다음 경우에도 skill을 요구하지 않습니다.
 
 세 번째 조건은 Skill 도구를 쓸 수 없는 환경에서 Claude가 끝없이 막히지 않게 하려고 둔 것입니다.
 네 번째 조건은 subagent 프롬프트를 영어로 써도 되기 때문에 둔 것입니다. 이때도 hook은 오류가 있는지는 검사합니다.
+같은 요청에서 작성 agent에게 글을 맡겼을 때도 skill을 요구하지 않습니다. 작성 agent의 frontmatter에 이 skill을 미리 불러오도록 적어 두었기 때문입니다.
+
+## 한글이 많은 글을 작성 agent에게 맡기게 하는 방식
+
+설치 스크립트는 `.claude/agents/korean-writer.md`에 작성 agent를 만들고 frontmatter 첫 줄에 이 도구가 설치했다는 문구를 YAML 주석으로 넣습니다. 이 agent의 frontmatter에는 다음 설정을 적어 두었습니다.
+
+- 도구는 Read뿐입니다.
+- 모델은 Sonnet이고 effort는 low입니다.
+- `skills`에 `korean-rewrite`를 적어 두어 시작할 때 이 skill 본문을 미리 불러오게 했습니다.
+- `omitClaudeMd: true`를 적어 두어 CLAUDE.md를 불러오지 않게 했습니다.
+
+Claude Code는 subagent에게 기본 시스템 프롬프트와 작성 지침을 넣지 않습니다. 이 agent에는 agent 파일 본문과 frontmatter에 적은 skill만 들어가도록 설정했습니다. 작업 맥락 없이 메모와 skill만 보고 글을 쓰게 하려는 것입니다. 모델이 Sonnet으로 실행되는 것은 실행 기록으로 확인했습니다. skill과 CLAUDE.md 설정이 실제로 적용됐는지는 실행 기록으로 확인하지 못했습니다.
+agent 파일 본문은 메모에 없는 사실을 지어내지 말고 글 아래에 `빠진 정보:` 줄을 붙여 알리라고 합니다. 다 쓴 뒤에는 메모를 모르는 독자가 되어 다시 읽고 글을 돌려주라고 합니다.
+
+UserPromptSubmit hook은 skill 안내에 작성 agent 안내도 붙입니다. 파일, 커밋 메시지, PR과 이슈에 올리는 글에 한 번에 쓰는 한글이 `writer-agent-min-hangul`에 적은 수 이상이면 이 agent에게 맡기라는 안내입니다. 돌려받은 글에서 `빠진 정보:` 줄은 빼고 그 내용을 사용자에게 알리라고도 알립니다. `writer-agent-answer-min-hangul`이 0보다 크면 답변도 안내에 넣습니다.
+PreToolUse hook은 skill을 불렀는지 보기 전에 이 agent를 불렀는지 먼저 확인합니다. 이번에 쓰는 파일 내용, 커밋 메시지, PR과 이슈에 올리는 글에 한글이 기준 이상 들어 있는데 이번 요청에서 Agent 도구나 Task 도구로 `subagent_type`이 이 agent인 호출이 없으면 막습니다. 소스 파일에서는 주석에 든 한글만 셉니다. `Edit` 도구로 기존 블록 주석의 안쪽 줄만 고치면 새 문자열에 주석 표시가 없어서 그 줄의 한글은 세지 않습니다. 질문, 계획, 파일 설명처럼 `chat-tool-fields`로 검사하는 글에는 이 agent를 요구하지 않습니다. agent를 찾지 못한 경우처럼 결과가 오류로 끝난 호출은 부른 것으로 보지 않습니다. Stop hook은 `writer-agent-answer-min-hangul`을 기준으로 같은 확인을 합니다. 이 값이 0이면 답변에는 agent를 요구하지 않습니다.
+백그라운드로 부른 agent가 끝나면 Claude Code는 그 알림을 `origin.kind`가 `task-notification`인 사용자 메시지로 기록합니다. hook은 이 알림을 사용자가 보낸 메시지로 보지 않습니다. 그래서 알림을 받은 뒤에 쓰는 글도 agent를 부른 요청 안에서 쓴 글로 봅니다. 이 기록 형식은 Claude Code 2.1.310에서 확인했습니다.
+hook은 subagent가 쓰는 글에는 이 agent를 요구하지 않습니다. 같은 요청에서 이 agent를 부르지 않았다는 이유로 두 번 막았으면 그 뒤로는 이 이유로 막지 않습니다. `writer-agent`의 값이 비어 있거나 `.claude/agents/`에 그 agent가 없을 때도 요구하지 않습니다.
+
+## 요청을 마친 뒤 검토 모델이 다시 읽게 하는 방식
+
+검사기는 규칙 문서에 적힌 낱말과 구절을 찾습니다. 낱말 하나하나가 맞는 한국어이면 문장이 어색해도 검사기는 찾지 못합니다. `항목 942개 가운데 최근 200개를 표시했습니다. 앞선 항목은 journal 원문에 있습니다.`의 `앞선 항목`이 그런 예입니다. 이런 문장은 사례마다 규칙을 추가해도 다음 사례를 막지 못합니다.
+
+skill에는 다 쓴 글을 다시 읽으라고 적어 두었습니다. 하지만 Claude가 글을 정말 다시 읽는지는 Claude 안에서 일어나는 일이라 hook이 확인할 수 없습니다. transcript에도 thinking 본문이 남지 않습니다. 사용자가 알려 준 어색한 문장 세 개를 검토 모델에게 따로 보내자 Sonnet은 여섯 번 모두 어색하다고 지적했습니다. Claude가 쓴 글에도 Claude 모델이 따로 읽으면 어색하다고 지적할 문장이 남아 있습니다. 그래서 이 도구는 다시 읽는 단계를 hook이 검토 모델을 따로 불러 실제로 실행하게 합니다.
+
+검토 모델의 기본값은 Sonnet입니다. 작업하는 Claude도 Sonnet일 수 있으므로 검토 모델이 작업하는 Claude와 다른 모델이라고 보장할 수는 없습니다. 검토 모델은 작업 맥락 없이 hook이 보낸 글만 받습니다. 기본값을 Sonnet으로 정한 이유와 측정 결과는 [검사 규칙](rules.md)에 있습니다.
+
+Claude가 요청을 마칠 때(Stop) 검토 hook(`scripts/hooks/review.mjs`)이 실행됩니다. 검토 hook은 그 요청에서 Claude가 쓴 한국어를 모아 검토 모델에게 보냅니다. 요청의 범위는 다른 hook과 같이 transcript에서 마지막 사용자 메시지 뒤로 봅니다. subagent가 끝날 때(SubagentStop)는 그 subagent가 쓴 파일, 커밋 메시지, PR과 이슈에 올린 글을 보내고 마지막 보고는 보내지 않습니다.
+
+검토 hook이 모으는 글은 다음 네 가지입니다.
+
+- 파일에 새로 쓴 줄
+- 커밋 메시지
+- PR과 이슈에 올린 글
+- 답변
+
+답변에는 Claude가 도구를 부르는 사이에 쓴 진행 보고도 들어 있습니다.
+
+파일에서는 검토 hook이 도구 입력에서 새로 쓴 줄 가운데 한글이 든 줄을 고릅니다. `Edit` 호출에서는 바꾸기 전 문자열에 없던 줄만 고릅니다. 검토 hook은 고른 줄이 지금 파일의 몇째 줄인지 찾아 줄 번호를 붙이고 쓴 뒤에 지워진 줄은 뺍니다. 소스 파일의 줄은 첫 한글부터 마지막 한글과 뒤따르는 문장 부호까지만 잘라 보냅니다. 그래서 주석뿐 아니라 화면 문구 같은 문자열에 든 한국어도 검토합니다. 검사기는 소스 파일에서 주석만 검사하고 hook은 작성 agent를 요구할지 정할 때 주석의 한글만 셉니다. 검토 hook은 이 둘과 달리 문자열의 한국어도 보냅니다.
+
+검토 hook은 다음 명령으로 검토 모델을 부릅니다.
+
+```sh
+claude -p --model <모델> --system-prompt <검토 지시> --tools "" --setting-sources "" --strict-mcp-config --no-session-persistence --output-format json
+```
+
+이 세션은 도구와 MCP 서버를 쓰지 않고 설정 파일도 읽지 않습니다. 검토 hook은 이 명령을 빈 임시 디렉터리에서 실행하므로 프로젝트의 hook과 CLAUDE.md가 끼어들지 않습니다. 환경 변수 `KOREAN_STYLE_REVIEWING`도 `1`로 정합니다. 그러면 검토 모델 세션에서 검토 hook이 다시 실행되어도 바로 끝납니다.
+
+검토 지시는 `scripts/lib/review.mjs`의 `REVIEWER_PROMPT`에 있습니다. 지시는 한국어를 모국어로 쓰는 개발자라면 쓰지 않을 표현을 줄마다 따져 모두 찾아 JSON으로 돌려주라고 합니다. 지시는 그런 표현의 예로 다음 세 가지를 듭니다. 영어 낱말을 사전 대응어로 옮겨 문맥에서 어색해진 말, 영어 문장 구조를 따른 문장, 누가 무엇을 하는지 흐린 문장입니다.
+
+검토 hook은 Claude Code의 `asyncRewake` 설정으로 백그라운드에서 실행됩니다. 그래서 Claude의 답이 늦어지지 않습니다.
+
+검토 hook은 검토 모델의 지적을 답변에 대한 것과 나머지로 나눠 다르게 전합니다.
+
+파일, 커밋 메시지, PR과 이슈에 올린 글에 대한 지적이 있으면 검토 hook이 종료 코드 2로 끝납니다. 그러면 Claude Code가 Claude를 다시 깨워 그 지적을 전합니다. Claude Code 2.1.310에서 이 알림은 transcript에 `origin.kind`가 `task-notification`인 사용자 메시지로 기록되었습니다. 알림은 Claude에게 다음 내용을 지시합니다.
+
+- 지적이 맞고 고쳐도 뜻이 바뀌지 않으면 파일은 그 줄을 고칩니다.
+- 커밋 메시지는 아직 push하지 않았을 때만 고쳐 다시 커밋합니다.
+- PR과 이슈에 올린 글은 고치지 않고 지적만 사용자에게 알립니다.
+- 고쳤으면 무엇을 고쳤는지, 고치지 않았으면 그 이유를 사용자에게 한 문장으로 알립니다. 이때 사용자에게 무엇을 읽거나 하라고 요청하지 않습니다.
+
+알림에는 지적을 8개까지 싣습니다.
+
+답변에 대한 지적은 Claude를 깨우지 않습니다. 답변은 이미 화면에 나왔기 때문입니다. 검토 hook은 그 지적을 세션마다 임시 디렉터리에 저장해 둡니다. 다음 요청 때 UserPromptSubmit hook이 그 지적을 Claude에게만 알리고 저장한 지적을 지웁니다. 이 알림은 Claude에게 이번 답변부터 같은 표현을 쓰지 말라고 합니다. 앞 답변을 고쳐 다시 보여 주거나 지적을 사용자에게 말하지도 말라고 합니다.
+
+처음에는 답변에 대한 지적도 Claude를 깨워 고친 문장을 다시 알리게 했습니다. 이 저장소의 세션에서 깨어난 Claude가 사용자에게 앞 답변의 문장을 고쳐 읽으라고 요구하는 정정을 출력했습니다. 사용자는 이런 정정을 원하지 않았습니다. 그래서 지금처럼 바꿨습니다.
+
+`stop_hook_active`가 true인 Stop에서는 검토하지 않습니다. 검토 알림으로 깨어난 Claude가 고친 뒤 다시 답을 마칠 때가 그렇습니다. Claude Code 2.1.310에서는 깨어난 뒤의 Stop hook 입력에 `stop_hook_active: true`가 들어 있었습니다. 다만 Claude가 다른 작업을 하던 중에 알림을 받으면 Claude Code는 진행 중인 그 작업에 알림을 넣습니다. 그 작업을 마치는 Stop에서는 `stop_hook_active`가 false이므로 검토 hook은 Claude가 고친 글도 다시 검토 모델에게 보냅니다. 이 저장소의 세션에서 이 경우를 확인했습니다.
+
+같은 세션에서 이미 검토한 도구 호출과 답변은 OS 임시 디렉터리의 `korean-style-review/`에 기록해 다시 보내지 않습니다. 검토 hook은 검토 모델을 부르기 전에 기록하므로 호출이 실패해도 같은 글을 다시 보내지 않습니다.
+
+검토에서 빼는 글은 다음과 같습니다.
+
+- 사용자가 요청에 직접 쓴 문장(Stop에서만 뺍니다)
+- 문서의 코드 블록
+- 규칙의 `skip-globs` 경로에 든 파일
+- 프로젝트 밖 파일
+- 결과가 오류로 끝난 도구 호출
+- 검사기가 막는 오류가 있어 Stop hook이 다시 쓰게 하는 답변
+
+사용자 문장을 찾을 때 검토 hook은 숫자와 `{count}` 같은 자리 표시를 같은 기호로 바꾸고 공백을 지운 뒤 비교합니다. 그래서 Claude가 사용자 문장의 숫자를 자리 표시로 바꿔 넣었거나 답변에서 그 문장을 따옴표로 감싸 다시 보여 줘도 검토 hook은 그 문장을 뺍니다. SubagentStop에서는 사용자 문장을 빼지 않습니다. subagent가 받은 프롬프트는 작업하던 Claude가 쓴 글이어서 그 안의 문장도 검토해야 하기 때문입니다.
+
+규칙 키는 `reviewer-model`, `reviewer-min-hangul`, `reviewer-answer-min-hangul`, `reviewer-max-hangul`, `reviewer-timeout`입니다. 키마다 뜻과 기본값은 [검사 규칙](rules.md)에 있습니다. 설치 스크립트는 검토 hook의 시간 제한을 300초로 등록합니다.
+
+실제 세션에서도 이 흐름을 확인했습니다. 이 도구를 설치한 빈 프로젝트에서 Claude Code 2.1.310을 stdin을 열어 둔 `claude -p` 스트림 모드로 실행했습니다. 백그라운드 hook이 끝날 때까지 세션을 유지하려고 이 모드를 썼습니다. 이때 검토 모델은 Opus였습니다. 사용자는 `항목 942개 가운데 최근 200개를 표시했습니다. 앞선 항목은 journal 원문에 있습니다.`를 숫자만 props로 바꿔 글자 그대로 넣으라고 요청했습니다. Claude가 답을 마친 뒤 검토 모델이 이 문장을 지적했고 검토 hook은 종료 코드 2로 끝났습니다. 깨어난 Claude는 사용자가 그대로 넣으라고 한 문장이라 고치지 않았다고 알렸습니다. 그 뒤 Stop에서는 다시 검토하지 않았습니다.
+
+이 일로 사용자가 요청에 쓴 문장을 검토에서 빼도록 고쳤습니다. 같은 요청으로 다시 실행했을 때 검토 hook은 Claude를 깨우지 않았습니다. subagent가 끝난 뒤 Claude Code가 어느 세션을 깨우는지는 확인하지 못했습니다.
 
 ## 작성 지침이 적용되는 방식
 
-Claude Code는 세션을 시작할 때 `outputStyle`로 고른 파일을 시스템 프롬프트에 넣습니다. 작성 지침에는 말투와 기본 원칙이 들어 있고 한국어를 쓰기 전에 `korean-rewrite` skill을 부르라는 지시도 있습니다. 자세한 기준과 예시는 skill에 있습니다.
+Claude Code는 세션을 시작할 때 `outputStyle`로 고른 파일을 시스템 프롬프트에 넣습니다. 작성 지침에는 말투와 기본 원칙이 들어 있습니다. 한국어를 쓰기 전에 `korean-rewrite` skill을 부르라는 지시와 hook이 안내한 글은 `korean-writer` agent에게 맡기라는 지시도 있습니다. 자세한 기준과 예시는 skill에 있습니다.
 작성 지침과 skill은 모두 한국어로 씁니다. 지시문이 영어이면 Claude가 영어로 구상한 뒤 옮기기 쉽기 때문입니다.
 작성 지침의 frontmatter에 `keep-coding-instructions: true`가 있어서 Claude Code의 기본 코딩 지침도 함께 적용됩니다.
 
@@ -131,7 +226,7 @@ Claude가 `Bash` 도구에서 `>`, `>>`, `tee`, `sed -i`, `perl -i`로 검사하
 Claude Code가 답변을 마치면 `stop.mjs`가 hook 입력의 마지막 답변(`last_assistant_message`)을 `chat`으로 검사합니다. 구버전 Claude Code라 이 값을 주지 않으면 hook은 대화 기록에서 이번 요청의 답변을 모읍니다.
 skill을 부르지 않았거나 오류가 있으면 hook은 `decision: block`과 그 이유를 돌려줍니다. Claude는 내용을 유지한 채 답변을 다시 씁니다.
 Claude가 답변을 다시 쓰고 나면 hook이 한 번 더 실행되지만 이때는 `stop_hook_active`가 켜져 있으므로 검사하지 않고 끝납니다. 그래서 hook은 답변을 한 번만 다시 쓰게 합니다.
-Claude Code가 `last_assistant_message`를 넘겨 주면 Claude가 도구를 부르는 사이에 쓴 진행 보고는 어느 hook도 검사하지 않습니다. `last_assistant_message`에는 마지막 답변만 들어 있기 때문입니다. Claude Code 2.1.310에서는 PreToolUse hook이 실행될 때 Claude가 그 도구를 부르기 직전에 쓴 진행 보고가 아직 대화 기록에 없습니다. 진행 보고는 이미 화면에 나왔으므로 hook이 막을 수도 없습니다.
+Claude Code가 `last_assistant_message`를 넘겨 주면 Claude가 도구를 부르는 사이에 쓴 진행 보고는 검사기가 검사하지 않습니다. `last_assistant_message`에는 마지막 답변만 들어 있기 때문입니다. 검토 hook은 대화 기록에서 그 요청의 진행 보고도 모아 검토 모델에게 보냅니다. Claude Code 2.1.310에서는 PreToolUse hook이 실행될 때 Claude가 그 도구를 부르기 직전에 쓴 진행 보고가 아직 대화 기록에 없습니다. 진행 보고는 이미 화면에 나왔으므로 hook이 막을 수도 없습니다.
 
 설치 스크립트는 `git rev-parse --git-path hooks/commit-msg`가 가리키는 경로에 검사 스크립트를 실행하는 작은 Node.js 파일을 만듭니다.
 이 파일은 지금 커밋하는 작업 트리의 최상위 디렉터리를 찾아 그 안의 `.korean-style/scripts/hooks/commit-msg.mjs`를 실행합니다. 이 스크립트는 `#`으로 시작하는 줄을 뺀 메시지를 `commit`으로 검사하고 오류가 있으면 종료 코드 1로 커밋을 멈춥니다.

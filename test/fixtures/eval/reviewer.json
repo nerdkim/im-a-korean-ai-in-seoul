@@ -1,0 +1,145 @@
+{
+  "criteria": "english는 한국어를 모국어로 쓰는 개발자라면 그 문맥에서 쓰지 않을 표현이 든 문장입니다. source-1, source-2, answer-1은 사용자가 Claude Code에서 받아 어색하다고 알려 준 문장입니다. doc-1과 doc-2는 이 도구를 설치한 프로젝트에서 Claude가 쓴 문서 문장입니다. 여기에 옮기면서 경로와 필드 이름만 바꿨습니다. 나머지 english 문장은 skill에 고칠 표현으로 적어 둔 예입니다. natural은 한국 개발자가 쓰는 말로 쓴 문장이고 일부는 english 문장과 내용이 같습니다. natural 문장에 나오는 unit은 배포 단위를 가리키는 코드 용어로 보고 영어로 둡니다.",
+  "batches": [
+    {
+      "id": "screen",
+      "pieces": [
+        {
+          "label": "src/JournalView.tsx",
+          "lines": [
+            {
+              "no": 12,
+              "id": "source-1",
+              "kind": "english",
+              "text": "항목 {total}개 가운데 최근 {shown}개를 표시했습니다. 앞선 항목은 journal 원문에 있습니다."
+            },
+            {
+              "no": 13,
+              "id": "source-2",
+              "kind": "english",
+              "text": "로그인하신 계정과, 어떤 화면을 어떤 근거로 여실 수 있는지 보여 드립니다."
+            },
+            {
+              "no": 14,
+              "id": "source-3",
+              "kind": "natural",
+              "text": "전체 {total}개 가운데 최근 {shown}개만 보여 줍니다. 그보다 오래된 항목은 journal 원본에서 확인해 주십시오."
+            },
+            {
+              "no": 15,
+              "id": "source-4",
+              "kind": "natural",
+              "text": "로그인한 계정과 그 계정으로 열 수 있는 화면을 보여 줍니다."
+            }
+          ]
+        },
+        {
+          "label": "답변",
+          "lines": [
+            {
+              "id": "answer-1",
+              "kind": "english",
+              "text": "미리 계산하지 못한 unit이 있으면 승인을 묻습니다. 다만 잘못된 mock_outputs 문구와 container 경로는 없애고, '새 규칙을 먼저 만든 뒤 정책을 계산합니다'처럼 이유를 쉬운 말로 적습니다."
+            },
+            {
+              "id": "answer-2",
+              "kind": "natural",
+              "text": "테스트를 돌려 보니 두 개가 실패했습니다. 원인은 타임존 설정이었습니다."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "document",
+      "pieces": [
+        {
+          "label": "docs/notes.md",
+          "lines": [
+            {
+              "no": 3,
+              "id": "doc-1",
+              "kind": "english",
+              "text": "- 앞선 기록: 첫 배포의 보고서는 `reports/release-a.md`에 있습니다. 회원 화면 QA는 `reports/qa-members.md`에 있습니다."
+            },
+            {
+              "no": 4,
+              "id": "doc-2",
+              "kind": "english",
+              "text": "이용 기간 종료일(`end_date`)이 오늘(KST)보다 앞선 항목은 저장하지 않습니다. 종료일이 없으면 저장합니다."
+            },
+            {
+              "no": 5,
+              "id": "doc-3",
+              "kind": "english",
+              "text": "응답 모양을 확인했고 CI가 다시 돕니다."
+            },
+            {
+              "no": 6,
+              "id": "doc-4",
+              "kind": "natural",
+              "text": "이용 기간이 이미 끝난 항목은 저장하지 않습니다. 종료일이 비어 있으면 저장합니다."
+            },
+            {
+              "no": 7,
+              "id": "doc-5",
+              "kind": "natural",
+              "text": "설정 파일이 없으면 기본값으로 실행합니다. 기본값은 `docs/usage.md`에 정리해 두었습니다."
+            },
+            {
+              "no": 8,
+              "id": "doc-6",
+              "kind": "natural",
+              "text": "이 함수는 캐시에 값이 없을 때만 DB를 조회합니다."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "commit",
+      "pieces": [
+        {
+          "label": "커밋 메시지",
+          "lines": [
+            {
+              "id": "commit-1",
+              "kind": "english",
+              "text": "코드 밖에서 만든 보안 그룹은 지우지 않습니다."
+            },
+            {
+              "id": "commit-2",
+              "kind": "natural",
+              "text": "배포가 끝나면 슬랙 채널에 알림이 갑니다."
+            }
+          ]
+        },
+        {
+          "label": "답변",
+          "lines": [
+            {
+              "id": "answer-3",
+              "kind": "english",
+              "text": "이 기능은 사용자가 데이터를 내보내는 것을 허용합니다."
+            },
+            {
+              "id": "answer-4",
+              "kind": "natural",
+              "text": "미리 계산하지 못한 unit이 있으면 지금처럼 승인을 요청합니다."
+            },
+            {
+              "id": "answer-5",
+              "kind": "natural",
+              "text": "로그 파일이 1GB를 넘으면 오래된 것부터 지웁니다."
+            },
+            {
+              "id": "answer-6",
+              "kind": "natural",
+              "text": "권한이 없는 사용자가 이 화면을 열면 로그인 페이지로 보냅니다."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

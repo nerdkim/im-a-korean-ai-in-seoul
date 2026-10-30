@@ -77,6 +77,18 @@ const NUMBER_KEYS = {
   'density-margin': 'densityMargin',
   /* 한글이 이 수 이상 들어간 글을 쓰기 전에 Claude는 `writing-skill`에 적힌 skill을 불러야 합니다. */
   'writing-skill-min-hangul': 'writingSkillMinHangul',
+  /* 한글이 이 수 이상 들어간 파일 내용, 커밋 메시지, PR과 이슈에 올리는 글은 `writer-agent`에 적힌 agent가 써야 합니다. */
+  'writer-agent-min-hangul': 'writerAgentMinHangul',
+  /* 한글이 이 수 이상 들어간 답변도 `writer-agent`에 적힌 agent가 써야 합니다. 0이면 답변에는 요구하지 않습니다. */
+  'writer-agent-answer-min-hangul': 'writerAgentAnswerMinHangul',
+  /* 요청에서 쓴 한국어에 한글이 이 수 이상 들어 있어야 검토 모델에게 보냅니다. */
+  'reviewer-min-hangul': 'reviewerMinHangul',
+  /* 답변은 한글이 이 수 이상일 때만 검토 모델에게 보냅니다. 0이면 답변은 보내지 않습니다. */
+  'reviewer-answer-min-hangul': 'reviewerAnswerMinHangul',
+  /* 검토 모델에게 한 번에 보내는 한글의 상한입니다. */
+  'reviewer-max-hangul': 'reviewerMaxHangul',
+  /* 검토 모델의 답을 기다리는 시간(초)입니다. */
+  'reviewer-timeout': 'reviewerTimeout',
 };
 
 /* 언어마다 숫자를 따로 두는 키입니다. */
@@ -89,6 +101,10 @@ const STRING_KEYS = {
   register: 'register',
   /* 한국어를 쓰는 요청마다 불러야 하는 skill입니다. 비워 두면 요구하지 않습니다. */
   'writing-skill': 'writingSkill',
+  /* 한글이 많은 글을 맡길 agent입니다. 비워 두면 요구하지 않습니다. */
+  'writer-agent': 'writerAgent',
+  /* Claude가 요청에서 쓴 한국어를 따로 읽게 할 검토 모델입니다. 비워 두면 검토하지 않습니다. */
+  'reviewer-model': 'reviewerModel',
   /* 문서에서 `<!-- 이 값 -->` 줄과 `<!-- /이 값 -->` 줄 사이는 다른 글을 그대로 옮긴 인용으로 보고 검사하지 않습니다. */
   'quote-marker': 'quoteMarker',
 };
@@ -196,6 +212,17 @@ const FALLBACK = {
   /* `writing-skill` 키가 없는 예전 규칙에서도 `korean-rewrite` skill을 요구합니다. 끄려면 규칙 문서에서 값을 비웁니다. */
   writingSkill: 'korean-rewrite',
   writingSkillMinHangul: 20,
+  /* `writer-agent` 키가 없는 예전 규칙에서도 이 agent가 설치되어 있으면 글을 맡기라고 요구합니다. */
+  writerAgent: 'korean-writer',
+  writerAgentMinHangul: 200,
+  /* 답변까지 맡기면 작업하던 Claude가 메모와 돌려받은 글을 한 번씩 더 출력해야 하므로 기본값은 0입니다. */
+  writerAgentAnswerMinHangul: 0,
+  /* `reviewer-model` 키가 없는 예전 규칙에서도 검토합니다. 끄려면 규칙 문서에서 값을 비웁니다. */
+  reviewerModel: 'sonnet',
+  reviewerMinHangul: 10,
+  reviewerAnswerMinHangul: 30,
+  reviewerMaxHangul: 6000,
+  reviewerTimeout: 90,
 };
 
 /* 목록과 표를 새로 만들어 돌려줍니다. */
@@ -270,8 +297,8 @@ export function parseRuleBlock(body) {
       .filter((v) => v.length > 0);
 
     if (STRING_KEYS[key] !== undefined) {
-      /* `writing-skill:`처럼 값을 비우면 skill을 요구하지 않고 `quote-marker:`처럼 비우면 인용 구간을 두지 않습니다. */
-      if (values[0] !== undefined || key === 'writing-skill' || key === 'quote-marker') rules[STRING_KEYS[key]] = values[0] ?? '';
+      /* `writing-skill:`이나 `writer-agent:`처럼 값을 비우면 요구하지 않고 `reviewer-model:`을 비우면 검토하지 않습니다. `quote-marker:`처럼 비우면 인용 구간을 두지 않습니다. */
+      if (values[0] !== undefined || key === 'writing-skill' || key === 'writer-agent' || key === 'reviewer-model' || key === 'quote-marker') rules[STRING_KEYS[key]] = values[0] ?? '';
       continue;
     }
     if (LIST_KEYS[key] !== undefined) {

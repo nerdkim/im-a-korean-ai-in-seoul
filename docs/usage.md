@@ -45,7 +45,8 @@ Node.js 20 이상과 npm, Git, Claude Code가 필요합니다. 명령은 macOS, 
 | `.claude/skills/korean-rewrite/SKILL.md` | 한국어 작성 skill | 제외 |
 | `.claude/skills/korean-style/SKILL.md` | 검사 규칙 skill | 제외 |
 | `.claude/output-styles/korean-style.md` | 작성 지침 | 제외 |
-| `.claude/settings.json` | hook 세 개, `outputStyle`, `attribution`, `env` 설정 | 커밋 |
+| `.claude/agents/korean-writer.md` | 한글이 많은 글을 쓰는 작성 agent | 제외 |
+| `.claude/settings.json` | hook 다섯 개, `outputStyle`, `attribution`, `env` 설정 | 커밋 |
 | `.gitignore` | 위에서 제외로 표시한 항목 | 커밋 |
 | `.worktreeinclude` | `claude --worktree`로 만든 작업 트리에 복사할 제외 항목 | 커밋 |
 | `.git/hooks/commit-msg` | 커밋 메시지 검사 | 해당 없음 |
@@ -54,7 +55,7 @@ Node.js 20 이상과 npm, Git, Claude Code가 필요합니다. 명령은 macOS, 
 설치 명령을 실행하기 전에는 hook이 검사를 하지 않습니다. 대신 프롬프트를 보낼 때마다 Claude에게 안내를 남겨, 사용자에게 설치 명령을 다시 실행해 달라고 알리게 합니다.
 `claude --worktree`로 작업 트리를 만들면 Claude Code가 `.worktreeinclude`에 적힌 제외 파일을 복사합니다. 그래서 그 작업 트리에서는 다시 설치하지 않아도 됩니다. `git worktree add`로 만든 작업 트리에서는 설치 명령을 다시 실행해야 합니다.
 
-설치 스크립트는 `.claude/settings.json`에 hook 세 개를 추가합니다. `attribution`에 `commit`이나 `pr` 값이 없으면 빈 값을 넣어 Claude Code가 `Co-Authored-By: Claude` 줄과 `Generated with [Claude Code]` 줄을 붙이지 않게 합니다. `env`에 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES` 값이 없으면 `0`을 넣어 서버가 요약한 진행 보고가 화면에 나오지 않게 합니다. 설치 스크립트는 `attribution`과 `env`에서 프로젝트가 이미 정해 둔 값을 바꾸지 않습니다. `outputStyle`은 위 `--activate` 설명대로 바꿉니다.
+설치 스크립트는 `.claude/settings.json`에 hook 다섯 개를 추가하고 `.claude/agents/korean-writer.md`에 작성 agent를 만듭니다. 이 도구가 설치했다는 문구가 없는 같은 이름의 agent 파일이 이미 있으면 덮어쓰지 않고 멈춥니다. `attribution`에 `commit`이나 `pr` 값이 없으면 빈 값을 넣어 Claude Code가 `Co-Authored-By: Claude` 줄과 `Generated with [Claude Code]` 줄을 붙이지 않게 합니다. `env`에 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES` 값이 없으면 `0`을 넣어 서버가 요약한 진행 보고가 화면에 나오지 않게 합니다. 설치 스크립트는 `attribution`과 `env`에서 프로젝트가 이미 정해 둔 값을 바꾸지 않습니다. `outputStyle`은 위 `--activate` 설명대로 바꿉니다.
 기존 `CLAUDE.md`, 다른 hook, 권한, MCP 설정, 다른 output-style 파일, 사용자 전역 설정, `.claude/settings.local.json`은 바꾸지 않습니다.
 설정 파일이 손상되었거나 설치 경로에 symlink가 있으면 아무것도 덮어쓰지 않고 멈춥니다. 처음 설치할 때 skill이나 작성 지침을 놓을 경로에 같은 이름의 파일이 있어도 멈춥니다.
 
@@ -73,8 +74,9 @@ skill을 직접 부르려면 메시지 맨 앞에 `/`와 skill 이름을 입력�
 | 시점 | 보는 글 | 하는 일 |
 | --- | --- | --- |
 | 사용자가 프롬프트를 보낼 때 | 없음 | 한국어를 쓰기 전에 skill을 부르고 처음부터 한국어로 생각하라고 Claude에게 알립니다. |
-| Claude Code가 도구를 실행하기 직전 | 파일에 쓸 내용, 사용자에게 묻는 질문, 승인받을 계획, 사용자에게 보내는 파일 설명, subagent 프롬프트, `git commit` 메시지, `gh pr`과 `gh issue`로 올리는 제목과 설명 | 오류가 있거나 skill을 부르지 않고 한국어를 쓰면 실행을 막고 이유를 알려 줍니다. |
-| Claude Code가 답변을 마칠 때 | 최종 답변 | skill을 거치지 않았거나 오류가 있으면 한 번 다시 쓰게 합니다. |
+| Claude Code가 도구를 실행하기 직전 | 파일에 쓸 내용, 사용자에게 묻는 질문, 승인받을 계획, 사용자에게 보내는 파일 설명, subagent 프롬프트, `git commit` 메시지, `gh pr`과 `gh issue`로 올리는 제목과 설명 | 오류가 있거나 skill을 부르지 않고 한국어를 쓰면 실행을 막고 이유를 알려 줍니다. 파일 내용, 커밋 메시지, PR과 이슈에 올리는 글은 한 번에 쓰는 한글이 200자 이상인데 작성 agent에게 맡기지 않았을 때도 막습니다. 소스 파일에서는 주석의 한글만 셉니다. |
+| Claude Code가 답변을 마칠 때 | 최종 답변 | skill을 거치지 않았거나 오류가 있으면 한 번 다시 쓰게 합니다. 답변을 작성 agent에게 맡기도록 규칙을 바꿨으면 맡기지 않은 긴 답변도 다시 쓰게 합니다. |
+| Claude Code가 답변을 마치거나 subagent가 끝날 때 | 이번 요청에서 쓴 한국어 가운데 파일에 새로 쓴 줄, 커밋 메시지, PR과 이슈에 올린 글, 답변. subagent가 끝날 때는 subagent가 쓴 진행 보고와 마지막 보고를 모두 뺍니다. | 검토 hook이 백그라운드에서 이 글을 검토 모델에게 따로 보내 영어식 표현을 찾게 합니다. 파일과 커밋 메시지에 대한 지적이 있으면 Claude를 다시 깨워 고치게 하고 PR과 이슈에 올린 글은 지적만 사용자에게 알리게 합니다. 답변에 대한 지적은 다음 요청에서 Claude에게만 알립니다. 답이 늦어지지 않지만 검토 모델 호출은 Claude Code 계정의 사용량을 씁니다. |
 | Git이 커밋할 때(`commit-msg` hook) | 커밋 메시지 | 오류가 있으면 커밋을 멈춥니다. |
 
 subagent 프롬프트는 영어로 써도 되므로 hook은 skill을 요구하지 않고 오류만 봅니다. 한글이 20자보다 적은 글에도 skill을 요구하지 않습니다. 이 기준을 바꾸려면 규칙 문서의 `writing-skill-min-hangul` 값을 고칩니다.
@@ -99,6 +101,10 @@ node .korean-style/scripts/check-korean.mjs --explain translationese
 ## 규칙 바꾸기
 
 `.korean-style/rules.md`의 `korean-style-rules` 블록을 고칩니다. 막지 않고 경고만 할 규칙은 `advisory-rules`에 넣습니다. skill을 요구하지 않으려면 `writing-skill:`의 값을 비웁니다. 생성 표시를 막지 않으려면 `banned-attribution:`의 값을 비웁니다.
+hook이 작성 agent를 요구하지 않게 하려면 `writer-agent:`의 값을 비웁니다. 그러면 UserPromptSubmit hook도 작성 agent를 안내하지 않습니다. agent에게 맡길 글의 기준 길이는 `writer-agent-min-hangul`로 정합니다. 화면에 나오는 답변까지 맡기려면 `writer-agent-answer-min-hangul`을 0보다 크게 정합니다. 그러면 Claude가 한글이 그 수 이상인 답변마다 메모를 넘기고 돌려받은 글을 다시 출력하므로 답이 늦어집니다.
+
+검토 hook을 끄려면 `reviewer-model:`의 값을 비웁니다. 규칙 문서에 이 키가 없으면 검토 hook이 기본값으로 검토하므로 키를 추가하고 값을 비워야 합니다. 검토 모델을 바꾸려면 `reviewer-model:`에 모델 이름을 적습니다. 기본값은 `sonnet`이고 `opus`나 `haiku`로 바꿀 수 있습니다. 예문 18개를 묶음 3개로 나눠 모델마다 묶음을 여섯 번씩 보낸 측정에서 묶음 하나에 든 비용은 Sonnet 0.0098달러, Opus 0.0115달러, Haiku 0.0010달러였습니다. 자연스러운 문장 60번 가운데 Sonnet과 Opus는 한 번도 잘못 지적하지 않았지만 Haiku는 11번 잘못 지적했습니다. 잘못 지적하면 Claude가 멀쩡한 문장을 고칠 수 있습니다. 답변을 검토 모델에게 보내지 않으려면 `reviewer-answer-min-hangul:`을 `0`으로 정합니다. 그러면 파일, 커밋 메시지, PR과 이슈에 올린 글만 보냅니다.
+
 키마다 뜻은 [검사 규칙](rules.md)에 있습니다. 규칙을 고친 뒤에는 잡아야 할 문장과 통과해야 할 문장을 `--text`로 함께 확인합니다.
 
 문서에 다른 사람이나 모델이 쓴 글을 그대로 옮길 때는 그 글을 `<!-- korean-style-quote -->` 줄과 `<!-- /korean-style-quote -->` 줄 사이에 넣습니다. 검사기는 문서에서 이 사이를 검사하지 않습니다. 답변과 커밋 메시지에서는 이 사이도 검사합니다.
@@ -121,9 +127,9 @@ Git 저장소가 아닌 프로젝트에 설치해도 Claude Code hook은 동작�
 
 ## 제거
 
-1. `.korean-style/`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`를 지웁니다.
-2. `.claude/settings.json`에서 명령에 `.korean-style/scripts/hooks/`가 든 hook 항목과 `"outputStyle": "korean-style"`을 지웁니다. `attribution` 항목과 `env`의 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES` 항목은 이 도구가 넣었으면 지웁니다.
-3. `.gitignore`에서 `# korean-style`로 시작하는 줄과 그 아래 여섯 줄(`.korean-style/*`, `!.korean-style/rules.md`, `!.korean-style/defaults.sha256`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`)을 지웁니다.
+1. `.korean-style/`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`, `.claude/agents/korean-writer.md`를 지웁니다.
+2. `.claude/settings.json`에서 명령에 `.korean-style/scripts/hooks/`가 든 hook 항목을 지웁니다. UserPromptSubmit, PreToolUse, Stop의 hook 항목과 함께 Stop과 SubagentStop에 등록된 검토 hook(`review.mjs`) 항목도 지웁니다. `"outputStyle": "korean-style"`도 지웁니다. `attribution` 항목과 `env`의 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES` 항목은 이 도구가 넣었으면 지웁니다.
+3. `.gitignore`에서 `# korean-style`로 시작하는 줄과 그 아래 일곱 줄(`.korean-style/*`, `!.korean-style/rules.md`, `!.korean-style/defaults.sha256`, `.claude/skills/korean-style/`, `.claude/skills/korean-rewrite/`, `.claude/output-styles/korean-style.md`, `.claude/agents/korean-writer.md`)을 지웁니다. `.worktreeinclude`에서도 같은 줄을 지웁니다.
 4. `git rev-parse --git-path hooks/commit-msg`가 가리키는 파일에 `korean-style commit hook`이 든 줄이 있으면 그 파일을 지웁니다. 기존 hook에 검사기 호출을 직접 넣었다면 그 줄도 지웁니다.
 
 ## 문제 해결
@@ -137,6 +143,6 @@ Git 저장소가 아닌 프로젝트에 설치해도 Claude Code hook은 동작�
 
 ## 다른 코딩 agent
 
-Codex나 Gemini CLI에서는 skill과 작성 지침, Claude Code hook이 동작하지 않습니다.
+Codex나 Gemini CLI에서는 skill과 작성 지침, 작성 agent, Claude Code hook이 동작하지 않습니다.
 커밋 메시지 검사는 Git의 `commit-msg` hook에서 실행되므로 어느 프로그램으로 커밋하든 적용됩니다.
 다른 agent도 같은 기준을 따르게 하려면 `AGENTS.md`나 `GEMINI.md`에 지시를 적어 둡니다. 한국어를 쓰기 전에 `.claude/skills/korean-rewrite/SKILL.md`를 읽고 그 순서를 따르라고 적습니다.

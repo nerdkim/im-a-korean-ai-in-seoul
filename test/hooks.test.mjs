@@ -620,17 +620,42 @@ test('메시지 파일 없이 호출되면 통과시킨다', () => {
 test('설치할 때 원래 있던 hook을 지우지 않는다', () => {
   const mine = { hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo 남의 hook' }] }] }, env: { FOO: 'bar' } };
   const { settings, added } = mergeHookSettings(mine);
-  assert.deepEqual(added, ['UserPromptSubmit', 'PreToolUse', 'Stop']);
-  assert.equal(settings.hooks.Stop.length, 2);
+  assert.deepEqual(added, ['UserPromptSubmit', 'PreToolUse', 'Stop', 'SubagentStop']);
+  assert.equal(settings.hooks.Stop.length, 3);
   assert.equal(settings.hooks.Stop[0].hooks[0].command, 'echo 남의 hook');
   assert.equal(settings.env.FOO, 'bar');
 });
 
-test('설치를 두 번 해도 이벤트마다 hook 항목이 하나다', () => {
+test('설치를 두 번 해도 hook 항목이 늘지 않는다', () => {
   const once = mergeHookSettings({}).settings;
   const twice = mergeHookSettings(once);
   assert.equal(twice.added.length, 0);
   assert.equal(twice.settings.hooks.UserPromptSubmit.length, 1);
   assert.equal(twice.settings.hooks.PreToolUse.length, 1);
-  assert.equal(twice.settings.hooks.Stop.length, 1);
+  assert.equal(twice.settings.hooks.Stop.length, 2);
+  assert.equal(twice.settings.hooks.SubagentStop.length, 1);
+});
+
+test('검토 hook은 Stop과 SubagentStop에 백그라운드에서 실행되고 Claude를 깨울 수 있는 hook으로 등록된다', () => {
+  const { settings } = mergeHookSettings({});
+  for (const event of ['Stop', 'SubagentStop']) {
+    const review = settings.hooks[event].map((entry) => entry.hooks[0]).find((hook) => hook.command.includes('review.mjs'));
+    assert.ok(review, event);
+    assert.equal(review.asyncRewake, true);
+    assert.ok(review.timeout >= 120);
+  }
+  const stop = settings.hooks.Stop.map((entry) => entry.hooks[0]).find((hook) => hook.command.includes('stop.mjs'));
+  assert.equal(stop.asyncRewake, undefined);
+});
+
+test('0.3 버전으로 설치한 설정에 다시 설치하면 검토 hook만 새로 들어간다', () => {
+  const legacy = { hooks: {
+    UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'node "$CLAUDE_PROJECT_DIR/.korean-style/scripts/hooks/userprompt.mjs"' }] }],
+    PreToolUse: [{ matcher: 'Write', hooks: [{ type: 'command', command: 'node "$CLAUDE_PROJECT_DIR/.korean-style/scripts/hooks/pretooluse.mjs"' }] }],
+    Stop: [{ hooks: [{ type: 'command', command: 'node "$CLAUDE_PROJECT_DIR/.korean-style/scripts/hooks/stop.mjs"' }] }],
+  } };
+  const { settings, added } = mergeHookSettings(legacy);
+  assert.deepEqual(added, ['Stop', 'SubagentStop']);
+  assert.equal(settings.hooks.Stop.length, 2);
+  assert.equal(settings.hooks.PreToolUse.length, 1);
 });

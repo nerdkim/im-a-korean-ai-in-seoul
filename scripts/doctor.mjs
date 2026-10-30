@@ -100,6 +100,26 @@ for (const name of ['korean-style', 'korean-rewrite']) {
   if (existsSync(join(root, '.claude/skills', name, 'SKILL.md'))) ok(`${name} skill이 있습니다`);
   else bad(`${name} skill이 없습니다`);
 }
+/* 규칙 문서에서 `writer-agent`를 비우지 않았으면 그 agent 파일이 있어야 hook이 한글이 많은 글을 그 agent에게 맡기라고 요구합니다. */
+if (rules.writerAgent) {
+  if (existsSync(join(root, '.claude/agents', `${rules.writerAgent}.md`))) ok(`${rules.writerAgent} agent가 있습니다`);
+  else warn(`${rules.writerAgent} agent 파일이 없어 hook이 한글이 많은 글을 이 agent에게 맡기라고 요구하지 않습니다. ` + (rules.writerAgent === 'korean-writer'
+    ? '설치 명령을 다시 실행하면 설치 스크립트가 이 파일을 만듭니다.'
+    : `그 agent 파일을 .claude/agents/에 만들거나 규칙 문서에서 writer-agent:의 값을 비워야 합니다.`));
+}
+/* 규칙 문서에서 `reviewer-model`을 비우지 않았으면 검토 hook이 Stop과 SubagentStop에 `asyncRewake`로 등록되어 있어야 합니다. */
+if (rules.reviewerModel) {
+  const command = hookCommand('review', installed);
+  for (const event of ['Stop', 'SubagentStop']) {
+    const linked = sources.flatMap(s => s.settings.hooks?.[event] ?? []).some(e => e.hooks.some(h =>
+      h.type === 'command' && h.command === command && h.asyncRewake === true));
+    if (linked) ok(`검토 hook 연결: ${event}`);
+    else bad(`${event}에 검토 hook이 없거나 asyncRewake가 꺼져 있습니다. 다시 설치하면 복구됩니다.`);
+  }
+  const cli = spawnSync('claude', ['--version'], { encoding: 'utf-8' });
+  if (cli.status === 0) ok(`claude 명령이 있습니다. 검토 hook은 이 명령으로 검토 모델(${rules.reviewerModel})을 부릅니다`);
+  else warn('claude 명령을 찾지 못해 검토 hook이 검토 모델을 부르지 못합니다. hook을 실행하는 shell의 PATH에 claude가 있어야 합니다.');
+}
 if (installed && !existsSync(join(tool, 'defaults.sha256'))) warn('기본 규칙 해시(defaults.sha256)가 없어 다시 설치해도 기존 규칙이 그대로 남습니다. 새 기본 규칙으로 바꾸려면 --force를 붙여 다시 설치해야 합니다.');
 try {
   const hook = commitHookState(root);

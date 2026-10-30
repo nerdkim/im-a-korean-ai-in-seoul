@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { INSTALLED_DIR, rulesDocPath } from '../scripts/lib/paths.mjs';
 import { loadRules, withRegister } from '../scripts/lib/rules.mjs';
 import { checkText } from '../scripts/lib/check.mjs';
-import { REGISTER_FRAGMENTS, mergeOutputStyle } from '../scripts/install.mjs';
+import { REGISTER_FRAGMENTS, agentWithMarker, mergeOutputStyle } from '../scripts/install.mjs';
 import { MISSING_SCRIPTS_NOTICE, PROGRESS_SUMMARY_ENV, hookCommand, isOffValue } from '../scripts/lib/setup.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -594,7 +594,7 @@ test('settings.json이 가리키는 hook 파일이 실제로 있다', () => {
   const commands = Object.values(settings.hooks).flatMap((list) =>
     list.flatMap((entry) => entry.hooks.map((h) => h.command)),
   );
-  assert.equal(commands.length, 3);
+  assert.equal(commands.length, 5);
 
   for (const command of commands) {
     const quoted = command.match(/"([^"]+)"/);
@@ -604,14 +604,15 @@ test('settings.json이 가리키는 hook 파일이 실제로 있다', () => {
   }
 });
 
-test('두 번 설치해도 settings.json의 hook 항목이 이벤트마다 하나다', () => {
+test('두 번 설치해도 settings.json의 hook 항목이 늘지 않는다', () => {
   const target = scratch();
   install(target);
   install(target);
 
   const settings = JSON.parse(readFileSync(join(target, '.claude', 'settings.json'), 'utf-8'));
   assert.equal(settings.hooks.PreToolUse.length, 1);
-  assert.equal(settings.hooks.Stop.length, 1);
+  assert.equal(settings.hooks.Stop.length, 2);
+  assert.equal(settings.hooks.SubagentStop.length, 1);
 });
 
 test('원래 있던 설정을 지우지 않는다', () => {
@@ -631,7 +632,7 @@ test('원래 있던 설정을 지우지 않는다', () => {
 
   const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
   assert.equal(settings.env.FOO, 'bar');
-  assert.equal(settings.hooks.Stop.length, 2);
+  assert.equal(settings.hooks.Stop.length, 3);
   assert.equal(settings.hooks.Stop[0].hooks[0].command, 'echo 남의 hook');
 });
 
@@ -873,6 +874,31 @@ test('이름이 같은 기존 output-style을 덮어쓰지 않고 프로젝트 �
   }
 });
 
+test('설치 스크립트는 `korean-writer` agent 파일을 `.claude/agents/`에 설치하고 설치 표시 문구가 없는 같은 이름의 파일은 덮어쓰지 않는다', () => {
+  /* 설치 스크립트는 `.gitignore`와 `.worktreeinclude`에 agent 파일 경로를 추가합니다. 설치 표시 문구가 없는 같은 이름의 파일이 있으면 덮어쓰지 않고 멈춥니다. 설치 표시 문구가 든 파일은 다시 설치할 때 새 내용으로 바꿉니다. 이 저장소의 원본에는 설치 표시 문구가 없고 설치할 때 frontmatter에 넣습니다. */
+  const agentRel = join('.claude', 'agents', 'korean-writer.md');
+  const original = readFileSync(join(ROOT, 'agents', 'korean-writer.md'), 'utf8');
+  assert.ok(!original.includes('korean-style이 설치한 파일입니다.'));
+  const source = agentWithMarker(original);
+  assert.match(source, /^---\n# korean-style이 설치한 파일입니다\. /);
+  const target = gitScratch();
+  assert.equal(install(target).status, 0);
+  assert.equal(readFileSync(join(target, agentRel), 'utf8'), source);
+  for (const name of ['.gitignore', '.worktreeinclude']) {
+    assert.ok(readFileSync(join(target, name), 'utf8').split('\n').includes('.claude/agents/korean-writer.md'), name);
+  }
+  writeFileSync(join(target, agentRel), '---\n# korean-style이 설치한 파일입니다. 직접 고치면 다시 설치할 때 덮어씁니다.\nname: korean-writer\n---\n예전 내용입니다.\n');
+  assert.equal(install(target).status, 0);
+  assert.equal(readFileSync(join(target, agentRel), 'utf8'), source);
+  const mine = '---\nname: korean-writer\ndescription: 직접 만든 agent입니다.\n---\n';
+  for (const project of [scratch(), target]) {
+    mkdirSync(join(project, '.claude', 'agents'), { recursive: true });
+    writeFileSync(join(project, agentRel), mine);
+    assert.equal(install(project).status, 2);
+    assert.equal(readFileSync(join(project, agentRel), 'utf8'), mine);
+  }
+});
+
 test('고치지 않은 예전 기본 규칙만 새 규칙으로 바꾸고 사용자가 고른 말투와 직접 고친 규칙은 그대로 둔다', () => {
   const target = scratch();
   assert.equal(install(target, ['--register', '해요체']).status, 0);
@@ -1045,7 +1071,7 @@ test('hook 스크립트가 있으면 hook 명령이 스크립트를 실행하고
   assert.equal(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision, 'deny');
 });
 
-test('0.3.3까지 설치한 hook 명령은 다시 설치하면 새 명령으로 바뀌고 이벤트마다 하나만 남는다', () => {
+test('0.3.3까지 설치한 hook 명령은 다시 설치하면 새 명령으로 바뀌고 예전 명령은 남지 않는다', () => {
   const target = scratch();
   const old = name => `node "$CLAUDE_PROJECT_DIR/${INSTALLED_DIR}/scripts/hooks/${name}.mjs"`;
   saveJson(join(target, '.claude', 'settings.json'), { hooks: {
@@ -1056,8 +1082,8 @@ test('0.3.3까지 설치한 hook 명령은 다시 설치하면 새 명령으로 
 
   assert.equal(install(target).status, 0);
   const settings = jsonAt(join(target, '.claude', 'settings.json'));
-  for (const [event, name] of [['UserPromptSubmit', 'userprompt'], ['PreToolUse', 'pretooluse'], ['Stop', 'stop']]) {
-    assert.deepEqual(settings.hooks[event].flatMap(entry => entry.hooks.map(h => h.command)), [hookCommand(name)]);
+  for (const [event, names] of [['UserPromptSubmit', ['userprompt']], ['PreToolUse', ['pretooluse']], ['Stop', ['stop', 'review']], ['SubagentStop', ['review']]]) {
+    assert.deepEqual(settings.hooks[event].flatMap(entry => entry.hooks.map(h => h.command)), names.map((name) => hookCommand(name)));
   }
   assert.equal(doctor(target).status, 0);
 });
@@ -1080,6 +1106,7 @@ test('git 저장소에 설치하면 작업 트리에 복사할 설치 파일을 
     `${INSTALLED_DIR}/scripts/hooks/userprompt.mjs`,
     `${INSTALLED_DIR}/scripts/hooks/pretooluse.mjs`,
     `${INSTALLED_DIR}/scripts/hooks/stop.mjs`,
+    `${INSTALLED_DIR}/scripts/hooks/review.mjs`,
     '.claude/skills/korean-rewrite/SKILL.md',
     '.claude/skills/korean-style/SKILL.md',
     '.claude/output-styles/korean-style.md',
@@ -1089,7 +1116,7 @@ test('git 저장소에 설치하면 작업 트리에 복사할 설치 파일을 
 
 test('README의 shell 설치 명령을 새 프로젝트와 기존 프로젝트에서 그대로 실행한다', () => {
   const source = gitScratch();
-  for (const path of ['scripts', 'docs', 'skill', 'output-styles', 'LICENSE', 'package.json']) {
+  for (const path of ['scripts', 'docs', 'skill', 'output-styles', 'agents', 'LICENSE', 'package.json']) {
     cpSync(join(ROOT, path), join(source, path), { recursive: true });
   }
   assert.equal(git(source, ['add', '.']).status, 0);

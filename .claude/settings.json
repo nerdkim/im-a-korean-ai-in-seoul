@@ -40,6 +40,28 @@
             "statusMessage": "최종 답변 문체 검사 중"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/review.mjs\"",
+            "asyncRewake": true,
+            "timeout": 300
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/review.mjs\"",
+            "asyncRewake": true,
+            "timeout": 300
+          }
+        ]
       }
     ]
   }

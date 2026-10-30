@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { isEntryPoint, projectRoot, rulesDocPath, toolRoot } from '../lib/paths.mjs';
-import { currentTurn, needsSkill, skillRequest } from '../lib/skill.mjs';
+import { currentTurn, needsSkill, needsWriter, skillRequest, writerRequest } from '../lib/skill.mjs';
 import { loadRules } from '../lib/rules.mjs';
 import { checkText, blockingViolations } from '../lib/check.mjs';
 
@@ -64,17 +64,21 @@ function run() {
   if (text === null || text.trim().length === 0) process.exit(0);
 
   const rules = loadRules(RULES_DOC);
-  const skipped = needsSkill({ text, rules, projectRoot: PROJECT_ROOT, transcriptPath: input.transcript_path ?? '' });
+  const context = { text, rules, projectRoot: PROJECT_ROOT, transcriptPath: input.transcript_path ?? '' };
+  /* 답변에는 `writer-agent-answer-min-hangul` 기준을 씁니다. 기준이 0이면 답변을 작성 agent에게 맡기라고 하지 않습니다. 맡기라고 할 때는 skill을 따로 요구하지 않습니다. */
+  const unwritten = needsWriter({ ...context, minHangul: rules.writerAgentAnswerMinHangul });
+  const skipped = !unwritten && needsSkill(context);
   const violations = blockingViolations(checkText(text, rules, 'chat'));
-  if (!skipped && violations.length === 0) process.exit(0);
+  if (!unwritten && !skipped && violations.length === 0) process.exit(0);
 
   const parts = [];
+  if (unwritten) parts.push(writerRequest(rules.writerAgent, rules.writerAgentAnswerMinHangul, '답변을 다시 쓰십시오.'));
   if (skipped) parts.push(skillRequest(rules.writingSkill, '답변을 다시 쓰십시오.'));
   if (violations.length > 0) {
     /* 설치한 프로젝트에서는 검사기 경로가 `.korean-style/scripts/check-korean.mjs`가 됩니다. */
     const checker = relative(PROJECT_ROOT, join(toolRoot(), 'scripts', 'check-korean.mjs')).split(sep).join('/');
     parts.push(
-      `${skipped ? '다시 쓸 때 아래 표현도 고치십시오.' : '아래 표현을 고쳐 답변을 다시 쓰십시오.'}\n` +
+      `${unwritten || skipped ? '다시 쓸 때 아래 표현도 고치십시오.' : '아래 표현을 고쳐 답변을 다시 쓰십시오.'}\n` +
       violations.slice(0, 3).map(v => `[${v.rule}] ${v.line}줄: ${v.detail}`).join('\n') +
       `\n규칙 문서: ${RULES_DOC}\n규칙 설명은 \`node ${checker} --explain <규칙 이름>\` 명령으로 볼 수 있습니다.`,
     );

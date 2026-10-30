@@ -10,6 +10,7 @@ import { isEntryPoint } from './lib/paths.mjs';
 import { loadRules } from './lib/rules.mjs';
 import { blockingViolations, checkText } from './lib/check.mjs';
 import { CHAR_CLASSES, SHORTCODE_RE } from './lib/rules/chars.mjs';
+import { main as reviewerMain } from './eval-reviewer.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -132,6 +133,11 @@ function main() {
     if (!args[i + 1] || args[i + 1].startsWith('--')) throw new Error(`${key} 다음에 값이 필요합니다`);
     return args[i + 1];
   };
+  /* `--reviewer`를 주면 답변 대신 검토 모델이 영어식 표현을 얼마나 지적하는지 측정합니다. */
+  if (args.includes('--reviewer')) {
+    reviewerMain(args.filter((arg) => arg !== '--reviewer'));
+    return;
+  }
   if (args.includes('--self-check')) {
     if (answersOf('<answer id="a">ok</answer>', [{ id: 'a' }])[0].text !== 'ok') throw new Error('답변을 읽지 못했습니다');
     console.log('eval 자체 검사를 통과했습니다. API는 호출하지 않았습니다.');

@@ -8,7 +8,7 @@ import { checkText, checkToolCall, formatToolViolations, formatViolations, block
 import { koreanCommentsOf } from '../lib/comments.mjs';
 import { targetForPath, toProjectRelative } from '../lib/targets.mjs';
 import { blankQuoteRegions, stripCode } from '../lib/text.mjs';
-import { needsSkill, skillRequest } from '../lib/skill.mjs';
+import { needsSkill, needsWriter, skillRequest, writerRequest } from '../lib/skill.mjs';
 
 const PROJECT_ROOT = projectRoot();
 const RULES_DOC = rulesDocPath(PROJECT_ROOT);
@@ -353,9 +353,15 @@ function run() {
   const ti = input.tool_input ?? {};
   const rules = loadRules(RULES_DOC);
 
-  /* 규칙 문서에 적힌 skill을 Claude가 이번 요청에서 한국어를 쓰기 전에 불렀는지 봅니다. */
-  const requireSkill = (text, retry) => {
+  /*
+   * Claude가 이번 요청에서 한국어를 쓰기 전에 skill을 불렀는지 봅니다.
+   * `writerText`를 주면 그 글의 한글이 기준 이상일 때 작성 agent에게 맡겼는지 먼저 봅니다. 질문과 계획처럼 대화에 쓰는 글에는 주지 않습니다.
+   */
+  const requireSkill = (text, retry, writerText = null) => {
     const context = { text, rules, projectRoot: PROJECT_ROOT, transcriptPath: input.transcript_path, agentId: input.agent_id };
+    if (writerText !== null && needsWriter({ ...context, text: writerText })) {
+      deny(writerRequest(rules.writerAgent, rules.writerAgentMinHangul, retry));
+    }
     if (needsSkill(context)) deny(skillRequest(rules.writingSkill, retry));
   };
 
@@ -378,7 +384,8 @@ function run() {
   if (toolName === 'Bash') {
     const messages = commitMessagesIn(ti.command);
     const posts = pullRequestTextsIn(ti.command);
-    requireSkill([...messages, ...posts].join('\n'), messages.length > 0 ? '다시 커밋하십시오.' : '명령을 다시 실행하십시오.');
+    const posted = [...messages, ...posts].join('\n');
+    requireSkill(posted, messages.length > 0 ? '다시 커밋하십시오.' : '명령을 다시 실행하십시오.', posted);
     for (const [texts, where] of [[messages, '커밋 메시지'], [posts, 'PR이나 이슈에 올릴 글']]) {
       const problems = texts.flatMap((text) => blockingViolations(checkText(text, rules, 'commit')));
       if (problems.length > 0) deny(formatViolations(problems, rules, where));
@@ -408,7 +415,9 @@ function run() {
 
   const target = targetForPath(rel, rules);
   if (target === null) process.exit(0);
-  requireSkill(writtenText(toolName, ti), '다시 쓰십시오.');
+  /* 작성 agent는 코드를 쓰지 않습니다. 그래서 소스 파일에서는 주석의 한글만 세어 작성 agent를 요구할지 정합니다. */
+  const written = writtenText(toolName, ti);
+  requireSkill(written, '다시 쓰십시오.', target === 'comment' ? koreanCommentsOf(written, rel) : written);
 
   const after = resultOfEdit(toolName, ti, filePath);
   const violations = blockingViolations(checkText(after, rules, target, { path: rel }));

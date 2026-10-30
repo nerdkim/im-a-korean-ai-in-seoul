@@ -34,6 +34,7 @@
     "docs/limits.md",
     "scripts/",
     "skill/",
+    "agents/",
     "output-styles/"
   ],
   "keywords": [

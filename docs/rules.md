@@ -21,6 +21,39 @@ Claude Code는 세션을 시작할 때 작성 지침을 시스템 프롬프트�
 - subagent가 파일을 쓸 때는 hook이 그 subagent의 대화 기록에서 skill을 불렀는지 봅니다.
 - hook은 같은 요청에서 skill을 부르지 않았다는 이유로 두 번 막았는데도 Claude가 skill을 부르지 않으면 Skill 도구를 쓸 수 없는 환경이라고 봅니다. 그 뒤로는 이 이유로 막지 않습니다.
 - `writing-skill:`처럼 값을 비우거나 그 skill이 `.claude/skills/`에 없으면 hook은 skill을 요구하지 않습니다. 직접 고친 예전 규칙처럼 `writing-skill`과 `writing-skill-min-hangul` 키가 아예 없으면 기본값인 `korean-rewrite`와 20을 씁니다.
+- 같은 요청에서 Claude가 작성 agent에게 글을 맡겼으면 hook은 skill을 따로 요구하지 않습니다. 작성 agent의 frontmatter에 이 skill을 미리 불러오도록 적어 두었기 때문입니다.
+
+## 한글이 많은 글을 맡기는 agent
+
+- 파일, 커밋 메시지, PR과 이슈에 올리는 글에 한 번에 쓰는 한글이 `writer-agent-min-hangul`에 적은 수 이상이면 Claude는 그 글을 직접 쓰지 않고 `writer-agent`에 적은 agent에게 맡겨야 합니다. Claude는 독자, 글 종류, 말투, 담을 사실을 적은 메모를 Agent 도구로 넘기고 돌려받은 글을 씁니다. 소스 파일에서는 주석에 든 한글만 셉니다. 질문과 계획처럼 대화에 쓰는 글에는 이 agent를 요구하지 않습니다.
+- 답변은 한글이 `writer-agent-answer-min-hangul`에 적은 수 이상일 때만 맡깁니다. 이 값의 기본값은 0이라서 기본 규칙에서는 답변을 맡기지 않습니다. 답변까지 맡기면 작업하던 Claude가 메모와 돌려받은 글을 한 번씩 더 출력해야 해서 답이 늦어지기 때문입니다.
+- 사용자가 프롬프트를 보낼 때마다 UserPromptSubmit hook이 이 agent에게 글을 맡기라고 Claude에게 알립니다.
+- Claude가 그 요청에서 이 agent를 부르지 않은 채 한글이 기준 이상 든 글로 파일을 쓰거나 커밋하거나 PR을 올리려 하면 PreToolUse hook이 막습니다. `writer-agent-answer-min-hangul`을 0보다 크게 정했으면 Claude가 이 agent를 부르지 않고 한글이 그 수 이상 든 답변을 마칠 때 Stop hook은 답변을 이 agent에게 맡겨 다시 쓰라고 Claude에게 요구합니다.
+- hook은 이 agent를 불렀는지만 확인하고 돌려받은 글을 그대로 썼는지는 확인하지 않습니다. agent를 찾지 못한 경우처럼 결과가 오류로 끝난 호출은 부른 것으로 보지 않습니다.
+- subagent가 쓰는 글에는 이 agent를 요구하지 않습니다.
+- hook은 같은 요청에서 이 agent를 부르지 않았다는 이유로 두 번 막았는데도 Claude가 이 agent를 부르지 않으면 그 뒤로는 이 이유로 막지 않습니다.
+- `writer-agent:`처럼 값을 비우거나 그 agent가 `.claude/agents/`에 없으면 hook은 이 agent를 요구하지 않습니다. 직접 고친 예전 규칙처럼 키가 아예 없으면 기본값인 `korean-writer`, 200, 0을 씁니다.
+
+## 요청을 마친 뒤 다시 읽는 검토 모델
+
+- Claude가 요청을 마칠 때(Stop) 검토 hook이 그 요청에서 Claude가 쓴 한국어를 모아 `reviewer-model`에 적은 모델에게 보냅니다. 보내는 글은 파일에 새로 쓴 줄, 커밋 메시지, PR과 이슈에 올린 글, 답변입니다. 답변에는 Claude가 도구를 부르는 사이에 쓴 진행 보고도 들어 있습니다.
+- subagent가 끝날 때(SubagentStop)는 그 subagent가 쓴 파일, 커밋 메시지, PR과 이슈에 올린 글만 보냅니다. 마지막 보고는 보내지 않습니다.
+- 소스 파일에서는 주석뿐 아니라 화면 문구 같은 문자열에 든 한국어도 보냅니다. 검사기는 소스 파일에서 주석만 검사하고 hook은 작성 agent를 요구할지 정할 때 주석의 한글만 셉니다.
+- 검토 hook이 모은 글 전체의 한글이 `reviewer-min-hangul`에 적은 수보다 적으면 아무것도 보내지 않습니다. 답변은 한글이 `reviewer-answer-min-hangul`에 적은 수보다 적으면 보내지 않습니다. 이 값이 0이면 답변을 늘 보내지 않습니다.
+- 한 번에 보내는 한글의 상한은 `reviewer-max-hangul`입니다. 검토 hook은 조각의 한글을 앞에서부터 합쳐 이 수를 넘으면 그 조각부터는 보내지 않습니다. 첫 조각은 이 수를 넘어도 보냅니다.
+- 검토에서 빼는 글은 사용자가 요청에 직접 쓴 문장, 문서의 코드 블록, `skip-globs` 경로에 든 파일, 프로젝트 밖 파일, 결과가 오류로 끝난 도구 호출입니다. 검사기가 막는 오류가 있어 Stop hook이 다시 쓰게 하는 답변도 뺍니다.
+- 사용자가 쓴 문장은 Stop에서만 빼고 SubagentStop에서는 빼지 않습니다. 검토 hook은 이 문장을 찾을 때 숫자와 `{count}` 같은 자리 표시를 같은 기호로 바꾸고 공백을 지운 뒤 비교합니다. 그래서 Claude가 숫자를 자리 표시로 바꿔 넣었거나 답변에서 따옴표로 다시 보여 줘도 뺍니다.
+- `stop_hook_active`가 true인 Stop에서는 검토하지 않습니다.
+- 같은 세션에서 이미 검토한 도구 호출과 답변은 다시 보내지 않습니다. 검토 hook은 검토 모델을 부르기 전에 기록하므로 호출이 실패해도 같은 글을 다시 보내지 않습니다.
+- 파일, 커밋 메시지, PR과 이슈에 올린 글에 대한 지적이 있으면 검토 hook이 종료 코드 2로 끝나고 Claude Code가 Claude를 다시 깨워 그 지적을 전합니다. 알림은 Claude에게 지적이 맞고 고쳐도 뜻이 바뀌지 않으면 파일은 그 줄을 고치라고 합니다. 커밋 메시지는 아직 push하지 않았을 때만 고쳐 다시 커밋하라고 합니다. PR과 이슈에 올린 글은 고치지 말고 지적만 사용자에게 알리라고 합니다.
+- 알림은 Claude에게 고쳤으면 무엇을 고쳤는지, 고치지 않았으면 그 이유를 사용자에게 한 문장으로 알리라고 합니다. 사용자에게 무엇을 읽거나 하라고 요청하지 말라고도 합니다. 알림에는 지적을 8개까지 싣습니다.
+- 답변에 대한 지적은 Claude를 깨우지 않습니다. 검토 hook이 지적을 세션마다 임시 디렉터리에 저장해 두면 다음 요청 때 UserPromptSubmit hook이 그 지적을 Claude에게만 알리고 지웁니다. 이 알림은 Claude에게 이번 답변부터 같은 표현을 쓰지 말라고 합니다. 앞 답변을 고쳐 다시 보여 주거나 지적을 사용자에게 말하지도 말라고 합니다.
+- `reviewer-model`의 기본값은 `sonnet`입니다. 값을 비우면 검토하지 않습니다. `reviewer-model` 키가 아예 없는 예전 규칙에서도 기본값으로 검토합니다.
+- `reviewer-min-hangul`의 기본값은 10, `reviewer-answer-min-hangul`은 30, `reviewer-max-hangul`은 6000, `reviewer-timeout`은 90초입니다.
+- 기본값은 Sonnet으로 정했습니다. 측정에 쓴 예문은 18개이고 영어식 표현이 든 문장이 8개, 자연스러운 문장이 10개입니다. 예문을 묶음 3개로 나눠 모델마다 묶음을 여섯 번씩 보냈으므로 모델마다 영어식 문장을 모두 48번, 자연스러운 문장을 모두 60번 보냈습니다. 예문과 판단 기준은 `test/fixtures/eval/reviewer.json`에 있습니다.
+- Sonnet은 영어식 문장을 48번 가운데 32번 지적했고 자연스러운 문장은 한 번도 잘못 지적하지 않았습니다. 묶음 하나에 평균 0.0098달러가 들었습니다.
+- Opus는 영어식 문장을 30번 지적했고 자연스러운 문장을 한 번도 잘못 지적하지 않았습니다. 묶음 하나에 0.0115달러가 들었습니다. Sonnet이 영어식 문장을 더 많이 지적했고 비용도 더 적게 들었으므로 Opus를 기본값으로 고르지 않았습니다.
+- Haiku는 영어식 문장을 39번 지적했지만 자연스러운 문장을 11번 잘못 지적했습니다. 묶음 하나에 0.0010달러가 들었습니다. 잘못 지적하면 Claude가 멀쩡한 문장을 고칠 수 있으므로 Haiku도 고르지 않았습니다.
 
 ## 일부 규칙을 경고로만 두고 영어 용어 수를 제한하지 않는 이유
 
@@ -54,6 +87,14 @@ flattery-openers: 좋은 질문입니다, 좋은 질문이네요, 좋은 질문�
 korean-required-min-chars: 40
 writing-skill: korean-rewrite
 writing-skill-min-hangul: 20
+writer-agent: korean-writer
+writer-agent-min-hangul: 200
+writer-agent-answer-min-hangul: 0
+reviewer-model: sonnet
+reviewer-min-hangul: 10
+reviewer-answer-min-hangul: 30
+reviewer-max-hangul: 6000
+reviewer-timeout: 90
 banned-char: middot, em-dash, en-dash, emoji, hanja, kana, fullwidth-paren
 allowed-emoji-shortcode:
 sentence-min-hangul-ratio: 0.3
@@ -118,6 +159,14 @@ banned-attribution: Generated with [Claude Code], Generated with Claude Code, no
 | `korean-required-min-chars`  | 코드와 공백을 뺀 글자 수가 이 값 이상인데 한글이 없으면 영어로 쓴 것으로 봅니다. |
 | `writing-skill`  | Claude가 요청을 받을 때마다 한국어를 쓰기 전에 불러야 하는 skill입니다. 값을 비우면 hook이 skill을 요구하지 않습니다. 키가 없으면 `korean-rewrite`를 씁니다. |
 | `writing-skill-min-hangul`  | 답변이나 커밋 메시지, 이번에 파일에 쓰는 내용에 한글이 이 수 이상 들어 있으면 hook이 skill을 요구합니다. |
+| `writer-agent`  | 한글이 많은 글을 맡길 agent입니다. 값을 비우면 hook이 이 agent를 요구하지 않습니다. 키가 없으면 `korean-writer`를 씁니다. |
+| `writer-agent-min-hangul`  | 커밋 메시지, PR과 이슈에 올리는 글, 이번에 파일에 쓰는 내용에 한글이 이 수 이상 들어 있으면 hook이 `writer-agent`에 적은 agent에게 글을 맡기라고 요구합니다. 소스 파일에서는 주석의 한글만 셉니다. 0이면 요구하지 않습니다. |
+| `writer-agent-answer-min-hangul`  | 답변에 한글이 이 수 이상 들어 있으면 Stop hook이 `writer-agent`에 적은 agent에게 글을 맡겨 다시 쓰라고 요구합니다. 0이면 답변에는 요구하지 않습니다. 기본값은 0입니다. |
+| `reviewer-model`  | Claude가 요청을 마친 뒤 그 요청에서 쓴 한국어를 다시 읽을 검토 모델입니다. 값을 비우면 검토하지 않습니다. 키가 없으면 `sonnet`을 씁니다. |
+| `reviewer-min-hangul`  | 검토 hook이 모은 글 전체의 한글이 이 수보다 적으면 검토 모델에게 보내지 않습니다. 기본값은 10입니다. |
+| `reviewer-answer-min-hangul`  | 답변의 한글이 이 수보다 적으면 답변은 보내지 않습니다. 0이면 답변은 늘 보내지 않습니다. 기본값은 30입니다. |
+| `reviewer-max-hangul`  | 한 번에 보내는 한글의 상한입니다. hook이 조각의 한글을 앞에서부터 합쳐 이 수를 넘으면 그 조각부터는 보내지 않습니다. 첫 조각은 이 수를 넘어도 보냅니다. 기본값은 6000입니다. |
+| `reviewer-timeout`  | 검토 모델의 답을 기다리는 시간입니다. 단위는 초이고 기본값은 90입니다. |
 | `banned-char`  | 검사할 글자 종류입니다. 쓸 수 있는 이름은 `scripts/lib/rules/chars.mjs`에 있습니다. |
 | `allowed-emoji-shortcode`  | 사용자가 이름을 지정해 허용한 shortcode입니다. |
 | `sentence-min-hangul-ratio`  | 문장을 한국어 산문으로 보려면 한글이 차지해야 하는 최소 비율입니다. |

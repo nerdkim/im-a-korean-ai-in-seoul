@@ -41,6 +41,23 @@ const OUTPUT_STYLE_DIR_POSIX = '.claude/output-styles';
 /* output-style의 이름입니다. */
 const OUTPUT_STYLE_NAME = 'korean-style';
 
+/* 설치할 agent입니다. */
+const AGENT_NAMES = ['korean-writer'];
+
+/* agent 하나를 설치할 경로입니다. */
+const agentPathFor = (name) => join('.claude', 'agents', `${name}.md`);
+
+/* .gitignore와 경로 검사에 쓰는 POSIX 형식 agent 경로입니다. */
+const agentPathPosixFor = (name) => `.claude/agents/${name}.md`;
+
+/* 이 도구가 설치한 agent 파일에 든 문구입니다. 이 문구가 없는 같은 이름의 파일은 사용자가 만든 파일로 보고 덮어쓰지 않습니다. */
+const AGENT_MARKER = 'korean-style이 설치한 파일입니다.';
+
+/* 설치할 agent 파일의 frontmatter 첫 줄에 설치 표시 문구를 YAML 주석으로 넣습니다. 이 저장소의 원본에는 이 문구를 두지 않습니다. */
+export function agentWithMarker(body) {
+  return body.replace(/^---\n/, `---\n# ${AGENT_MARKER} 직접 고친 내용은 다시 설치할 때 설치 스크립트가 덮어씁니다.\n`);
+}
+
 /* .gitignore에서 이 도구가 넣은 줄을 알아볼 때 쓰는 주석 줄입니다. */
 const GITIGNORE_MARKER = '# korean-style이 설치한 파일입니다. 이 가운데 직접 고쳐도 되는 파일은 rules.md뿐입니다.';
 
@@ -59,6 +76,7 @@ export const GITIGNORE_LINES = [
   `!${INSTALLED_DIR}/defaults.sha256`,
   ...SKILL_NAMES.map((name) => `${skillDirPosixFor(name)}/`),
   `${OUTPUT_STYLE_DIR_POSIX}/${OUTPUT_STYLE_NAME}.md`,
+  ...AGENT_NAMES.map(agentPathPosixFor),
 ];
 
 /* `claude --worktree`로 작업 트리를 만들 때 Claude Code가 복사할 파일 목록입니다. 형식은 .gitignore와 같습니다. */
@@ -67,24 +85,43 @@ const WORKTREE_INCLUDE = '.worktreeinclude';
 /* settings.json에서 이 도구의 hook 명령을 알아볼 때 찾는 경로입니다. */
 const MARKER = `${INSTALLED_DIR}/scripts/hooks/`;
 
-const HOOKS = {
-  UserPromptSubmit: {
+/* 검토 hook은 백그라운드에서 실행되고 파일, 커밋 메시지, PR과 이슈 글에 고칠 표현이 있으면 Claude를 깨웁니다. hook은 검토 모델의 답을 `reviewer-timeout`까지 기다리므로 hook의 시간 제한은 그보다 넉넉히 둡니다. */
+const REVIEW_HOOK = { script: 'review.mjs', command: hookCommand('review'), asyncRewake: true, timeout: 300 };
+
+const HOOKS = [
+  {
+    event: 'UserPromptSubmit',
     script: 'userprompt.mjs',
     command: hookCommand('userprompt'),
     statusMessage: 'Claude에게 skill을 먼저 부르라고 알리는 중',
   },
-  PreToolUse: {
+  {
+    event: 'PreToolUse',
     script: 'pretooluse.mjs',
     matcher: 'Write|Edit|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMode|SendUserFile|Task|Agent|Bash',
     command: hookCommand('pretooluse'),
     statusMessage: '한국어 문체 검사 중',
   },
-  Stop: {
+  {
+    event: 'Stop',
     script: 'stop.mjs',
     command: hookCommand('stop'),
     statusMessage: '최종 답변 문체 검사 중',
   },
-};
+  { event: 'Stop', ...REVIEW_HOOK },
+  { event: 'SubagentStop', ...REVIEW_HOOK },
+];
+
+/* settings.json에 넣을 hook 항목입니다. */
+function hookEntry(spec) {
+  return {
+    type: 'command',
+    command: spec.command,
+    ...(spec.statusMessage ? { statusMessage: spec.statusMessage } : {}),
+    ...(spec.asyncRewake ? { asyncRewake: true } : {}),
+    ...(spec.timeout ? { timeout: spec.timeout } : {}),
+  };
+}
 
 export const RULES_REGISTER_LINE = /^register:.*$/m;
 
@@ -108,21 +145,21 @@ export function skillWithRegister(body, fragment) {
 export function mergeHookSettings(existing, hooks = HOOKS) {
   const out = { ...(existing ?? {}), hooks: { ...(existing?.hooks ?? {}) } };
   const added = [];
-  for (const [event, spec] of Object.entries(hooks)) {
-    let found = false;
+  for (const event of [...new Set(hooks.map((spec) => spec.event))]) {
+    const specs = hooks.filter((spec) => spec.event === event);
+    const found = new Set();
     const list = (out.hooks[event] ?? []).flatMap(entry => {
       const kept = entry.hooks.filter(h => {
-        const owned = h.type === 'command' && typeof h.command === 'string' &&
-          h.command.includes(`${MARKER}${spec.script}`);
-        if (owned) found = true;
-        return !owned;
+        const owner = specs.find((spec) => h.type === 'command' && typeof h.command === 'string' &&
+          h.command.includes(`${MARKER}${spec.script}`));
+        if (owner) found.add(owner.script);
+        return owner === undefined;
       });
       return kept.length ? [{ ...entry, hooks: kept }] : [];
     });
-    list.push({ ...(spec.matcher ? { matcher: spec.matcher } : {}),
-      hooks: [{ type: 'command', command: spec.command, statusMessage: spec.statusMessage }] });
+    for (const spec of specs) list.push({ ...(spec.matcher ? { matcher: spec.matcher } : {}), hooks: [hookEntry(spec)] });
     out.hooks[event] = list;
-    if (!found) added.push(event);
+    if (specs.some((spec) => !found.has(spec.script))) added.push(event);
   }
   return { settings: out, added };
 }
@@ -173,21 +210,28 @@ function selfCheck() {
     process.stdout.write(`${ok ? '  성공' : '  실패'} ${label}\n`);
   };
 
-  report(mergeHookSettings({}).added.length === 3, '빈 설정에 hook 셋을 추가한다');
-  report(mergeHookSettings(null).added.length === 3, '설정 파일이 없어도 hook 셋을 추가한다');
+  report(mergeHookSettings({}).added.length === 4, '빈 설정이면 이벤트 네 개에 hook을 추가한다');
+  report(mergeHookSettings(null).added.length === 4, '설정 파일이 없어도 이벤트 네 개에 hook을 추가한다');
 
-  /* 두 번 합쳐도 항목은 하나여야 합니다. */
+  /* 두 번 합쳐도 항목이 늘면 안 됩니다. */
   const once = mergeHookSettings({}).settings;
   const twice = mergeHookSettings(once);
-  report(twice.added.length === 0 && twice.settings.hooks.PreToolUse.length === 1, '두 번 설치해도 항목이 하나다');
+  report(
+    twice.added.length === 0 && twice.settings.hooks.PreToolUse.length === 1 && twice.settings.hooks.Stop.length === 2,
+    '두 번 설치해도 항목이 늘지 않는다',
+  );
 
   /* 설치할 프로젝트에 다른 hook이 이미 있으면 그 hook이 남아야 합니다. */
   const mine = { hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo 남의 hook' }] }] } };
   const merged = mergeHookSettings(mine).settings;
   report(
-    merged.hooks.Stop.length === 2 && merged.hooks.Stop[0].hooks[0].command === 'echo 남의 hook',
+    merged.hooks.Stop.length === 3 && merged.hooks.Stop[0].hooks[0].command === 'echo 남의 hook',
     '프로젝트에 있던 hook을 지우지 않는다',
   );
+
+  /* 검토 hook은 `asyncRewake`로 등록해야 백그라운드에서 실행되고 Claude를 깨울 수 있습니다. */
+  const review = merged.hooks.Stop.at(-1).hooks[0];
+  report(review.asyncRewake === true && review.command.includes('review.mjs'), '검토 hook을 백그라운드에서 실행되고 Claude를 깨울 수 있는 hook으로 등록한다');
 
   /* 설정의 다른 부분도 남아야 합니다. */
   const withEnv = mergeHookSettings({ env: { FOO: 'bar' } }).settings;
@@ -213,6 +257,17 @@ function selfCheck() {
     Object.keys(REGISTER_FRAGMENTS).length === 3 &&
       Object.values(REGISTER_FRAGMENTS).every((name) => existsSync(join(SOURCE_ROOT, 'skill', 'korean-style', 'register', name))),
     '말투 이름마다 문구 파일이 있다',
+  );
+
+  /* 설치할 agent마다 원본 파일이 있고 설치할 내용의 frontmatter 안에 설치 표시 문구가 들어가야 합니다. */
+  report(
+    AGENT_NAMES.every((name) => {
+      const path = join(SOURCE_ROOT, 'agents', `${name}.md`);
+      if (!existsSync(path)) return false;
+      const installed = agentWithMarker(readFileSync(path, 'utf8'));
+      return installed.startsWith('---\n# ') && installed.split('\n---\n')[0].includes(AGENT_MARKER);
+    }),
+    '설치할 agent 파일마다 frontmatter에 설치 표시 문구가 들어간다',
   );
 
   /* 생성 표시 설정은 빠진 값만 채웁니다. */
@@ -328,10 +383,18 @@ function main() {
   const include = hasGit ? mergeGitignore(includeBefore) : { text: includeBefore, added: false };
 
   for (const rel of [INSTALLED_DIR, '.claude/settings.json', ...SKILL_NAMES.map(skillDirPosixFor),
-    `${OUTPUT_STYLE_DIR_POSIX}/${OUTPUT_STYLE_NAME}.md`, ...(hasGit ? ['.gitignore', WORKTREE_INCLUDE] : [])]) assertWritablePath(root, rel);
+    `${OUTPUT_STYLE_DIR_POSIX}/${OUTPUT_STYLE_NAME}.md`, ...AGENT_NAMES.map(agentPathPosixFor),
+    ...(hasGit ? ['.gitignore', WORKTREE_INCLUDE] : [])]) assertWritablePath(root, rel);
   if (!before) {
     for (const rel of [...SKILL_NAMES.map(name => `${skillDirPosixFor(name)}/SKILL.md`), `${OUTPUT_STYLE_DIR_POSIX}/${OUTPUT_STYLE_NAME}.md`]) {
       if (existsSync(join(root, rel))) throw new Error(`같은 이름의 기존 파일은 덮어쓰지 않습니다: ${rel}`);
+    }
+  }
+  /* 설치 스크립트는 0.4.0부터 agent를 설치하므로 같은 이름의 agent 파일이 있는지 다시 설치할 때도 확인합니다. 설치 표시 문구가 없는 같은 이름의 파일은 사용자가 만든 agent로 봅니다. */
+  for (const name of AGENT_NAMES) {
+    const path = join(root, agentPathFor(name));
+    if (existsSync(path) && !readFileSync(path, 'utf8').includes(AGENT_MARKER)) {
+      throw new Error(`같은 이름의 기존 파일은 덮어쓰지 않습니다: ${agentPathPosixFor(name)}`);
     }
   }
   // 로컬 설정은 진단만 합니다. 다른 worktree의 settings.local.json도 바꾸지 않습니다.
@@ -367,6 +430,10 @@ function main() {
   mkdirSync(join(root, OUTPUT_STYLE_DIR), { recursive: true });
   writeFileSync(join(root, OUTPUT_STYLE_DIR, `${OUTPUT_STYLE_NAME}.md`),
     skillWithRegister(readFileSync(join(SOURCE_ROOT, 'output-styles/korean-style.md'), 'utf8'), fragment));
+  for (const name of AGENT_NAMES) {
+    mkdirSync(dirname(join(root, agentPathFor(name))), { recursive: true });
+    writeFileSync(join(root, agentPathFor(name)), agentWithMarker(readFileSync(join(SOURCE_ROOT, 'agents', `${name}.md`), 'utf8')));
+  }
   mkdirSync(dirname(settingsPath), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(style.settings, null, 2) + '\n');
   if (ignore.added) writeFileSync(ignorePath, ignore.text);
@@ -374,7 +441,7 @@ function main() {
   console.log(`설치했습니다. 새 hook: ${added.join(', ') || '없음'}`);
   if (!hasGit) console.log('.git이 없어서 .gitignore와 .worktreeinclude를 수정하지 않았습니다. git init 후 다시 설치하면 설치 스크립트가 필요한 항목을 추가합니다.');
   reportCommitHook(installCommitHook(root));
-  console.log('설치한 프로젝트에서 Claude Code를 다시 시작해야 설치 내용이 적용됩니다. 그때부터 Claude는 한국어를 써야 하는 요청마다 먼저 korean-rewrite skill을 부릅니다.');
+  console.log('설치한 프로젝트에서 Claude Code를 다시 시작해야 설치 내용이 적용됩니다. 그때부터 Claude는 한국어를 써야 하는 요청마다 먼저 korean-rewrite skill을 부르고 한글이 많은 글은 korean-writer agent에게 맡깁니다.');
   const quoted = "'" + join(installDir, 'scripts/doctor.mjs').replaceAll("'", "'\\''") + "'";
   console.log(`점검: node ${quoted}`);
 }
